@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+"""
+NanoVNA UTN Toolkit - Main application entry point
+"""
+
 import sys
 import os
 import logging
@@ -6,8 +11,8 @@ from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QVBoxLayout,
                             QWidget, QTextEdit, QPushButton, QHBoxLayout)
 from PySide6.QtGui import QIcon, QTextCursor, QFont
 
-# Add the parent directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add the src directory to the Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # Import the compatibility layer first
 from NanoVNA_UTN_Toolkit.compat import apply_patches
@@ -31,11 +36,6 @@ logger = logging.getLogger(__name__)
 # Enable debug logging for the compatibility module
 logging.getLogger('NanoVNA_UTN_Toolkit.compat').setLevel(logging.DEBUG)
 
-def main():
-    app = QApplication(sys.argv)
-    window = NanoVNAStatusApp()
-    window.show()
-    sys.exit(app.exec())
 
 class NanoVNAStatusApp(QMainWindow):
     def __init__(self):
@@ -51,7 +51,18 @@ class NanoVNAStatusApp(QMainWindow):
 
     def init_ui(self):
         """Inicializar la interfaz de usuario."""
-        self.setWindowIcon(QIcon("icon.ico"))
+        # Buscar el icono en varios lugares posibles
+        icon_paths = ["icon.ico", "src/icon.ico", os.path.join(os.path.dirname(__file__), "icon.ico")]
+        icon_found = False
+        for icon_path in icon_paths:
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+                icon_found = True
+                break
+        
+        if not icon_found:
+            logger.warning("icon.ico not found in expected locations")
+            
         self.setWindowTitle("NanoVNA Connection Status")
         self.setGeometry(100, 100, 600, 400)
         
@@ -198,6 +209,7 @@ class NanoVNAStatusApp(QMainWindow):
                     pass
                 self.vna = None
 
+
 def run_app():
     """Ejecuta la aplicación gráfica."""
     try:
@@ -209,10 +221,13 @@ def run_app():
         input("Presiona Enter para cerrar el programa...")
         sys.exit(1)
 
+
 def main():
+    """Función principal."""
     check_required_packages()
     run_app()
-    cleanup_rutine()
+    cleanup_routine()
+
 
 if __name__ == "__main__":
     main()

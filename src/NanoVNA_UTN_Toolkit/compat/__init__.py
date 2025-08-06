@@ -11,10 +11,9 @@ from typing import Any, Optional, Type, TypeVar, Union
 # Import the original modules
 from ..Hardware.Hardware import get_VNA as original_get_VNA
 from ..Hardware import VNA as OriginalVNA
-from ..Hardware.Version import Version as OriginalVersion
 
-# Import our version compatibility
-from . import version_compat as vc
+# Import our unified version compatibility
+from ..utils import version_compat as vc
 from ..utils.version import Version as UTNVersion
 
 # Type variable for VNA subclasses
@@ -88,7 +87,7 @@ class PatchedVNA(_original_VNA):
             except Exception as e:
                 logger.error(f"Error reading firmware version: {e}")
                 # Return a default version on error
-                self._original_version = UTNVersion("0.0.0")
+                self._original_version = UTNVersion.parse("0.0.0")
         
         return self._original_version
 
@@ -137,28 +136,6 @@ def apply_patches() -> None:
     
     # Apply our patched version
     hardware_module.get_VNA = patched_get_VNA
-    
-    # Patch the Version class in the Hardware module if it exists
-    try:
-        from ..Hardware.Version import Version as OriginalVersion
-        if hasattr(OriginalVersion, 'build') and not hasattr(OriginalVersion, '_original_build'):
-            # Save the original build method and replace it with our version
-            OriginalVersion._original_build = OriginalVersion.build
-            OriginalVersion.build = staticmethod(vc.build_version)
-            logger.debug("Patched Hardware.Version.build")
-    except ImportError:
-        logger.debug("Hardware.Version not found, skipping patch")
-    
-    # Also patch the utils.version.Version class if it exists
-    try:
-        from ..utils.version import Version as UTNVersion
-        if hasattr(UTNVersion, 'build') and not hasattr(UTNVersion, '_original_build'):
-            # Save the original build method and replace it with our version
-            UTNVersion._original_build = UTNVersion.build
-            UTNVersion.build = staticmethod(vc.build_version)
-            logger.debug("Patched utils.version.Version.build")
-    except ImportError:
-        logger.debug("utils.version.Version not found, skipping patch")
     
     logger.info("Compatibility patches applied successfully")
 

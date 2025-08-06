@@ -3,7 +3,7 @@ import time
 from typing import Optional, Tuple
 
 from .Serial import Interface
-from .Version import Version
+from ..utils import build_version, Version
 
 def drain_serial(serial_port):
     """Drain up to 8KB of outstanding data in the serial incoming buffer"""
@@ -25,7 +25,7 @@ class VNABase:
     
     def __init__(self, iface: Interface):
         self.serial = iface
-        self.version = Version()
+        self.version = build_version(0, 0, 0)  # Initialize with default version
         self.datapoints = self.valid_datapoints[0]
         self.timeout = 0.1
         self.is_connected = False
@@ -62,11 +62,17 @@ class VNABase:
                 self.serial.write(b"version\r")
                 response = self.serial.readline().decode('ascii', errors='ignore').strip()
                 if response.startswith("version "):
-                    return Version(response[8:])  # Remove "version " prefix
+                    version_str = response[8:].strip()
+                    parts = version_str.split('.')
+                    major = int(parts[0]) if len(parts) > 0 else 0
+                    minor = int(parts[1]) if len(parts) > 1 else 0
+                    revision = int(parts[2]) if len(parts) > 2 else 0
+                    note = parts[3] if len(parts) > 3 else ''
+                    return build_version(major, minor, revision, note)
         except Exception as e:
             logger.error("Error getting version: %s", str(e))
         
-        return Version("0.0.0")  # Return default version on failure
+        return build_version(0, 0, 0)  # Return default version on failure
     
     def check_connection(self) -> Tuple[bool, str]:
         """Check if the VNA is connected and responding."""

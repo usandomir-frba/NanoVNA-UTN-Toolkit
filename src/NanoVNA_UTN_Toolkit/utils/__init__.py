@@ -1,4 +1,3 @@
-from .version import Version as _OriginalVersion
 from .version_compat import Version, build_version
 
 # Import utility functions

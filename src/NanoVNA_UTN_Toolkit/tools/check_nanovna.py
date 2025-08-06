@@ -11,8 +11,10 @@ import sys
 import serial
 import serial.tools.list_ports
 
-# Add the src directory to the path so we can import our modules
-sys.path.insert(0, 'src')
+# Add the project root to the path so we can import our modules
+import os
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.insert(0, os.path.join(project_root, 'src'))
 
 from pynanovna.hardware import NanoVNA, Interface, drain_serial
 

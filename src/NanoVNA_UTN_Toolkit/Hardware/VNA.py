@@ -22,7 +22,7 @@ from typing import Iterator
 
 from PySide6 import QtGui
 
-from ..utils import Version
+from ..utils import build_version
 from .Serial import Interface, drain_serial
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class VNA:
     valid_datapoints: tuple[int, ...] = (101, 51, 11)
     wait = 0.05
     SN = "NOT SUPPORTED"
-    hardware_revision: str | Version = "NOT SUPPORTED"
+    hardware_revision: str = "NOT SUPPORTED"
     sweep_points_max = 101
     sweep_points_min = 11
 
@@ -65,7 +65,7 @@ class VNA:
 
     def __init__(self, iface: Interface):
         self.serial = iface
-        self.version = Version.parse("0.0.0")
+        self.version = build_version(0, 0, 0)
         self.features: set[str] = set()
         self.validateInput = False
         self.datapoints = self.valid_datapoints[0]
@@ -210,10 +210,16 @@ class VNA:
         logger.debug("VNA done reading %s (%d values)", value, len(result))
         return result
 
-    def read_fw_version(self) -> Version:
+    def read_fw_version(self):
+        """Read the firmware version from the device."""
         result = list(self.exec_command("version"))
         logger.debug("Firmware Version:\n%s", result)
-        return Version.parse(result[0])
+        # Parse the version string (e.g., "1.2.3") and create a Version object
+        version_parts = result[0].strip().split('.')
+        major = int(version_parts[0]) if len(version_parts) > 0 else 0
+        minor = int(version_parts[1]) if len(version_parts) > 1 else 0
+        patch = int(version_parts[2]) if len(version_parts) > 2 else 0
+        return build_version(major, minor, patch)
 
     def setSweep(self, start, stop):
         list(self.exec_command(f"sweep {start} {stop} {self.datapoints}"))

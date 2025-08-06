@@ -44,10 +44,11 @@ pip install PySide6 numpy scipy pyserial
 ```
 
 ### 4. Ejecutar el programa
-Ejecutar el programa en un entorno Python:
+Ejecutar el programa principal en un entorno Python desde la raíz del proyecto:
 ```bash
-python -m src.NanoVNA_UTN_Toolkit.main
+python main.py
 ```
+
 
 ## Pasos para compilar una versión ejecutable
 ### 1. Instalar PyInstaller
@@ -57,9 +58,14 @@ pip install pyinstaller
 ```
 
 ### 2. Construir el ejecutable
-Ejecutar el siguiente comando para generar un archivo ejecutable:
+Ejecutar el siguiente comando para generar un archivo ejecutable usando el archivo de configuración:
 ```bash
-python -m PyInstaller --onefile ./src/NanoVNA_UTN_Toolkit/main.py --name "NanoVNA-UTN-Toolkit" --icon=icon.ico --hidden-import=PyQt5
+python -m PyInstaller NanoVNA-UTN-Toolkit.spec
+```
+
+**Alternativa (comando directo):**
+```bash
+python -m PyInstaller --onefile main.py --name "NanoVNA-UTN-Toolkit" --icon=icon.ico --hidden-import=PySide6 --hidden-import=NanoVNA_UTN_Toolkit --hidden-import=NanoVNA_UTN_Toolkit.compat --hidden-import=NanoVNA_UTN_Toolkit.Hardware --hidden-import=NanoVNA_UTN_Toolkit.Hardware.Hardware --hidden-import=NanoVNA_UTN_Toolkit.utils --paths=src
 ```
 
 ### 3. Ejecutar el programa compilado

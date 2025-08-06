@@ -6,7 +6,7 @@ from time import sleep
 from PySide6.QtGui import QImage, QPixmap
 from serial import Serial, SerialException
 
-from ..utils.version import Version
+from ..utils.version import Version as UTNVersion
 from .NanoVNA_V2 import (
     _ADDR_DEVICE_VARIANT,
     _ADDR_FW_MAJOR,
@@ -27,8 +27,9 @@ if platform.system() != "Windows":
 
 logger = logging.getLogger(__name__)
 
-EXPECTED_HW_VERSION = Version.build(2, 2, 0)
-EXPECTED_FW_VERSION = Version.build(2, 2, 0)
+# Use the UTNVersion.build method directly for constants
+EXPECTED_HW_VERSION = UTNVersion.build(2, 2, 0)
+EXPECTED_FW_VERSION = UTNVersion.build(2, 2, 0)
 
 
 _ADDR_VBAT_MILIVOLTS = 0x5C
@@ -112,7 +113,7 @@ class LiteVNA64(NanoVNA_V2):
 
         self.datapoints = 201
 
-    def read_fw_version(self) -> Version:
+    def read_fw_version(self) -> UTNVersion:
         with self.serial.lock:
             return LiteVNA64._get_fw_revision_serial(self.serial)
 
@@ -159,7 +160,7 @@ class LiteVNA64(NanoVNA_V2):
     @staticmethod
     def _get_major_minor_version_serial(
         cmd_major_version: int, cmd_minor_version: int, serial: Serial
-    ) -> Version:
+    ) -> UTNVersion:
         cmd = pack(
             "<BBBB", _CMD_READ, cmd_major_version, _CMD_READ, cmd_minor_version
         )
@@ -172,10 +173,12 @@ class LiteVNA64(NanoVNA_V2):
         if len(resp) != 2:
             logger.error("Timeout reading version registers. Got: %s", resp)
             raise IOError("Timeout reading version registers")
-        return Version.build(resp[0], resp[1])
+        
+        # Create version using UTNVersion.build directly
+        return UTNVersion.build(resp[0], resp[1], 0)
 
     @staticmethod
-    def _get_fw_revision_serial(serial: Serial) -> Version:
+    def _get_fw_revision_serial(serial: Serial) -> UTNVersion:
         result = LiteVNA64._get_major_minor_version_serial(
             _ADDR_FW_MAJOR, _ADDR_FW_MINOR, serial
         )
@@ -183,7 +186,7 @@ class LiteVNA64(NanoVNA_V2):
         return result
 
     @staticmethod
-    def _get_hw_revision_serial(serial: Serial) -> Version:
+    def _get_hw_revision_serial(serial: Serial) -> UTNVersion:
         result = LiteVNA64._get_major_minor_version_serial(
             _ADDR_DEVICE_VARIANT, _ADDR_HARDWARE_REVISION, serial
         )
