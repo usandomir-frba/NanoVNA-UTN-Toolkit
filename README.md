@@ -40,7 +40,7 @@ pip install --upgrade pip
 ### 3. Instalar dependencias
 Instalar las dependencias necesarias para el programa:
 ```bash
-pip install PyQt5
+pip install PySide6 numpy scipy pyserial
 ```
 
 ### 4. Ejecutar el programa
