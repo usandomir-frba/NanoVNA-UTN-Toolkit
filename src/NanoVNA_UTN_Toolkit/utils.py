@@ -5,8 +5,6 @@ import time
 import os
 import shutil
 
-print("Cargando utils.py")
-
 def check_required_packages():
     """Verifica e instala los paquetes necesarios si no están presentes."""
 
