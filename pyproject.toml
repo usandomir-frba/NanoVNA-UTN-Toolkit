@@ -7,15 +7,56 @@ name = "NanoVNA_UTN_Toolkit"
 version = "0.1.0"
 description = "NanoVNA GUI application"
 readme = "README.md"
-license = { text = "MIT" }
 authors = [
     { name = "Fernando Castro Canosa", github = "fcascan" }
 ]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
+    "pyserial>=3.5",
     "PyQt5",
     "importlib-metadata; python_version<'3.8'"
 ]
 requires-python = ">=3.7"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "black>=21.0",
+    "isort>=5.0",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+matplotlib = ">=3.6.2"
+numpy = ">=1.26.4"
+pyserial = ">=3.5"
+scipy = ">=1.13.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^7.3.7"
+sphinx-rtd-theme = "^2.0.0"
+sphinx-autobuild = "^2024.4.16"
+sphinx-autodoc-typehints = "^2.2.2"
+
+[project.urls]
+"Homepage" = "https://github.com/fcascan/NanoVNA-UTN-Toolkit"
+
+[project.scripts]
+NanoVNA_UTN_Toolkit = "NanoVNA_UTN_Toolkit:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = find:
 
 [tool.setuptools.packages.find]
 where = ["src"]

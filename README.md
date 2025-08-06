@@ -4,10 +4,27 @@
 UTN FRBA 2025 - MEDIDAS ELECTRÓNICAS II - Curso R5052
 
 **Autores:**
-- Axel Nathanel Nahum
+- Axel Nathanel Nahum ([])
 - Fernando Castro Canosa ([@fcascan](https://github.com/fcascan))
-- Hugo Alejandro Gomez
-- Uriel Sandomir Laham
+- Hugo Alejandro Gomez ([])
+- Uriel Sandomir Laham ([])
+
+## Pasos para la conexión a la PC
+### 1. Instalar driver
+- **Solo para Windows**: 
+  1. Instalar el driver que se encuentra en "windows-driver": CypressDriverInstaller_1.exe
+  2. Reiniciar el equipo
+
+### 2. Configurar el baudrate en el nanoVNA
+  1. Pulsar el botón rocker para desplegar el menú, navegar a Config / CONNECTION
+  2. En el primer item configurar CONNECTION como "USB"
+  3. En el segundo item configurar SERIAL SPEED a un baudrate de conveniencia (por ejemplo a 38400)
+
+### 3. Configurar el baudrate en el sistema operativo
+- **Windows**: 
+  1. Conectar el nanoVNA a la PC sin pulsar ningun botón
+  2. Abrir el Administrador de Dispositivos y buscar el nanoVNA en la sección "Puertos (COM y LPT)"
+  3. En Propiedades / Configuración del puerto seleccionar el baudrate correspondiente en el menú desplegable de "Bits por segundo"
 
 ## Pasos para ejecutar el programa
 ### 1. Instalar Python
