@@ -6,8 +6,8 @@ UTN FRBA 2025 - MEDIDAS ELECTRÓNICAS II - Curso R5052
 **Autores:**
 - Axel Nathanel Nahum ([])
 - Fernando Castro Canosa ([@fcascan](https://github.com/fcascan))
-- Hugo Alejandro Gomez ([])
-- Uriel Sandomir Laham ([])
+- Hugo Alejandro Gomez ([@hugomezok](https://github.com/hugomezok))
+- Uriel Sandomir Laham ([@usandomir](https://github.com/usandomir))
 
 ## Pasos para la conexión a la PC
 ### 1. Instalar driver
