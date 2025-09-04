@@ -4,15 +4,28 @@ Connection status window for NanoVNA devices.
 import os
 import sys
 import logging
-from PySide6.QtCore import QTimer, QThread
-from PySide6.QtWidgets import (QLabel, QMainWindow, QVBoxLayout, 
-                            QWidget, QTextEdit, QPushButton, QHBoxLayout, 
-                            QProgressBar, QFrame, QGridLayout, QGroupBox)
-from PySide6.QtGui import QIcon, QTextCursor, QFont
+import numpy as np
+import skrf as rf
+from PySide6.QtCore import QTimer, QThread, Qt
+from PySide6.QtWidgets import (
+    QLabel, QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton,
+    QHBoxLayout, QProgressBar, QFrame, QGridLayout, QGroupBox, QComboBox,
+    QGraphicsScene, QGraphicsView, QSizePolicy, QSlider, QLabel
+)
+from PySide6.QtGui import QIcon, QTextCursor, QFont, QPen
 
 from ..workers.device_worker import DeviceWorker
 from .log_handler import GuiLogHandler
 
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.pyplot as plt
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 class NanoVNAStatusApp(QMainWindow):
     def __init__(self):
@@ -143,31 +156,42 @@ class NanoVNAStatusApp(QMainWindow):
         # Buttons section
         button_layout = QHBoxLayout()
         
+        # Layout horizontal para los primeros botones
+        button_layout = QHBoxLayout()
+
         self.refresh_btn = QPushButton("Refresh")
         self.refresh_btn.clicked.connect(self.manual_refresh)
         self.refresh_btn.setEnabled(True)
         self.refresh_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.refresh_btn)
-        
+
         self.disconnect_btn = QPushButton("Disconnect")
         self.disconnect_btn.clicked.connect(self.manual_disconnect)
         self.disconnect_btn.setEnabled(False)  # Initially disabled
         self.disconnect_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.disconnect_btn)
-        
+
         clear_btn = QPushButton("Clear Log")
         clear_btn.clicked.connect(self.console.clear)
         clear_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(clear_btn)
-        
+
         self.stop_btn = QPushButton("Stop")
         self.stop_btn.clicked.connect(self.stop_detection)
         self.stop_btn.setEnabled(False)
         self.stop_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.stop_btn)
-        
+
+        # Agregar el layout con los botones pequeños
         layout.addLayout(button_layout)
-        
+
+        # Ahora el botón grande de Smith Chart, ocupa todo el ancho
+        self.smith_btn = QPushButton("Open Smith Chart")
+        self.smith_btn.clicked.connect(self.open_graphics_window)
+        self.stop_btn.setEnabled(False)
+        self.smith_btn.setStyleSheet("padding: 12px; font-size: 14px;")
+        layout.addWidget(self.smith_btn)
+
         # Show window
         self.show()
     
@@ -296,6 +320,11 @@ class NanoVNAStatusApp(QMainWindow):
         if self.worker:
             self.worker.stop()
             self.log_message("Stopping device search...")
+
+    def open_graphics_window(self):
+        self.graphics_window = NanoVNAGraphics()
+        self.graphics_window.show()
+
     
     def manual_refresh(self):
         """Manual refresh button handler."""
