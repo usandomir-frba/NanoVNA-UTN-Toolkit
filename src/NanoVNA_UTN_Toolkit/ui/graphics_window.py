@@ -1,5 +1,5 @@
 """
-Connection status window for NanoVNA devices.
+Graphic view window for NanoVNA devices.
 """
 import os
 import sys
@@ -24,7 +24,17 @@ class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, freqs=None):
         super().__init__()
 
-        # === Icono ===
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("File")
+        edit_menu = menu_bar.addMenu("Edit")
+        view_menu = menu_bar.addMenu("View")
+        help_menu = menu_bar.addMenu("Help")
+
+        file_menu.addAction("Open")
+        file_menu.addAction("Save")
+
+        # === Icon ===
+
         icon_paths = [
             os.path.join(os.path.dirname(__file__), 'icon.ico'),
             os.path.join(os.path.dirname(__file__), '..', '..', 'icon.ico'),
@@ -46,49 +56,46 @@ class NanoVNAGraphics(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Layout principal: divide ventana horizontalmente
         main_layout = QHBoxLayout(central_widget)
 
-        # --- Panel izquierdo ---
+        # --- Left panel ---
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
-        left_layout.setAlignment(Qt.AlignTop)  # empezar desde arriba
+        left_layout.setAlignment(Qt.AlignTop) 
         left_layout.setContentsMargins(10,10,10,10)
         left_layout.setSpacing(10)
 
-        # --- Frecuencias ---
+        # --- Frecuencies ---
 
         freqs = np.linspace(1e6, 100e6, 101)
         modulo = 0.5
+        fase = -2 * np.pi * freqs / 1e8  
 
-        # --- Fase que varía linealmente ---
-        fase = -2 * np.pi * freqs / 1e8  # la fase en radianes, varía con frecuencia
-
-        # --- S11 complejo ---
+        # --- S11 ---
         S11 = modulo * np.exp(1j * fase)
         #S11 = np.full_like(freqs, modulo, dtype=complex)
 
-        # --- Crear Network ---
+        # --- RF Network ---
         ntw = rf.Network(frequency=freqs, s=S11[:, np.newaxis, np.newaxis], z0=50)
 
         # --- Smith chart ---
         fig, ax = plt.subplots(figsize=(5,5))
         ntw.plot_s_smith(ax=ax, draw_labels=True)
         canvas = FigureCanvas(fig)
-        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # ocupa ancho disponible
+        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  
         left_layout.addWidget(canvas)
 
-        # --- Cursor interactivo ---
+        # --- Cursor  ---
         cursor_dot, = ax.plot([], [], 'ro', markersize=6)
         text_annotation = ax.annotate('', xy=(-1.1,-1.1), xytext=(10,10), textcoords='offset points',
                                     bbox=dict(boxstyle='round,pad=0.3', fc='yellow', alpha=0.7))
 
-        # --- Label para frecuencia ---
+        # --- Label ---
         freq_label = QLabel(f"f={freqs[0]*1e-6:.3f} MHz")
         freq_label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(freq_label)
 
-        # --- Slider debajo del Smith ---
+        # --- Slider  ---
         slider = QSlider(Qt.Horizontal)
         slider.setMinimum(0)
         slider.setMaximum(len(freqs)-1)
@@ -114,10 +121,9 @@ class NanoVNAGraphics(QMainWindow):
         """)
 
         slider.setTickPosition(QSlider.TicksBelow)
-        slider.setTickInterval(10)  # cada 10 pasos del slider
+        slider.setTickInterval(10) 
 
-
-        # --- Función para actualizar cursor ---
+        # --- Cursor ---
         def update_cursor(index):
             cursor_dot.set_data([np.real(S11[index])], [np.imag(S11[index])])
             text_annotation.set_text(f"f={freqs[index]*1e-6:.3f} MHz\nS11={S11[index]:.2f}")
@@ -129,7 +135,7 @@ class NanoVNAGraphics(QMainWindow):
         slider.valueChanged.connect(update_cursor)
         update_cursor(0)
 
-        # --- Mouse sobre Smith ---
+        # --- Mouse ---
         def on_mouse_move(event):
             if event.xdata is None or event.ydata is None:
                 return
@@ -139,18 +145,17 @@ class NanoVNAGraphics(QMainWindow):
 
         fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
 
-        # --- Añadir panel izquierdo al layout principal ---
         main_layout.addWidget(left_panel, 1)
 
-        # --- Panel derecho ---
+        # --- Right panel ---
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(10, 10, 10, 10)
         right_layout.setSpacing(10)
 
-        # --- Grafico modulo/fase ---
+        # --- Graphic ---
         fig2, ax2 = plt.subplots()
-        ax2.set_xlim(1, 100)        # Frecuencia en MHz
+        ax2.set_xlim(1, 100)        
         ax2.set_ylim(0, 1)
         ax2.set_xlabel("Frecuencia [MHz]")
         ax2.set_ylabel("S11")
@@ -159,20 +164,19 @@ class NanoVNAGraphics(QMainWindow):
 
         canvas2 = FigureCanvas(fig2)
         canvas2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        right_layout.addWidget(canvas2, 1)  # El "1" hace que ocupe todo el espacio vertical restante
+        right_layout.addWidget(canvas2, 1)  
 
-        # --- Espacio fijo antes de los botones ---
+        # --- Buttons ---
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(QPushButton("Calibration Wizard"))
         bottom_layout.addWidget(QPushButton("Preferences"))
         right_layout.addLayout(bottom_layout)
 
-        # --- Consola ---
+        # --- Console ---
         console_btn = QPushButton("Console")
         console_btn.setStyleSheet("background-color: black; color: white;")
         right_layout.addWidget(console_btn)
 
-        # --- Añadir panel derecho al layout principal ---
         main_layout.addWidget(right_panel, 1)
 
 

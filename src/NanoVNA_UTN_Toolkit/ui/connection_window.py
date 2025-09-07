@@ -21,7 +21,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.welcome_windows import NanoVNAWelcome
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -182,12 +182,10 @@ class NanoVNAStatusApp(QMainWindow):
         self.stop_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.stop_btn)
 
-        # Agregar el layout con los botones pequeños
         layout.addLayout(button_layout)
 
-        # Ahora el botón grande de Smith Chart, ocupa todo el ancho
-        self.smith_btn = QPushButton("Open Smith Chart")
-        self.smith_btn.clicked.connect(self.open_graphics_window)
+        self.smith_btn = QPushButton("Open Welcome Window")
+        self.smith_btn.clicked.connect(self.open_welcome_window)
         self.stop_btn.setEnabled(False)
         self.smith_btn.setStyleSheet("padding: 12px; font-size: 14px;")
         layout.addWidget(self.smith_btn)
@@ -321,11 +319,11 @@ class NanoVNAStatusApp(QMainWindow):
             self.worker.stop()
             self.log_message("Stopping device search...")
 
-    def open_graphics_window(self):
-        self.graphics_window = NanoVNAGraphics()
-        self.graphics_window.show()
+    def open_welcome_window(self):
+        self.welcome_windows = NanoVNAWelcome()
+        self.welcome_windows.show()
+        self.close() 
 
-    
     def manual_refresh(self):
         """Manual refresh button handler."""
         self.log_message("Manual refresh requested")
