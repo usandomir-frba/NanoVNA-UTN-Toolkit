@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget,
     QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout
+    , QMenu
 )
 from PySide6.QtGui import QIcon
 
@@ -27,6 +28,7 @@ class NanoVNAGraphics(QMainWindow):
         edit_menu = menu_bar.addMenu("Edit")
         view_menu = menu_bar.addMenu("View")
         help_menu = menu_bar.addMenu("Help")
+
         file_menu.addAction("Open")
         file_menu.addAction("Save")
 
@@ -355,12 +357,29 @@ class NanoVNAGraphics(QMainWindow):
 
         main_layout_vertical.addWidget(buttons_widget)
 
-    # --- Método de la clase para abrir Calibration Wizard ---
+    # =================== CALIBRATION WIZARD FUNCTION ===================
+
     def open_calibration_wizard(self):
         from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
         self.wizard_window = CalibrationWizard()
         self.wizard_window.show()
         self.close()
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        view_menu = menu.addAction("View")
+        menu.addAction("Copiar")
+        menu.addAction("Pegar")
+        menu.addAction("Eliminar")
+        menu = menu.exec(event.globalPos())
+
+        if menu == view_menu:
+            self.open_view()
+
+    def open_view(self):
+        from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_window import View
+        self.view_window = View()
+        self.view_window.show()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
