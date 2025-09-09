@@ -4,7 +4,7 @@ Calibration Wizard status window for NanoVNA devices.
 
 import os
 import sys
-
+import logging
 from PySide6.QtCore import QTimer, QThread, Qt
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton,

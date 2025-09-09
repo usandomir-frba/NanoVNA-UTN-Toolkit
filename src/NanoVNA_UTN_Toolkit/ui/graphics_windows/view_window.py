@@ -2,6 +2,7 @@ import skrf as rf
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.lines import Line2D
 
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
@@ -10,26 +11,39 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.view_utils import create_tab1
+    from NanoVNA_UTN_Toolkit.ui.utils.view_utils import create_tab2
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class View(QMainWindow):
-    def __init__(self, freqs=None):
+    def __init__(self, nano_window=None, freqs=None):
         super().__init__()
+
+        self.nano_window = nano_window 
+
         self.setWindowTitle("Graphic View")
         self.setFixedSize(800, 500)
 
+        # --- Frequency array placeholder ---
         if freqs is None:
             freqs = np.linspace(1e6, 100e6, 101)
         self.freqs = freqs
 
-        # s11 vacío inicialmente
-        self.s11 = np.zeros_like(freqs, dtype=complex)
+        # --- Data placeholders ---
+        self.s11 = np.zeros_like(freqs, dtype=complex)  # S11 data
+        self.s21 = np.zeros_like(freqs, dtype=complex)  # S21 data
 
-        # --- Widget central ---
+        # --- Central widget setup ---
         central_widget = QWidget()
         central_layout = QVBoxLayout(central_widget)
-        central_layout.setContentsMargins(15,15,15,15)
+        central_layout.setContentsMargins(15, 15, 15, 15)
         central_layout.setSpacing(10)
 
-        # --- Tabs ---
+        # --- Tabs setup ---
         tabs = QTabWidget()
         tabs.setStyleSheet("""
             QTabBar::tab {
@@ -42,88 +56,19 @@ class View(QMainWindow):
             }
             QTabBar::tab:selected { background: #333333; }
             QTabBar::tab:hover { background-color: #777777; }
-            QTabWidget::pane {
-                border: 0px;
-                margin: 0px;
-                padding: 0px;
-                background: transparent;
-            }
+            QTabWidget::pane { border: 0px; margin: 0px; padding: 0px; background: transparent; }
         """)
 
-        # --- Tab 1: Panel izquierdo + gráfico ---
-        tab1 = QWidget()
-        tab1_layout = QHBoxLayout(tab1)
-        tab1_layout.setContentsMargins(0,0,0,0)
-        tab1_layout.setSpacing(20)
+        tab1_widget, self.fig, self.ax, self.canvas, self.left_panel, self.update_graph, self.current_s_tab1, self.current_graph_tab1 = create_tab1(self)
 
-        # Panel izquierdo
-        left_panel = QWidget()
-        left_panel.setStyleSheet("color: white;") 
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setAlignment(Qt.AlignTop)
-        left_layout.setSpacing(10)
-        left_layout.setContentsMargins(0,14,0,0)
-
-        # --- Radio Buttons ---
-        graphic1_selector = QGroupBox("Selector Graphic 1")
-        graphic1_selector.setStyleSheet("color: white;")  
-        g1_layout = QVBoxLayout()
-        self.radio_buttons = {}
-        options = ["Diagrama de Smith", "Módulo", "Fase"]
-        for option in options:
-            rb = QRadioButton(option)
-            rb.setStyleSheet("color: white;")  
-            rb.toggled.connect(self.update_graph)
-            g1_layout.addWidget(rb)
-            self.radio_buttons[option] = rb
-
-        self.radio_buttons["Diagrama de Smith"].setChecked(True)
-        graphic1_selector.setLayout(g1_layout)
-        left_layout.addWidget(graphic1_selector)
-
-        # --- Figura y Canvas ---
-        self.fig, self.ax = plt.subplots(figsize=(5,5))
-        # Ajustamos márgenes para que el contenido sea más ancho y menos alto
-        self.fig.subplots_adjust(left=0.1, right=0.95, top=0.85, bottom=0.15)
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.canvas.setFixedSize(350, 350)
-
-        tab1_layout.addWidget(left_panel, 1)   
-        tab1_layout.addWidget(self.canvas, 2)       
-
-        # --- Línea debajo del tab ---
-        line_tab = QFrame()
-        line_tab.setFrameShape(QFrame.HLine)
-        line_tab.setFrameShadow(QFrame.Plain)
-        line_tab.setStyleSheet("color: white; background-color: white;")
-        line_tab.setFixedHeight(2)
-        tab1_container = QVBoxLayout()
-        tab1_container.setContentsMargins(0,0,0,0)
-        tab1_container.setSpacing(0)
-        tab1_container.addWidget(line_tab)
-        tab1_container.addWidget(tab1)
-
-        tab1_widget = QWidget()
-        tab1_widget.setLayout(tab1_container)
-
-        # --- Tab 2: Placeholder ---
-        tab2 = QWidget()
-        tab2_layout = QVBoxLayout(tab2)
-        line_tab2 = QFrame()
-        line_tab2.setFrameShape(QFrame.HLine)
-        line_tab2.setFrameShadow(QFrame.Plain)
-        line_tab2.setStyleSheet("color: white; background-color: white;")
-        line_tab2.setFixedHeight(2)
-        tab2_layout.addWidget(line_tab2)
-        tab2_layout.addWidget(QLabel("Graphic 2", alignment=Qt.AlignCenter))
+        tab2_widget, self.fig_right, self.ax_right, self.canvas_right, self.right_panel2, self.update_graph_right, self.current_s_tab2, self.current_graph_tab2 = create_tab2(self)
 
         tabs.addTab(tab1_widget, "Graphic 1")
-        tabs.addTab(tab2, "Graphic 2")
+        tabs.addTab(tab2_widget, "Graphic 2")
 
         central_layout.addWidget(tabs)
 
-        # --- Línea blanca encima de los botones ---
+        # --- Line above buttons ---
         line_above_buttons = QFrame()
         line_above_buttons.setFrameShape(QFrame.HLine)
         line_above_buttons.setFrameShadow(QFrame.Plain)
@@ -131,7 +76,7 @@ class View(QMainWindow):
         line_above_buttons.setFixedHeight(2)
         central_layout.addWidget(line_above_buttons)
 
-        # --- Botones ---
+        # --- Buttons ---
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         btn_cancel = QPushButton("Cancel")
@@ -150,38 +95,91 @@ class View(QMainWindow):
         btn_cancel.setStyleSheet(btn_style)
         btn_apply.setStyleSheet(btn_style)
         btn_cancel.clicked.connect(self.close)
+        btn_apply.clicked.connect(self.on_apply_clicked)
+
         button_layout.addWidget(btn_cancel)
         button_layout.addWidget(btn_apply)
-
         central_layout.addLayout(button_layout)
 
         self.setCentralWidget(central_widget)
         self.setStyleSheet("background-color: #7f7f7f;")
 
+        # --- Initial plot ---
         self.update_graph()
 
-    def update_graph(self):
-        self.ax.clear()
-        # Ajustamos márgenes internos para contenido ancho y menos alto
-        self.fig.subplots_adjust(left=0.1, right=0.95, top=0.85, bottom=0.15)
+    def on_apply_clicked(self):
+        from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
 
-        if self.radio_buttons["Diagrama de Smith"].isChecked():
-            ntw = rf.Network(frequency=self.freqs, s=self.s11[:, np.newaxis, np.newaxis], z0=50)
-            ntw.plot_s_smith(ax=self.ax, draw_labels=False)
-        elif self.radio_buttons["Módulo"].isChecked():
-            if np.any(self.s11):
-                self.ax.plot(self.freqs*1e-6, np.abs(self.s11))
-            self.ax.set_xlabel("Frequency [MHz]")
-            self.ax.set_ylabel("|S11|")
-            self.ax.grid(True)
-        elif self.radio_buttons["Fase"].isChecked():
-            if np.any(self.s11):
-                self.ax.plot(self.freqs*1e-6, np.angle(self.s11, deg=True))
-            self.ax.set_xlabel("Frequency [MHz]")
-            self.ax.set_ylabel("Phase [°]")
-            self.ax.grid(True)
+        self.s11 = self.nano_window.s11
+        self.s21 = self.nano_window.s21
+        self.freqs = self.nano_window.freqs
 
-        self.canvas.draw()
+        # --- Datos según S-parameter de cada tab ---
+        data_left = self.s11 if self.current_s_tab1 == "S11" else self.s21
+        data_right = self.s11 if self.current_s_tab2 == "S11" else self.s21
+
+        # --- Tipo de gráfico de cada tab ---
+        selected_graph_left = self.current_graph_tab1
+        selected_graph_right = self.current_graph_tab2
+
+        if self.nano_window is not None:
+            # Referencia al layout de panels (HLayout donde están left_panel y right_panel)
+            panels_layout = self.nano_window.centralWidget().layout().itemAt(0).layout()  # HBox
+
+            # Remover y eliminar el panel izquierdo antiguo
+            old_left_panel = panels_layout.takeAt(0).widget()
+            old_left_panel.deleteLater()
+
+            # Remover y eliminar el panel derecho antiguo
+            old_right_panel = panels_layout.takeAt(0).widget()
+            old_right_panel.deleteLater()
+
+            # --- Crear nuevo panel izquierdo ---
+            self.nano_window.left_panel, self.nano_window.fig_left, self.nano_window.ax_left, \
+            self.nano_window.canvas_left, self.nano_window.slider_left, self.nano_window.cursor_left, \
+            self.nano_window.labels_left, self.nano_window.update_cursor_left = \
+                create_left_panel(S_data=data_left, freqs=self.freqs, graph_type=selected_graph_left, s_param=self.current_s_tab1)
+
+            # --- Crear nuevo panel derecho ---
+            self.nano_window.right_panel, self.nano_window.fig_right, self.nano_window.ax_right, \
+            self.nano_window.canvas_right, self.nano_window.slider_right, self.nano_window.cursor_right, \
+            self.nano_window.labels_right, self.nano_window.update_cursor_right = \
+                create_right_panel(S_data=data_right, freqs=self.freqs, graph_type=selected_graph_right, s_param=self.current_s_tab2)
+
+            # --- Asegurar tamaño expansible ---
+            self.nano_window.left_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.nano_window.right_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+            # --- Insertar ambos paneles en layout ---
+            panels_layout.insertWidget(0, self.nano_window.left_panel, 1)
+            panels_layout.insertWidget(1, self.nano_window.right_panel, 1)
+
+            # --- Actualizamos atributos de la ventana ---
+            self.nano_window.s11 = self.s11
+            self.nano_window.s21 = self.s21
+            self.nano_window.freqs = self.freqs
+            self.nano_window.left_graph_type = selected_graph_left
+            self.nano_window.left_s_param = self.current_s_tab1
+            self.nano_window.right_graph_type = selected_graph_right
+            self.nano_window.right_s_param = self.current_s_tab2
+
+            self.nano_window.show()
+
+        else:
+            # --- Si no existe, creamos toda la ventana desde cero ---
+            from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics import NanoVNAGraphics
+            self.nano_window = NanoVNAGraphics(
+                s11=self.s11,
+                s21=self.s21,
+                freqs=self.freqs,
+                left_graph_type=selected_graph_left,
+                left_s_param=self.current_s_tab1,
+                right_graph_type=selected_graph_right,
+                right_s_param=self.current_s_tab2
+            )
+            self.nano_window.show()
+
+        self.close()
 
 if __name__ == "__main__":
     app = QApplication([])
