@@ -1,3 +1,7 @@
+"""
+Graphic view window for NanoVNA devices.
+"""
+
 import skrf as rf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -126,35 +130,72 @@ class View(QMainWindow):
             # Referencia al layout de panels (HLayout donde están left_panel y right_panel)
             panels_layout = self.nano_window.centralWidget().layout().itemAt(0).layout()  # HBox
 
-            # Remover y eliminar el panel izquierdo antiguo
-            old_left_panel = panels_layout.takeAt(0).widget()
-            old_left_panel.deleteLater()
+            # --- Desconectar sliders antiguos para evitar callbacks sobre objetos eliminados ---
+            if hasattr(self.nano_window, "markers"):
+                for marker in self.nano_window.markers:
+                    slider = marker["slider"]
+                    slider.disconnect_events()
 
-            # Remover y eliminar el panel derecho antiguo
-            old_right_panel = panels_layout.takeAt(0).widget()
-            old_right_panel.deleteLater()
+            # --- Remover y eliminar paneles antiguos ---
+            old_left_panel = panels_layout.takeAt(0)
+            if old_left_panel is not None and old_left_panel.widget() is not None:
+                old_left_panel.widget().deleteLater()
+
+            old_right_panel = panels_layout.takeAt(0)
+            if old_right_panel is not None and old_right_panel.widget() is not None:
+                old_right_panel.widget().deleteLater()
 
             # --- Crear nuevo panel izquierdo ---
             self.nano_window.left_panel, self.nano_window.fig_left, self.nano_window.ax_left, \
             self.nano_window.canvas_left, self.nano_window.slider_left, self.nano_window.cursor_left, \
             self.nano_window.labels_left, self.nano_window.update_cursor_left = \
-                create_left_panel(S_data=data_left, freqs=self.freqs, graph_type=selected_graph_left, s_param=self.current_s_tab1)
+                create_left_panel(
+                    S_data=data_left,
+                    freqs=self.freqs,
+                    graph_type=selected_graph_left,
+                    s_param=self.current_s_tab1,
+                    tracecolor="red",
+                    markercolor="blue",
+                    linewidth=2,
+                    markersize=2
+                )
 
             # --- Crear nuevo panel derecho ---
             self.nano_window.right_panel, self.nano_window.fig_right, self.nano_window.ax_right, \
             self.nano_window.canvas_right, self.nano_window.slider_right, self.nano_window.cursor_right, \
             self.nano_window.labels_right, self.nano_window.update_cursor_right = \
-                create_right_panel(S_data=data_right, freqs=self.freqs, graph_type=selected_graph_right, s_param=self.current_s_tab2)
+                create_right_panel(
+                    S_data=data_right,
+                    freqs=self.freqs,
+                    graph_type=selected_graph_right,
+                    s_param=self.current_s_tab2,
+                    tracecolor="red",
+                    markercolor="blue",
+                    linewidth=2,
+                    markersize=2
+                )
 
-            # --- Asegurar tamaño expansible ---
+            self.nano_window.markers = [
+                {
+                    "cursor": self.nano_window.cursor_left,
+                    "slider": self.nano_window.slider_left,
+                    "label": self.nano_window.labels_left,
+                    "update_cursor": self.nano_window.update_cursor_left
+                },
+                {
+                    "cursor": self.nano_window.cursor_right,
+                    "slider": self.nano_window.slider_right,
+                    "label": self.nano_window.labels_right,
+                    "update_cursor": self.nano_window.update_cursor_right
+                }
+            ]
+
             self.nano_window.left_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             self.nano_window.right_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-            # --- Insertar ambos paneles en layout ---
             panels_layout.insertWidget(0, self.nano_window.left_panel, 1)
             panels_layout.insertWidget(1, self.nano_window.right_panel, 1)
 
-            # --- Actualizamos atributos de la ventana ---
             self.nano_window.s11 = self.s11
             self.nano_window.s21 = self.s21
             self.nano_window.freqs = self.freqs
@@ -166,7 +207,6 @@ class View(QMainWindow):
             self.nano_window.show()
 
         else:
-            # --- Si no existe, creamos toda la ventana desde cero ---
             from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics import NanoVNAGraphics
             self.nano_window = NanoVNAGraphics(
                 s11=self.s11,
@@ -180,6 +220,8 @@ class View(QMainWindow):
             self.nano_window.show()
 
         self.close()
+
+
 
 if __name__ == "__main__":
     app = QApplication([])

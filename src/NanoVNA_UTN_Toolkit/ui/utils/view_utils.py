@@ -44,7 +44,7 @@ def create_tab1(self):
     graphic_type_selector.setStyleSheet("color: white;")
     type_layout = QVBoxLayout()
     self.radio_buttons_tab1 = {}  # <-- corregido
-    for option in ["Diagrama de Smith", "Módulo", "Fase"]:
+    for option in ["Diagrama de Smith", "Modulo", "Fase"]:
         rb = QRadioButton(option)
         rb.setStyleSheet("color: white;")
         type_layout.addWidget(rb)
@@ -94,8 +94,8 @@ def create_tab1(self):
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
             ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
-        elif self.radio_buttons_tab1["Módulo"].isChecked():
-            self.current_graph_tab1 = "Módulo"
+        elif self.radio_buttons_tab1["Modulo"].isChecked():
+            self.current_graph_tab1 = "Modulo"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab1)
             ax.set_xlabel("Frequency [MHz]")
