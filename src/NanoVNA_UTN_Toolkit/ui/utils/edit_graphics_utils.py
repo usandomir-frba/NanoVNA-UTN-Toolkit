@@ -1,8 +1,11 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox,
-    QColorDialog, QSpinBox
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox, 
+    QColorDialog, QSpinBox, QCheckBox, QPushButton
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap, QIcon
+
+import qtawesome as qta
 
 # Estilo para SpinBox redondeados y elegantes
 spin_style = """
@@ -141,6 +144,44 @@ def create_edit_tab1(self):
     layout.addWidget(left_group)
     layout.addWidget(right_group)
 
+    # --- Dark Mode toggle con icono ---
+    dark_mode_layout = QHBoxLayout()
+    dark_mode_layout.setAlignment(Qt.AlignLeft)
+
+    # Texto a la izquierda
+    lbl_dark_mode = QLabel("Dark Mode:")
+    lbl_dark_mode.setStyleSheet("color: white;")
+    dark_mode_layout.addWidget(lbl_dark_mode)
+
+    # Botón al estilo de los otros botones de color
+    btn_dark_mode = QFrame()
+    btn_dark_mode.setFixedSize(30, 30)
+    btn_dark_mode.setStyleSheet("border: 1px solid white; border-radius: 6px; background-color: transparent;")
+    dark_mode_layout.addStretch()
+    dark_mode_layout.addWidget(btn_dark_mode)
+
+    # Iconos
+    icon_moon = QPixmap("moon_gray.png").scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    icon_sun = QPixmap("sun_gray.png").scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+    # Icono inicial: luna
+    btn_dark_mode_icon = QLabel(btn_dark_mode)
+    btn_dark_mode_icon.setPixmap(icon_moon)
+    btn_dark_mode_icon.setAlignment(Qt.AlignCenter)
+    btn_dark_mode_icon.setGeometry(5,5,20,20)  # centrado dentro del frame
+
+    # Función toggle
+    def toggle_dark_mode(event):
+        current_pixmap = btn_dark_mode_icon.pixmap()
+        if current_pixmap.cacheKey() == icon_moon.cacheKey():
+            btn_dark_mode_icon.setPixmap(icon_sun)
+        else:
+            btn_dark_mode_icon.setPixmap(icon_moon)
+
+    btn_dark_mode.mousePressEvent = toggle_dark_mode
+
+    left_layout.addLayout(dark_mode_layout)
+
     # --- Funciones internas ---
     def pick_trace_color():
         color = QColorDialog.getColor()
@@ -276,6 +317,27 @@ def create_edit_tab2(self):
 
     layout.addWidget(left_group)
     layout.addWidget(right_group)
+
+    ## --- Dark Mode checkbox con icono ---
+    dark_mode_layout = QHBoxLayout()
+    dark_mode_layout.setAlignment(Qt.AlignRight)  # A la derecha del layout derecho
+
+    chk_dark_mode = QCheckBox("Dark Mode")
+    chk_dark_mode.setStyleSheet("color: white;")
+    icon_label = QLabel()
+    icon_label.setPixmap(QPixmap("moon_gray.png").scaled(16,16, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+    dark_mode_layout.addWidget(chk_dark_mode)
+    dark_mode_layout.addWidget(icon_label)
+    right_layout.addLayout(dark_mode_layout)
+
+    # Función para cambiar icono según estado
+    def toggle_dark_mode(checked):
+        if checked:
+            icon_label.setPixmap(QPixmap("sun_gray.png").scaled(16,16, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            icon_label.setPixmap(QPixmap("moon_gray.png").scaled(16,16, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+    chk_dark_mode.toggled.connect(toggle_dark_mode)
 
     # --- Funciones internas ---
     def pick_trace_color2():

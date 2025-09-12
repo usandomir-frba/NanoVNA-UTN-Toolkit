@@ -39,18 +39,25 @@ class NanoVNAGraphics(QMainWindow):
         file_menu = menu_bar.addMenu("File")
         edit_menu = menu_bar.addMenu("Edit")
         view_menu = menu_bar.addMenu("View")
+        sweep_menu = menu_bar.addMenu("Sweep")
         help_menu = menu_bar.addMenu("Help")
 
         file_menu.addAction("Open")
         file_menu.addAction("Save")
         save_as_action =  file_menu.addAction("Save As")
         save_as_action.triggered.connect(lambda: self.on_save_as())
+        file_menu.addAction("Export")
 
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
 
         choose_graphics = view_menu.addAction("Graphics")
-        choose_graphics.triggered.connect(self.open_view)  # CORREGIDO
+        choose_graphics.triggered.connect(self.open_view)  
+
+        sweep_menu.addAction("Options")
+        calibrate_option = sweep_menu.addAction("Calibration Wizard")
+
+        calibrate_option.triggered.connect(lambda: self.open_calibration_wizard())
 
         # --- Icon ---
         icon_paths = [
@@ -91,8 +98,8 @@ class NanoVNAGraphics(QMainWindow):
         self.left_s_param = left_s_param
 
         # =================== LEFT PANEL ===================
-        self.left_panel, self.fig_left, self.ax_smith, self.canvas_smith, \
-        self.slider_smith, self.cursor_smith, self.labels_left, self.update_cursor, = \
+        self.left_panel, self.fig_left, self.ax_left, self.canvas_left, \
+        self.slider_left, self.cursor_left, self.labels_left, self.update_cursor, = \
             create_left_panel(
                 S_data=S11, 
                 freqs=freqs, 
@@ -124,60 +131,30 @@ class NanoVNAGraphics(QMainWindow):
         panels_layout.addWidget(self.right_panel, 1)
         main_layout_vertical.addLayout(panels_layout)
 
-        # =================== Buttons below all, centered ===================
-        buttons_widget = QWidget()
-        buttons_layout = QVBoxLayout(buttons_widget)
-        buttons_layout.setAlignment(Qt.AlignCenter)
-        buttons_layout.setSpacing(10)
-
-        # --- Top row: Calibration y Preferences ---
-        top_buttons_widget = QWidget()
-        top_buttons_layout = QHBoxLayout(top_buttons_widget)
-        top_buttons_layout.setAlignment(Qt.AlignCenter)
-        top_buttons_layout.setSpacing(20)
-
-        btn_calibration = QPushButton("Calibration Wizard")
-        btn_calibration.clicked.connect(self.open_calibration_wizard)
-        top_buttons_layout.addWidget(btn_calibration)
-
-        btn_preferences = QPushButton("Preferences")
-        top_buttons_layout.addWidget(btn_preferences)
-
-        buttons_layout.addWidget(top_buttons_widget)
-
-        # --- Bottom: Console button ---
-        console_btn_final = QPushButton("Console")
-        console_btn_final.setStyleSheet("background-color: black; color: white;")
-        buttons_layout.addWidget(console_btn_final)
-
-        main_layout_vertical.addWidget(buttons_widget)
-
         self.markers = [
-            {"cursor": self.cursor_smith, "slider": self.slider_smith, "label": self.labels_left, "update_cursor": self.update_cursor},
+            {"cursor": self.cursor_left, "slider": self.slider_left, "label": self.labels_left, "update_cursor": self.update_cursor},
             {"cursor": self.cursor_right, "slider": self.slider_right, "label": self.labels_right, "update_cursor": self.update_right_cursor}
         ]
 
-    # =================== CALIBRATION WIZARD FUNCTION ===================
+    # =================== SAVE AS PNG ===================
+    
     def on_save_as(self):
         from PySide6.QtWidgets import QFileDialog
 
-        # Guardar visibilidad original de cursors y sliders
-        marker1_visible = self.cursor_smith.get_visible()
+        marker1_visible = self.cursor_left.get_visible()
         marker2_visible = self.cursor_right.get_visible()
-        slider1_visible = self.slider_smith.ax.get_visible()
+        slider1_visible = self.slider_left.ax.get_visible()
         slider2_visible = self.slider_right.ax.get_visible()
 
         # Ocultar ambos cursors y sliders para la captura
-        self.cursor_smith.set_visible(False)
+        self.cursor_left.set_visible(False)
         self.cursor_right.set_visible(False)
-        self.slider_smith.ax.set_visible(False)
+        self.slider_left.ax.set_visible(False)
         self.slider_right.ax.set_visible(False)
 
-        # Actualizar canvas antes de guardar
         self.fig_left.canvas.draw_idle()
         self.fig_right.canvas.draw_idle()
 
-        # Guardar figura izquierda (Smith)
         file_path_left, _ = QFileDialog.getSaveFileName(
             self,
             "Save Left Figure As",
@@ -187,7 +164,6 @@ class NanoVNAGraphics(QMainWindow):
         if file_path_left:
             self.fig_left.savefig(file_path_left)
 
-        # Guardar figura derecha
         file_path_right, _ = QFileDialog.getSaveFileName(
             self,
             "Save Right Figure As",
@@ -198,14 +174,15 @@ class NanoVNAGraphics(QMainWindow):
             self.fig_right.savefig(file_path_right)
 
         # Restaurar visibilidad original de cursors y sliders
-        self.cursor_smith.set_visible(marker1_visible)
+        self.cursor_left.set_visible(marker1_visible)
         self.cursor_right.set_visible(marker2_visible)
-        self.slider_smith.ax.set_visible(slider1_visible)
+        self.slider_left.ax.set_visible(slider1_visible)
         self.slider_right.ax.set_visible(slider2_visible)
 
-        # Refrescar canvas
-        self.fig_left.canvas.draw_idle()
-        self.fig_right.canvas.draw_idle()
+        self.fig_left.canvas.draw()
+        self.fig_right.canvas.draw()
+
+    # =================== CALIBRATION WIZARD FUNCTION ==================
 
     def open_calibration_wizard(self):
         from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
@@ -213,11 +190,12 @@ class NanoVNAGraphics(QMainWindow):
         self.wizard_window.show()
         self.close()
 
+    # =================== RIGHT CLICK ==================
+
     def contextMenuEvent(self, event):
         menu = QMenu(self)
 
         view_menu = menu.addAction("View")
-        edit_graphics_menu = menu.addAction("Edit Graphics")
 
         marker1_action = menu.addAction("Marker 1")
         marker1_action.setCheckable(True)
@@ -236,10 +214,6 @@ class NanoVNAGraphics(QMainWindow):
 
         if selected_action == view_menu:
             self.open_view()
-        elif selected_action == edit_graphics_menu:
-            from NanoVNA_UTN_Toolkit.ui.graphics_windows.edit_graphics_window import EditGraphics
-            self.edit_graphics_window = EditGraphics(nano_window=self) 
-            self.edit_graphics_window.show()
         elif selected_action == marker1_action:
             self.show_marker1 = not self.show_marker1
             self.toggle_marker_visibility(0, self.show_marker1)
@@ -247,10 +221,14 @@ class NanoVNAGraphics(QMainWindow):
             self.show_marker2 = not self.show_marker2
             self.toggle_marker_visibility(1, self.show_marker2)
 
+    # =================== MARKERS ==================
+
     def edit_graphics_markers(self):
         from NanoVNA_UTN_Toolkit.ui.graphics_windows.edit_graphics_window import EditGraphics
         self.edit_graphics_window = EditGraphics(nano_window=self) 
         self.edit_graphics_window.show()
+
+    # =================== VIEW ==================
 
     def open_view(self):
         from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_window import View
@@ -259,6 +237,8 @@ class NanoVNAGraphics(QMainWindow):
         self.view_window.show()
         self.view_window.raise_()
         self.view_window.activateWindow()
+
+    # =================== TOGGLE MARKERS==================
 
     def toggle_marker_visibility(self, marker_index, show=True):
         marker = self.markers[marker_index]
