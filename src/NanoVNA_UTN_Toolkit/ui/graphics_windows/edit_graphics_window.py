@@ -4,6 +4,7 @@ Edit graphics window for NanoVNA devices.
 
 import skrf as rf
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
@@ -12,7 +13,7 @@ from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QTabWidget, QFrame, QSizePolicy, QApplication
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.edit_graphics_utils import create_edit_tab1, create_edit_tab2
@@ -26,6 +27,14 @@ except ImportError as e:
 class EditGraphics(QMainWindow):
     def __init__(self, nano_window=None, freqs=None):
         super().__init__()
+
+        carpeta_ini = os.path.join(os.path.dirname(__file__), "ini")
+
+        os.makedirs(carpeta_ini, exist_ok=True)
+
+        ruta_ini = os.path.join(carpeta_ini, "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
 
         self.nano_window = nano_window
 
@@ -94,7 +103,8 @@ class EditGraphics(QMainWindow):
         btn_apply.clicked.connect(lambda: self.on_apply_clicked(trace_color=trace_color(), trace_color2=trace_color2(), 
                                                                 marker_color=marker_color() , marker_color2=marker_color2(),
                                                                 line_width=line_width(), line_width2=line_width2(),
-                                                                marker_size=marker_size(), marker_size2=marker_size2()))
+                                                                marker_size=marker_size(), marker_size2=marker_size2(),
+                                                                settings=settings))
 
         button_layout.addWidget(btn_cancel)
         button_layout.addWidget(btn_apply)
@@ -104,9 +114,20 @@ class EditGraphics(QMainWindow):
         self.setCentralWidget(central_widget)
         self.setStyleSheet("background-color: #7f7f7f;")
 
-    def on_apply_clicked(self, trace_color="blue", trace_color2="blue", marker_color="blue", marker_color2="blue", 
+    def on_apply_clicked(self, settings, trace_color="blue", trace_color2="blue", marker_color="blue", marker_color2="blue", 
                      line_width=2, line_width2=2, marker_size=2, marker_size2=2):
         from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
+
+        ui_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        graph_type1 = settings.value("Tab1/GraphType1", "Smith Diagram")
+        s_param1 = settings.value("Tab1/SParameter", "S11")
+
+        graph_type2 = settings.value("Tab2/GraphType2", "Smith Diagram")
+        s_param2 = settings.value("Tab2/SParameter", "S11")
 
         self.s11 = self.nano_window.s11
         self.s21 = self.nano_window.s21
@@ -137,8 +158,8 @@ class EditGraphics(QMainWindow):
             create_left_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
-                graph_type=Smith Diagram",
-                s_param="S11",
+                graph_type=graph_type1,
+                s_param=s_param1,
                 tracecolor=trace_color,
                 markercolor=marker_color,
                 linewidth=line_width,
@@ -152,8 +173,8 @@ class EditGraphics(QMainWindow):
             create_right_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
-                graph_type=Magnitude,
-                s_param="S11",
+                graph_type=graph_type2,
+                s_param=s_param2,
                 tracecolor=trace_color2,
                 markercolor=marker_color2,
                 linewidth=line_width2,
@@ -182,6 +203,18 @@ class EditGraphics(QMainWindow):
         # --- Redibujar ---
         self.nano_window.canvas_left.draw_idle()
         self.nano_window.canvas_right.draw_idle()
+
+        settings.setValue("Graphic1/TraceColor", trace_color)
+        settings.setValue("Graphic1/MarkerColor", marker_color)
+        settings.setValue("Graphic1/TraceWidth", line_width)
+        settings.setValue("Graphic1/MarkerWidth", marker_size)
+
+        settings.setValue("Graphic2/TraceColor", trace_color2)
+        settings.setValue("Graphic2/MarkerColor", marker_color2)
+        settings.setValue("Graphic2/TraceWidth", line_width2)
+        settings.setValue("Graphic2/MarkerWidth", marker_size2)
+
+        settings.sync()
 
         self.close()
 

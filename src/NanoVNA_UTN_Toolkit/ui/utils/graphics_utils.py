@@ -1,5 +1,6 @@
 import numpy as np
 import skrf as rf
+import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit, QApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ from matplotlib.widgets import Slider
 from PySide6.QtCore import Qt
 from matplotlib.lines import Line2D
 
-from PySide6.QtCore import QObject, QEvent
+from PySide6.QtCore import QObject, QEvent, QSettings
 
 from PySide6.QtGui import QDoubleValidator
 
@@ -18,7 +19,7 @@ from PySide6.QtGui import QDoubleValidator
 def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
                       tracecolor="red", markercolor="red", linewidth=2,
                       markersize=2, marker_visible=True):
-
+                      
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
     
     if S_data is None:
@@ -77,6 +78,9 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         ax.grid(True)
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
+    else:
+        raise ValueError(f"Unknown graph_type: {graph_type}")
+
     # --- Panel info ---
     info_panel = QWidget()
     info_layout = QGridLayout(info_panel)
@@ -99,29 +103,28 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     lbl_text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_text.setContentsMargins(0, 0, 5, 0)
     hbox_freq.addWidget(lbl_text)
-
-    # QLineEdit para el valor
     edit_value = QLineEdit(f"{freqs[0]*1e-6:.2f}")
 
-    def limit_frequency_input(text, max_digits=3, max_decimals=2):
+    def limit_frequency_input(text, max_digits=3, max_decimals=2, allow_dashes=False):
+        if allow_dashes and text == "--":
+            return text
+
         filtered = "".join(c for c in text if c.isdigit() or c == ".")
         
-        # Solo un punto permitido
         if filtered.count(".") > 1:
             parts = filtered.split(".", 1)
             filtered = parts[0] + "." + "".join(parts[1:]).replace(".", "")
         
         if "." in filtered:
             integer_part, decimal_part = filtered.split(".", 1)
-            integer_part = integer_part[:max_digits]      
-            decimal_part = decimal_part[:max_decimals]   
+            integer_part = integer_part[:max_digits]
+            decimal_part = decimal_part[:max_decimals]
             filtered = integer_part + "." + decimal_part
         else:
-            filtered = filtered[:max_digits] 
+            filtered = filtered[:max_digits]
 
         return filtered
 
-    # Evento que aplica la limitación y ajusta ancho dinámico
     def on_text_changed():
         new_text = limit_frequency_input(edit_value.text(), 3, 2)
         if new_text != edit_value.text():
@@ -231,12 +234,21 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
 
         edit_value.clearFocus()
 
+        actual_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(actual_dir, "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        settings.setValue("Cursor1/index", index)
+
     # --- Slider ---
-    slider_ax = fig.add_axes([0.25,0.05,0.5,0.03], facecolor='lightgray')
-    slider = Slider(slider_ax, '', 0, len(freqs)-1, valinit=0, valstep=1)
-    slider.vline.set_visible(False)
-    slider.label.set_visible(False)
-    slider.on_changed(lambda val: update_cursor(int(val), from_slider=True))
+
+    if fig is not None:
+        slider_ax = fig.add_axes([0.25,0.05,0.5,0.03], facecolor='lightgray')
+        slider = Slider(slider_ax, '', 0, len(freqs)-1, valinit=0, valstep=1)
+        slider.vline.set_visible(False)
+        slider.label.set_visible(False)
+        slider.on_changed(lambda val: update_cursor(int(val), from_slider=True))
 
     # --- Conectar edición manual ---
     def freq_edited():
@@ -261,7 +273,7 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         dragging["active"] = False
     def on_motion(event):
         if dragging["active"] and event.inaxes == ax:
-            if graph_type in [Magnitude, Phase]:
+            if graph_type in ["Magnitude", "Phase"]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor(index)
@@ -459,7 +471,6 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         "vswr": label_vswr
     }
 
-    # --- Función actualización ---
     def update_cursor(index, from_slider=False):
         val_complex = S_data[index]
         magnitude = abs(val_complex)
@@ -472,7 +483,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         elif graph_type == "Phase":
             cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
 
-        # --- Solo frecuencia con dos decimales ---
+
         edit_value.setText(f"  {freqs[index]*1e-6:.2f}")
 
         labels_dict["val"].setText(f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
@@ -490,6 +501,13 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
             slider.set_val(index)
 
         edit_value.clearFocus()
+
+        ui_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        settings.setValue("Cursor2/index", index)
 
     # --- Slider ---
     slider_ax = fig.add_axes([0.25,0.05,0.5,0.03], facecolor='lightgray')
@@ -521,7 +539,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         dragging["active"] = False
     def on_motion(event):
         if dragging["active"] and event.inaxes == ax:
-            if graph_type in [Magnitude, Phase]:
+            if graph_type in ["Magnitude", "Phase"]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor(index)

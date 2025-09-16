@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox, 
     QColorDialog, QSpinBox, QCheckBox, QPushButton, QSizePolicy, QSpacerItem
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QPixmap, QIcon
 
 import qtawesome as qta
@@ -15,6 +15,7 @@ from matplotlib.lines import Line2D
 # --- Scikit-RF ---
 import skrf as rf
 import numpy as np
+import os
 
 # Estilo para SpinBox redondeados y elegantes
 spin_style = """
@@ -58,6 +59,27 @@ groupbox_style = """
 ####################################################################################################
 
 def create_edit_tab1(self, tabs):
+
+    ui_dir = os.path.dirname(os.path.dirname(__file__))  
+    ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+    settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+    trace_color1 = settings.value("Graphic1/TraceColor", "blue")
+    marker_color1 = settings.value("Graphic1/MarkerColor", "blue")
+
+    trace_size1 = int(settings.value("Graphic1/TraceWidth", 2))
+    marker_size1 = int(settings.value("Graphic1/MarkerWidth", 6))
+
+    graph_type1 = settings.value("Tab1/GraphType1", "Smith Diagram")
+    s_param1 = settings.value("Tab1/SParameter", "S11")
+
+    index = int(settings.value("Cursor1/index", 0))
+
+####################################################################################################
+#--------- Tab1 -----------------------------------------------------------------------------------#
+####################################################################################################
+
     tab1 = QWidget()
     tab1_container = QVBoxLayout(tab1)
     tab1_container.setContentsMargins(0, 0, 0, 0)
@@ -65,7 +87,7 @@ def create_edit_tab1(self, tabs):
 
     line_tab = QFrame()
     line_tab.setFixedHeight(3)
-    line_tab.setStyleSheet("background-color: white;")  # dark por defecto
+    line_tab.setStyleSheet("background-color: white;")  
     tab1_container.addWidget(line_tab)
 
     spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
@@ -91,63 +113,66 @@ def create_edit_tab1(self, tabs):
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(15)
 
-    # Trace color
+    # --- Vertical layout inside the existing GroupBox ---
+    group_v_layout = QVBoxLayout()
+    group_v_layout.setAlignment(Qt.AlignTop)
+    group_v_layout.setSpacing(15)
+    group_v_layout.setContentsMargins(10, 10, 10, 10)
+
+    # --- Trace color ---
     trace_layout = QHBoxLayout()
     lbl_trace = QLabel("Trace color:")
     lbl_trace.setStyleSheet("color: white;")
-
     btn_trace = QFrame()
     btn_trace.setFixedSize(30, 30)
-    btn_trace.setStyleSheet("background-color: blue; border: 1px solid white; border-radius: 6px;")
+    btn_trace.setStyleSheet(f"background-color: {trace_color1}; border: 1px solid white; border-radius: 6px;")
     trace_layout.addWidget(lbl_trace)
     trace_layout.addWidget(btn_trace, alignment=Qt.AlignVCenter)
     left_layout.addLayout(trace_layout)
 
-    # Marker color
+    # --- Marker color ---
     marker_layout = QHBoxLayout()
     lbl_marker = QLabel("Marker color:")
     lbl_marker.setStyleSheet("color: white;")
     btn_marker = QFrame()
     btn_marker.setFixedSize(30, 30)
-    btn_marker.setStyleSheet("background-color: red; border: 1px solid white; border-radius: 6px;")
+    btn_marker.setStyleSheet(f"background-color: {marker_color1}; border: 1px solid white; border-radius: 6px;")
     marker_layout.addWidget(lbl_marker)
     marker_layout.addWidget(btn_marker, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_layout)
 
-    # Line width
+    # --- Line width ---
     line_layout = QHBoxLayout()
     lbl_line = QLabel("Line width (all):")
     lbl_line.setStyleSheet("color: white;")
     spin_line_tab1 = QSpinBox()
     spin_line_tab1.setRange(1, 10)
-    spin_line_tab1.setValue(2)
+    spin_line_tab1.setValue(trace_size1)
     spin_line_tab1.setStyleSheet(spin_style)
     spin_line_tab1.setFixedWidth(50)
     line_layout.addWidget(lbl_line)
     line_layout.addWidget(spin_line_tab1, alignment=Qt.AlignVCenter)
     left_layout.addLayout(line_layout)
 
-    # Marker size
+    # --- Marker size ---
     marker_size_layout = QHBoxLayout()
     lbl_marker_size = QLabel("Marker size (all):")
     lbl_marker_size.setStyleSheet("color: white;")
     spin_marker_tab1 = QSpinBox()
     spin_marker_tab1.setRange(1, 20)
-    spin_marker_tab1.setValue(6)
+    spin_marker_tab1.setValue(marker_size1)
     spin_marker_tab1.setStyleSheet(spin_style)
     spin_marker_tab1.setFixedWidth(50)
     marker_size_layout.addWidget(lbl_marker_size)
     marker_size_layout.addWidget(spin_marker_tab1, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_size_layout)
 
-    # Dark mode
+    # --- Dark mode ---
     dark_mode_layout = QHBoxLayout()
     dark_mode_layout.setAlignment(Qt.AlignLeft)
-
     lbl_dark_mode = QLabel("Dark Mode:")
-    dark_mode_layout.addWidget(lbl_dark_mode)
-
-    btn_dark_mode = QLabel("☀") 
+    lbl_dark_mode.setStyleSheet("color: white;")
+    btn_dark_mode = QLabel("☀")
     btn_dark_mode.setFixedSize(30, 30)
     btn_dark_mode.setAlignment(Qt.AlignCenter)
     btn_dark_mode.setStyleSheet("""
@@ -156,9 +181,9 @@ def create_edit_tab1(self, tabs):
         font-size: 18px;
     """)
     btn_dark_mode.setCursor(Qt.PointingHandCursor)
+    dark_mode_layout.addWidget(lbl_dark_mode)
     dark_mode_layout.addStretch()
     dark_mode_layout.addWidget(btn_dark_mode)
-
     left_layout.addLayout(dark_mode_layout)
 
 ####################################################################################################
@@ -181,56 +206,84 @@ def create_edit_tab1(self, tabs):
 #--------- Smith  ---------------------------------------------------------------------------------#
 ####################################################################################################
 
-    # --- Right Smith chart ---
-    right_group = QGroupBox()  # sin título
-    right_group.setStyleSheet("""
-        QGroupBox {
-            border: none;
-            background-color: transparent;
-        }
-    """)
-    right_layout = QVBoxLayout(right_group)
-    right_layout.setAlignment(Qt.AlignCenter)
-    right_layout.setSpacing(15)
-    right_layout.setContentsMargins(0, 0, 0, 0)
-
     # --- Matplotlib figure y canvas ---
-    fig, ax = plt.subplots(figsize=(5,5))
-    fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.15)
+    fig, ax = plt.subplots(figsize=(4,4))
+    fig.subplots_adjust(left=0.2, right=0.88, top=0.9, bottom=0.2)
     canvas = FigureCanvas(fig)
-    canvas.setFixedSize(350, 350)
-    canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    right_layout.addWidget(canvas)
+    canvas.setFixedSize(340, 340)
 
     # --- Datos dummy ---
     N = 101
     freqs = np.linspace(1e6, 100e6, N)
-    S_data = 0.5 * np.exp(1j * 2 * np.pi * freqs / 1e8)
+    S_data = 0.5 * np.exp(1j * -2 * np.pi * freqs / 1e8)
 
-    # --- Plot Smith chart ---
-    ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
-    ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
+    def update_graph(graph_type1):
+        ax.clear()
+        ax.legend().remove()
 
-    # --- Obtener línea principal ---
-    smith_line = None
-    for line in ax.lines:
-        if len(line.get_xdata()) == len(freqs):
-            line.set_color(get_trace_color())
-            line.set_linewidth(get_line_width())
-            smith_line = line
-            break
+        if graph_type1 == "Smith Diagram":  
+            ntw = rf.Network(frequency=self.freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
+            ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
+            ax.legend([Line2D([0],[0], color=get_trace_color())],[s_param1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
-    # --- Legend line ---
-    legend_line = Line2D([0], [0], color=get_trace_color())
-    ax.legend([legend_line], ["S11"], loc='upper left', bbox_to_anchor=(-0.17,1.14))
+            for idx, line in enumerate(ax.lines):
+                xdata = line.get_xdata()
+                if len(xdata) == len(freqs):
+                    line.set_color(get_trace_color())
+                    line.set_linewidth(get_line_width())
+                    break
 
-    # --- Cursor interactivo ---
-    cursor_graph, = ax.plot([S_data[35].real], [S_data[35].imag], 'o',
-                        markersize=get_marker_size(),
-                        color=get_marker_color(),
-                        visible=True)
+            cursor_graph, = ax.plot(np.real(S_data[index]), np.imag(S_data[index]), 'o', markersize=get_marker_size(), color=get_marker_color(), visible=True)
 
-    canvas.draw()
+        elif graph_type1 == "Magnitude":  
+            if np.any(S_data):
+                ax.plot(self.freqs*1e-6, np.abs(S_data), color=get_trace_color(), label=s_param1)
+            ax.set_xlabel("Frequency [MHz]")
+            ax.set_ylabel(f"|{s_param1}|")
+            ax.grid(True)
+
+            for idx, line in enumerate(ax.lines):
+                xdata = line.get_xdata()
+                if len(xdata) == len(freqs):
+                    line.set_color(get_trace_color())
+                    line.set_linewidth(get_line_width())
+                    break
+            
+            cursor_graph, = ax.plot(self.freqs[index]*1e-6, np.abs(S_data[index]), 'o', markersize=get_marker_size(), color=get_marker_color(), visible=True)
+
+            ax.spines['bottom'].set_color('grey')     
+            ax.spines['bottom'].set_linewidth(0.7)
+
+            ax.spines['left'].set_color('grey')      
+            ax.spines['left'].set_linewidth(0.7)
+            
+        elif graph_type1 == "Phase":  
+            if np.any(S_data):
+                ax.plot(self.freqs*1e-6, np.angle(S_data, deg=True), color=get_trace_color(), label=s_param1)
+            ax.set_xlabel("Frequency [MHz]")
+            ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param1)
+            ax.yaxis.set_label_coords(-0.18, 0.5)
+            ax.grid(True)
+
+            for idx, line in enumerate(ax.lines):
+                xdata = line.get_xdata()
+                if len(xdata) == len(freqs):
+                    line.set_color(get_trace_color())
+                    line.set_linewidth(get_line_width())
+                    break
+
+            cursor_graph, = ax.plot(freqs[index]*1e-6, np.angle(S_data[index], deg=True), 'o', markersize=get_marker_size(), color=get_marker_color(), visible=True)
+
+            ax.spines['bottom'].set_color('grey')     
+            ax.spines['bottom'].set_linewidth(0.7)
+
+            ax.spines['left'].set_color('grey')      
+            ax.spines['left'].set_linewidth(0.7)
+            
+        canvas.draw()
+
+    # --- Inicializa el gráfico ---
+    update_graph(graph_type1=graph_type1)
 
     # --- Funciones de actualización ---
     def update_trace_color():
@@ -246,45 +299,31 @@ def create_edit_tab1(self, tabs):
         canvas.draw()
 
     def update_line_width():
-        if smith_line:
-            smith_line.set_linewidth(get_line_width())
-            canvas.draw()
+        update_graph(graph_type1=graph_type1)
 
     def update_marker_size():
-        cursor_graph.set_markersize(get_marker_size())
-        canvas.draw()
+        update_graph(graph_type1=graph_type1)
 
-    # --- Funciones para elegir color ---
     def pick_trace_color(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
-            # Actualizamos el botón
             btn_trace.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            # Actualizamos línea y leyenda con el color seleccionado
-            if smith_line:
-                smith_line.set_color(color.name())
-                legend_line.set_color(color.name())
-                canvas.draw()
+            update_graph(graph_type1=graph_type1)
 
     def pick_marker_color(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_marker.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            cursor_graph.set_color(color.name())
+            update_graph(graph_type1=graph_type1)
             canvas.draw()
 
-    # --- Conectar eventos ---
     btn_trace.mousePressEvent = pick_trace_color
     btn_marker.mousePressEvent = pick_marker_color
     spin_line_tab1.valueChanged.connect(lambda val: update_line_width())
     spin_marker_tab1.valueChanged.connect(lambda val: update_marker_size())
 
-    # --- Igualar tamaño de los GroupBox ---
-    left_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    right_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-    layout.addWidget(left_group, stretch=1)
-    layout.addWidget(right_group, stretch=1)
+    layout.addWidget(left_group, 1)
+    layout.addWidget(canvas, 2)
 
     spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
 
@@ -355,7 +394,6 @@ def create_edit_tab1(self, tabs):
 
             # GroupBox color in dark mode
             left_group.setStyleSheet("QGroupBox { color: white; }")
-            right_group.setStyleSheet("QGroupBox { color: white; }")
 
             # Labels color
             for w in self.findChildren(QLabel):
@@ -436,11 +474,28 @@ def create_edit_tab1(self, tabs):
 
     return tab1, get_trace_color, get_marker_color, get_line_width, get_marker_size
 
+def create_edit_tab2(self, tabs):
+
+    ui_dir = os.path.dirname(os.path.dirname(__file__))  
+    ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+    settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+    trace_color2 = settings.value("Graphic2/TraceColor", "red")
+    marker_color2 = settings.value("Graphic2/MarkerColor", "red")
+
+    line_width2 = int(settings.value("Graphic2/TraceWidth", 2))
+    marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
+
+    graph_type2 = settings.value("Tab2/GraphType2", "Smith Diagram")
+    s_param2 = settings.value("Tab2/SParameter", "S11")
+
+    index = int(settings.value("Cursor2/index", 0))
+
 ####################################################################################################
-#--------- Tab 2  ---------------------------------------------------------------------------------#
+#--------- Tab2 -----------------------------------------------------------------------------------#
 ####################################################################################################
 
-def create_edit_tab2(self, tabs):
     tab2 = QWidget()
     tab2_container = QVBoxLayout(tab2)
     tab2_container.setContentsMargins(0, 0, 0, 0)
@@ -477,9 +532,10 @@ def create_edit_tab2(self, tabs):
     trace_layout = QHBoxLayout()
     lbl_trace = QLabel("Trace color:")
     lbl_trace.setStyleSheet("color: white;")
+
     btn_trace = QFrame()
     btn_trace.setFixedSize(30, 30)
-    btn_trace.setStyleSheet("background-color: blue; border: 1px solid white; border-radius: 6px;")
+    btn_trace.setStyleSheet(f"background-color: {trace_color2}; border: 1px solid white; border-radius: 6px;")
     trace_layout.addWidget(lbl_trace)
     trace_layout.addWidget(btn_trace, alignment=Qt.AlignVCenter)
     left_layout.addLayout(trace_layout)
@@ -488,9 +544,10 @@ def create_edit_tab2(self, tabs):
     marker_layout = QHBoxLayout()
     lbl_marker = QLabel("Marker color:")
     lbl_marker.setStyleSheet("color: white;")
+
     btn_marker = QFrame()
     btn_marker.setFixedSize(30, 30)
-    btn_marker.setStyleSheet("background-color: red; border: 1px solid white; border-radius: 6px;")
+    btn_marker.setStyleSheet(f"background-color: {marker_color2}; border: 1px solid white; border-radius: 6px;")
     marker_layout.addWidget(lbl_marker)
     marker_layout.addWidget(btn_marker, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_layout)
@@ -501,7 +558,7 @@ def create_edit_tab2(self, tabs):
     lbl_line.setStyleSheet("color: white;")
     spin_line_tab2 = QSpinBox()
     spin_line_tab2.setRange(1, 10)
-    spin_line_tab2.setValue(2)
+    spin_line_tab2.setValue(line_width2)
     spin_line_tab2.setStyleSheet(spin_style)
     spin_line_tab2.setFixedWidth(50)
     line_layout.addWidget(lbl_line)
@@ -514,7 +571,7 @@ def create_edit_tab2(self, tabs):
     lbl_marker_size.setStyleSheet("color: white;")
     spin_marker_tab2 = QSpinBox()
     spin_marker_tab2.setRange(1, 20)
-    spin_marker_tab2.setValue(6)
+    spin_marker_tab2.setValue(marker_size2)
     spin_marker_tab2.setStyleSheet(spin_style)
     spin_marker_tab2.setFixedWidth(50)
     marker_size_layout.addWidget(lbl_marker_size)
@@ -526,6 +583,7 @@ def create_edit_tab2(self, tabs):
     dark_mode_layout.setAlignment(Qt.AlignLeft)
 
     lbl_dark_mode = QLabel("Dark Mode:")
+    lbl_dark_mode.setStyleSheet("color: white;")
     dark_mode_layout.addWidget(lbl_dark_mode)
 
     btn_dark_mode = QLabel("☀") 
@@ -558,123 +616,118 @@ def create_edit_tab2(self, tabs):
         return spin_marker_tab2.value()
 
 ####################################################################################################
-#--------- Smith  ---------------------------------------------------------------------------------#
+#--------- Matplotlib Graph ----------------------------------------------------------------------#
 ####################################################################################################
 
-    # --- Right Smith chart ---
-    right_group = QGroupBox()
-    right_group.setStyleSheet("""
-        QGroupBox {
-            border: none;
-            background-color: transparent;
-        }
-    """)
-    right_layout = QVBoxLayout(right_group)
-    right_layout.setAlignment(Qt.AlignCenter)
-    right_layout.setSpacing(15)
-    right_layout.setContentsMargins(0, 0, 0, 0)
-
-    # Matplotlib figure
-    fig, ax = plt.subplots(figsize=(5,5))
-    fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.15)
+    fig, ax = plt.subplots(figsize=(4,4))
+    fig.subplots_adjust(left=0.2, right=0.88, top=0.9, bottom=0.2)
     canvas = FigureCanvas(fig)
-    canvas.setFixedSize(350, 350)
-    canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    right_layout.addWidget(canvas)
+    canvas.setFixedSize(340, 340)
 
     # Datos dummy
     N = 101
     freqs = np.linspace(1e6, 100e6, N)
-    S_data = 0.5 * np.exp(1j * 2 * np.pi * freqs / 1e8)
+    S_data = 0.5 * np.exp(1j * -2 * np.pi * freqs / 1e8)
 
-    # Plot Smith chart
-    ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
-    ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
+    def update_graph2(graph_type2):
+        ax.clear()
+        ax.legend().remove()
 
-    # Obtener línea principal
-    smith_line2 = None
-    for line in ax.lines:
-        if len(line.get_xdata()) == len(freqs):
-            line.set_color(get_trace_color2())
-            line.set_linewidth(get_line_width2())
-            smith_line2 = line
-            break
+        if graph_type2 == "Smith Diagram":  
+            ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
+            ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
+            ax.legend([Line2D([0],[0], color=get_trace_color2())],[s_param2], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
-    # Legend
-    legend_line2 = Line2D([0],[0], color=get_trace_color2())
-    ax.legend([legend_line2], ["S11"], loc='upper left', bbox_to_anchor=(-0.17,1.14))
+            for idx, line in enumerate(ax.lines):
+                xdata = line.get_xdata()
+                if len(xdata) == len(freqs):
+                    line.set_color(get_trace_color2())
+                    line.set_linewidth(get_line_width2())
+                    break
 
-    # Cursor interactivo fijo
-    cursor_graph2, = ax.plot([S_data[35].real], [S_data[35].imag], 'o',
-                        markersize=get_marker_size2(),
-                        color=get_marker_color2(),
-                        visible=True)
+            cursor_graph2, = ax.plot(np.real(S_data[index]), np.imag(S_data[index]), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
 
-    canvas.draw()
+        elif graph_type2 == "Magnitude":  
+            if np.any(S_data):
+                ax.plot(freqs*1e-6, np.abs(S_data), color=get_trace_color2(), label=s_param2)
+            ax.set_xlabel("Frequency [MHz]")
+            ax.set_ylabel(f"|{s_param2}|")
+            ax.grid(True)
+
+            for idx, line in enumerate(ax.lines):
+                xdata = line.get_xdata()
+                if len(xdata) == len(freqs):
+                    line.set_color(get_trace_color2())
+                    line.set_linewidth(get_line_width2())
+                    break
+            
+            cursor_graph2, = ax.plot(freqs[index]*1e-6, np.abs(S_data[index]), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+
+        elif graph_type2 == "Phase":  
+            if np.any(S_data):
+                ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=get_trace_color2(), label=s_param2)
+            ax.set_xlabel("Frequency [MHz]")
+            ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param2)
+            ax.grid(True)
+
+            for idx, line in enumerate(ax.lines):
+                xdata = line.get_xdata()
+                if len(xdata) == len(freqs):
+                    line.set_color(get_trace_color2())
+                    line.set_linewidth(get_line_width2())
+                    break
+
+            cursor_graph2, = ax.plot(freqs[index]*1e-6, np.angle(S_data[index], deg=True), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+
+        canvas.draw()
+
+    update_graph2(graph_type2=graph_type2)
 
 ####################################################################################################
-#--------- Funciones de actualización ------------------------------------------------------------#
+#--------- Events & Color Pickers ----------------------------------------------------------------#
 ####################################################################################################
 
-    def update_trace_color2():
+    def update_trace_color2_event():
         color = get_trace_color2()
-        if smith_line2:
-            smith_line2.set_color(color)
-            legend_line2.set_color(color)
-            canvas.draw()
+        for line in ax.lines:
+            line.set_color(color)
+        canvas.draw()
 
-    def update_marker_color2():
+    def update_marker_color2_event():
         color = get_marker_color2()
         cursor_graph2.set_color(color)
         canvas.draw()
 
-    def update_line_width2():
-        if smith_line2:
-            smith_line2.set_linewidth(get_line_width2())
-            canvas.draw()
+    def update_line_width2_event():
+        update_graph2(graph_type2=graph_type2)
 
-    def update_marker_size2():
-        cursor_graph2.set_markersize(get_marker_size2())
-        canvas.draw()
-
-####################################################################################################
-#--------- Funciones de elección de color ---------------------------------------------------------#
-####################################################################################################
+    def update_marker_size2_event():
+        update_graph2(graph_type2=graph_type2)
 
     def pick_trace_color2(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_trace.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            if smith_line2:
-                smith_line2.set_color(color.name())
-                legend_line2.set_color(color.name())
-                canvas.draw()
+            update_graph2(graph_type2=graph_type2)
 
     def pick_marker_color2(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_marker.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            cursor_graph2.set_color(color.name())
+            update_graph2(graph_type2=graph_type2)
             canvas.draw()
-
-####################################################################################################
-#--------- Conexiones eventos --------------------------------------------------------------------#
-####################################################################################################
 
     btn_trace.mousePressEvent = pick_trace_color2
     btn_marker.mousePressEvent = pick_marker_color2
-    spin_line_tab2.valueChanged.connect(lambda val: update_line_width2())
-    spin_marker_tab2.valueChanged.connect(lambda val: update_marker_size2())
+    spin_line_tab2.valueChanged.connect(lambda val: update_line_width2_event())
+    spin_marker_tab2.valueChanged.connect(lambda val: update_marker_size2_event())
 
 ####################################################################################################
-#--------- Igualar tamaño GroupBox ---------------------------------------------------------------#
+#--------- Layout Final --------------------------------------------------------------------------#
 ####################################################################################################
 
-    left_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    right_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-    layout.addWidget(left_group, stretch=1)
-    layout.addWidget(right_group, stretch=1)
+    layout.addWidget(left_group, 1)
+    layout.addWidget(canvas, 2)
 
     tab2_container.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
@@ -689,12 +742,14 @@ def create_edit_tab2(self, tabs):
 ####################################################################################################
 
     def toggle_dark_mode2(tabs, event=None):
-        if btn_dark_mode.text() == "☀":
+        if btn_dark_mode.text() == "☀":  # Dark mode
             btn_dark_mode.setText("🌙")
-            # aquí podes poner el mismo styling dark mode que tab1 para tab2
-        else:
+            self.setStyleSheet("""...""")  
+            tabs.setStyleSheet("""...""")  
+        else:  # Light mode
             btn_dark_mode.setText("☀")
-            # igual, revertir a light mode
+            self.setStyleSheet("""...""")
+            tabs.setStyleSheet("""...""")  
 
     btn_dark_mode.mousePressEvent = lambda event: toggle_dark_mode2(tabs)
 

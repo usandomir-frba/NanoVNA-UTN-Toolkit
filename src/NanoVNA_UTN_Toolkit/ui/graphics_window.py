@@ -30,32 +30,28 @@ class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11"):
         super().__init__()
 
-        project_root = os.path.dirname(os.path.dirname(__file__))
-        graphics_windows_dir = os.path.join(project_root, "graphics_windows")
-        ini_dir = os.path.join(graphics_windows_dir, "ini")
-        ruta_ini = os.path.join(ini_dir, "config.ini")
+        actual_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
 
         settings = QSettings(ruta_ini, QSettings.IniFormat)
-        #settings.clear()  # borra valores cacheados (ten cuidado)
-        #settings.sync()
 
-        with open(ruta_ini, "r") as f:
-            print(f.read())
+        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")
+        s_param_tab1    = settings.value("Tab1/SParameter", "S11")
 
-        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram", type=str)
-        s_param_tab1   = settings.value("Tab1/SParameter", "S11", type=str)
+        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude")
+        s_param_tab2    = settings.value("Tab2/SParameter", "S11")
 
-        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude", type=str)
-        s_param_tab2   = settings.value("Tab2/SParameter", "S21", type=str)
+        trace_color1 = settings.value("Graphic1/TraceColor", "blue")
+        marker_color1 = settings.value("Graphic1/MarkerColor", "blue")
 
-        print("Using INI file at:", ruta_ini)
+        trace_size1 = int(settings.value("Graphic1/TraceWidth", 2))
+        marker_size1 = int(settings.value("Graphic1/MarkerWidth", 6))
 
-        print("INI values read:")
-        print(f"Tab1 -> GraphType: {graph_type_tab1}, SParameter: {s_param_tab1}")
-        print(f"Tab2 -> GraphType: {graph_type_tab2}, SParameter: {s_param_tab2}")
+        trace_color2 = settings.value("Graphic2/TraceColor", "blue")
+        marker_color2 = settings.value("Graphic2/MarkerColor", "blue")
 
-        print("Reading INI from:", ruta_ini)
-        print("Keys found:", settings.allKeys())
+        trace_size2 = int(settings.value("Graphic2/TraceWidth", 2))
+        marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
 
         self.left_graph_type  = graph_type_tab1
         self.left_s_param     = s_param_tab1
@@ -153,10 +149,10 @@ class NanoVNAGraphics(QMainWindow):
                 freqs=freqs, 
                 graph_type=graph_type_tab1, 
                 s_param=s_param_tab1, 
-                tracecolor="red",
-                markercolor="blue",
-                linewidth=2,
-                markersize=5    
+                tracecolor=trace_color1,
+                markercolor=marker_color1,
+                linewidth=trace_size1,
+                markersize=marker_size1   
             )
 
         # =================== RIGHT PANEL ===================
@@ -167,10 +163,10 @@ class NanoVNAGraphics(QMainWindow):
                 freqs=freqs, 
                 graph_type=graph_type_tab2, 
                 s_param=s_param_tab2,
-                tracecolor="red",
-                markercolor="blue",
-                linewidth=2  ,
-                markersize=5
+                tracecolor=trace_color2,
+                markercolor=marker_color2,
+                linewidth=trace_size2,
+                markersize=marker_size2
             )
 
         # =================== PANELS LAYOUT ===================
@@ -288,6 +284,13 @@ class NanoVNAGraphics(QMainWindow):
 
     # =================== TOGGLE MARKERS==================
 
+    def clear_freq_edit(edit_widget):
+        edit_widget.blockSignals(True) 
+        edit_widget.setText("--")
+        edit_widget.setFixedWidth(edit_widget.fontMetrics().horizontalAdvance(edit_widget.text()) + 4)
+        edit_widget.blockSignals(False)
+
+
     def toggle_marker_visibility(self, marker_index, show=True):
         marker = self.markers[marker_index]
         cursor = marker["cursor"]
@@ -296,7 +299,7 @@ class NanoVNAGraphics(QMainWindow):
         update_cursor_func = marker.get("update_cursor", None)
 
         cursor.set_visible(show)
-        
+
         if show:
             slider.ax.set_visible(True)
             slider.set_active(True)
@@ -304,13 +307,22 @@ class NanoVNAGraphics(QMainWindow):
                 slider.on_changed(marker.slider_callback)
 
             if update_cursor_func:
-                update_cursor_func(0)  
+                update_cursor_func(0)
+
+            edit_value = labels["freq"]
+            edit_value.setEnabled(True)
+            edit_value.setText(f"{self.freqs[0]*1e-6:.2f}") 
+
         else:
             slider.set_val(0)
             slider.ax.set_visible(False)
             slider.set_active(False)
-            # --- Limpiar labels con guiones ---
-            labels["freq"].setText("Frequency: --")
+
+            edit_value = labels["freq"]
+            edit_value.setEnabled(False)
+            edit_value.setText("0")
+
+            # --- Limpiar otros labels ---
             labels["val"].setText(f"{self.left_s_param if marker_index==0 else 'S11'}: -- + j--")
             labels["mag"].setText("|S11|: --")
             labels["phase"].setText("Phase: --")

@@ -28,14 +28,6 @@ class View(QMainWindow):
     def __init__(self, nano_window=None, freqs=None):
         super().__init__()
 
-        carpeta_ini = os.path.join(os.path.dirname(__file__), "ini")
-
-        os.makedirs(carpeta_ini, exist_ok=True)
-
-        ruta_ini = os.path.join(carpeta_ini, "config.ini")
-
-        settings = QSettings(ruta_ini, QSettings.IniFormat)
-
         self.nano_window = nano_window 
 
         self.setWindowTitle("Graphic View")
@@ -108,7 +100,7 @@ class View(QMainWindow):
         btn_cancel.setStyleSheet(btn_style)
         btn_apply.setStyleSheet(btn_style)
         btn_cancel.clicked.connect(self.close)
-        btn_apply.clicked.connect(lambda: self.on_apply_clicked(settings=settings))
+        btn_apply.clicked.connect(lambda: self.on_apply_clicked())
 
         button_layout.addWidget(btn_cancel)
         button_layout.addWidget(btn_apply)
@@ -120,32 +112,44 @@ class View(QMainWindow):
         # --- Initial plot ---
         self.update_graph()
 
-    def on_apply_clicked(self, settings):
+    def on_apply_clicked(self):
         from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
+
+        ui_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        trace_color1 = settings.value("Graphic1/TraceColor", "blue")
+        marker_color1 = settings.value("Graphic1/MarkerColor", "blue")
+
+        trace_size1 = int(settings.value("Graphic1/TraceWidth", 2))
+        marker_size1 = int(settings.value("Graphic1/MarkerWidth", 6))
+
+        trace_color2 = settings.value("Graphic2/TraceColor", "blue")
+        marker_color2 = settings.value("Graphic2/MarkerColor", "blue")
+
+        trace_size2 = int(settings.value("Graphic2/TraceWidth", 2))
+        marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
 
         self.s11 = self.nano_window.s11
         self.s21 = self.nano_window.s21
         self.freqs = self.nano_window.freqs
 
-        # --- Datos según S-parameter de cada tab ---
         data_left = self.s11 if self.current_s_tab1 == "S11" else self.s21
         data_right = self.s11 if self.current_s_tab2 == "S11" else self.s21
 
-        # --- Tipo de gráfico de cada tab ---
         selected_graph_left = self.current_graph_tab1
         selected_graph_right = self.current_graph_tab2
 
         if self.nano_window is not None:
-            # Referencia al layout de panels (HLayout donde están left_panel y right_panel)
             panels_layout = self.nano_window.centralWidget().layout().itemAt(0).layout()  # HBox
 
-            # --- Desconectar sliders antiguos para evitar callbacks sobre objetos eliminados ---
             if hasattr(self.nano_window, "markers"):
                 for marker in self.nano_window.markers:
                     slider = marker["slider"]
                     slider.disconnect_events()
 
-            # --- Remover y eliminar paneles antiguos ---
             old_left_panel = panels_layout.takeAt(0)
             if old_left_panel is not None and old_left_panel.widget() is not None:
                 old_left_panel.widget().deleteLater()
@@ -154,7 +158,6 @@ class View(QMainWindow):
             if old_right_panel is not None and old_right_panel.widget() is not None:
                 old_right_panel.widget().deleteLater()
 
-            # --- Crear nuevo panel izquierdo ---
             self.nano_window.left_panel, self.nano_window.fig_left, self.nano_window.ax_left, \
             self.nano_window.canvas_left, self.nano_window.slider_left, self.nano_window.cursor_left, \
             self.nano_window.labels_left, self.nano_window.update_cursor_left = \
@@ -163,13 +166,12 @@ class View(QMainWindow):
                     freqs=self.freqs,
                     graph_type=selected_graph_left,
                     s_param=self.current_s_tab1,
-                    tracecolor="red",
-                    markercolor="blue",
-                    linewidth=2,
-                    markersize=2
+                    tracecolor=trace_color1,
+                    markercolor=marker_color1,
+                    linewidth=trace_size1,
+                    markersize=marker_size1
                 )
 
-            # --- Crear nuevo panel derecho ---
             self.nano_window.right_panel, self.nano_window.fig_right, self.nano_window.ax_right, \
             self.nano_window.canvas_right, self.nano_window.slider_right, self.nano_window.cursor_right, \
             self.nano_window.labels_right, self.nano_window.update_cursor_right = \
@@ -178,10 +180,10 @@ class View(QMainWindow):
                     freqs=self.freqs,
                     graph_type=selected_graph_right,
                     s_param=self.current_s_tab2,
-                    tracecolor="red",
-                    markercolor="blue",
-                    linewidth=2,
-                    markersize=2
+                    tracecolor=trace_color2,
+                    markercolor=marker_color2,
+                    linewidth=trace_size2,
+                    markersize=marker_size2
                 )
 
             self.nano_window.markers = [

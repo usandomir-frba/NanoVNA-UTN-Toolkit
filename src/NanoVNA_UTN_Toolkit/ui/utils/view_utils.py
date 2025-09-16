@@ -1,5 +1,6 @@
 import skrf as rf
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
@@ -9,9 +10,17 @@ from PySide6.QtWidgets import (
     QPushButton, QTabWidget, QFrame, QSizePolicy, QApplication,
     QGroupBox, QRadioButton
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 
 def create_tab1(self):
+
+    ui_dir = os.path.dirname(os.path.dirname(__file__))  
+    ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+    settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+    graph_type1 = settings.value("Tab1/GraphType1", "Smith Diagram")
+    s_param1 = settings.value("Tab1/SParameter", "S11")
 
     tab1 = QWidget()
     tab1_layout = QHBoxLayout(tab1)
@@ -29,13 +38,13 @@ def create_tab1(self):
     graphic_param_selector = QGroupBox("Select Parameter")
     graphic_param_selector.setStyleSheet("color: white;")
     param_layout = QVBoxLayout()
-    self.radio_s_tab1 = {}  # <-- corregido
+    self.radio_s_tab1 = {}  
     for option in ["S11", "S21"]:
         rb = QRadioButton(option)
         rb.setStyleSheet("color: white;")
         param_layout.addWidget(rb)
-        self.radio_s_tab1[option] = rb  # <-- corregido
-    self.radio_s_tab1["S11"].setChecked(True)
+        self.radio_s_tab1[option] = rb  # 
+    self.radio_s_tab1[s_param1].setChecked(True)
     graphic_param_selector.setLayout(param_layout)
     left_layout.addWidget(graphic_param_selector)
 
@@ -43,13 +52,13 @@ def create_tab1(self):
     graphic_type_selector = QGroupBox("Selector Graphic 1")
     graphic_type_selector.setStyleSheet("color: white;")
     type_layout = QVBoxLayout()
-    self.radio_buttons_tab1 = {}  # <-- corregido
+    self.radio_buttons_tab1 = {} 
     for option in ["Smith Diagram", "Magnitude", "Phase"]:
         rb = QRadioButton(option)
         rb.setStyleSheet("color: white;")
         type_layout.addWidget(rb)
-        self.radio_buttons_tab1[option] = rb  # <-- corregido
-    self.radio_buttons_tab1["Smith Diagram"].setChecked(True)
+        self.radio_buttons_tab1[option] = rb 
+    self.radio_buttons_tab1[graph_type1].setChecked(True)
     graphic_type_selector.setLayout(type_layout)
     left_layout.addWidget(graphic_type_selector)
 
@@ -77,17 +86,17 @@ def create_tab1(self):
     tab1_widget = QWidget()
     tab1_widget.setLayout(tab1_container)
 
-    self.current_s_tab1 = "S11"
-    self.current_graph_tab1 = "Smith Diagram"
+    self.current_s_tab1 = s_param1
+    self.current_graph_tab1 = graph_type1
 
-    # --- Función update_graph local ---
     def update_graph():
         ax.clear()
         ax.legend().remove()
 
         self.current_s_tab1 = "S11" if self.radio_s_tab1["S11"].isChecked() else "S21"
-        #data = self.s11 if self.current_s_tab1 == "S11" else self.s21
+
         data = np.array([])
+        #data = self.s11 if self.current_s_tab1 == "S11" else self.s21
 
         if self.radio_buttons_tab1["Smith Diagram"].isChecked():
             self.current_graph_tab1 = "Smith Diagram"
@@ -95,12 +104,19 @@ def create_tab1(self):
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
             ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
+            self.radio_s_tab1["S21"].setEnabled(False)
+            self.radio_s_tab1["S11"].setChecked(True)
+
         elif self.radio_buttons_tab1["Magnitude"].isChecked():
             self.current_graph_tab1 = "Magnitude"
+
+            self.radio_s_tab1["S21"].setEnabled(True)
+            
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab1)
             ax.set_xlabel("Frequency [MHz]")
             ax.set_ylabel(f"|{self.current_s_tab1}|")
+            ax.set_aspect('equal', 'box')    
             ax.grid(True)
 
             ax.spines['bottom'].set_color('grey')     
@@ -108,14 +124,20 @@ def create_tab1(self):
 
             ax.spines['left'].set_color('grey')      
             ax.spines['left'].set_linewidth(0.7)
-            
 
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            
         elif self.radio_buttons_tab1["Phase"].isChecked():
             self.current_graph_tab1 = "Phase"
+
+            self.radio_s_tab1["S21"].setEnabled(True)
+
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab1)
             ax.set_xlabel("Frequency [MHz]")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab1)
+            ax.set_aspect('equal', 'box')    
             ax.grid(True)
 
             ax.spines['bottom'].set_color('grey')     
@@ -123,6 +145,9 @@ def create_tab1(self):
 
             ax.spines['left'].set_color('grey')      
             ax.spines['left'].set_linewidth(0.7)
+
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
         canvas.draw()
 
@@ -139,6 +164,14 @@ def create_tab1(self):
 
 
 def create_tab2(self):
+
+    ui_dir = os.path.dirname(os.path.dirname(__file__))  
+    ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+    settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+    graph_type2 = settings.value("Tab2/GraphType2", "Smith Diagram")
+    s_param2 = settings.value("Tab2/SParameter", "S11")
 
     tab2 = QWidget()
     tab2_layout = QHBoxLayout(tab2)
@@ -162,7 +195,7 @@ def create_tab2(self):
         rb.setStyleSheet("color: white;")
         param_layout.addWidget(rb)
         self.radio_s_tab2[option] = rb
-    self.radio_s_tab2["S11"].setChecked(True)
+    self.radio_s_tab2[s_param2].setChecked(True)
     graphic_param_selector.setLayout(param_layout)
     right_layout2.addWidget(graphic_param_selector)
 
@@ -176,7 +209,7 @@ def create_tab2(self):
         rb.setStyleSheet("color: white;")
         type_layout.addWidget(rb)
         self.radio_buttons_tab2[option] = rb
-    self.radio_buttons_tab2["Smith Diagram"].setChecked(True)
+    self.radio_buttons_tab2[graph_type2].setChecked(True)
     graphic_type_selector.setLayout(type_layout)
     right_layout2.addWidget(graphic_type_selector)
 
@@ -222,33 +255,48 @@ def create_tab2(self):
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
             ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab2], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
+            self.radio_s_tab2["S21"].setEnabled(False)
+            self.radio_s_tab2["S11"].setChecked(True)
+
         elif self.radio_buttons_tab2["Magnitude"].isChecked(): 
             self.current_graph_tab2 = "Magnitude"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab2)
             ax.set_xlabel("Frequency [MHz]")
             ax.set_ylabel(f"|{self.current_s_tab2}|")
+            ax.set_aspect('equal', 'box')  
             ax.grid(True)
+
+            self.radio_s_tab2["S21"].setEnabled(True)
 
             ax.spines['bottom'].set_color('grey')     
             ax.spines['bottom'].set_linewidth(0.7)
 
             ax.spines['left'].set_color('grey')      
             ax.spines['left'].set_linewidth(0.7)
-            
+
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
         elif self.radio_buttons_tab2["Phase"].isChecked(): 
             self.current_graph_tab2 = "Phase"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab2)
             ax.set_xlabel("Frequency [MHz]")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab2)
+            ax.set_aspect('equal', 'box')   
             ax.grid(True)
+
+            self.radio_s_tab2["S21"].setEnabled(True)
 
             ax.spines['bottom'].set_color('grey')     
             ax.spines['bottom'].set_linewidth(0.7)
 
             ax.spines['left'].set_color('grey')      
             ax.spines['left'].set_linewidth(0.7)
+
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
             
         canvas.draw()
 
