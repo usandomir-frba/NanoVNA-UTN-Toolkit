@@ -63,21 +63,13 @@ class EditGraphics(QMainWindow):
             QTabWidget::pane { border: 0px; margin: 0px; padding: 0px; background: transparent; }
         """)
 
-        tab1_widget, trace_color, marker_color, line_width, marker_size = create_edit_tab1(self)
-        tab2_widget, trace_color2, marker_color2, line_width2, marker_size2 = create_edit_tab2(self)
+        tab1_widget, trace_color, marker_color, line_width, marker_size = create_edit_tab1(self, tabs=tabs)
+        tab2_widget, trace_color2, marker_color2, line_width2, marker_size2 = create_edit_tab2(self, tabs=tabs)
 
         tabs.addTab(tab1_widget, "Graphic 1")
         tabs.addTab(tab2_widget, "Graphic 2")
 
         central_layout.addWidget(tabs)
-
-        # --- Line above buttons ---
-        line_above_buttons = QFrame()
-        line_above_buttons.setFrameShape(QFrame.HLine)
-        line_above_buttons.setFrameShadow(QFrame.Plain)
-        line_above_buttons.setStyleSheet("color: white; background-color: white;")
-        line_above_buttons.setFixedHeight(2)
-        central_layout.addWidget(line_above_buttons)
 
         # --- Buttons ---
         button_layout = QHBoxLayout()
@@ -145,7 +137,7 @@ class EditGraphics(QMainWindow):
             create_left_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
-                graph_type="Diagrama de Smith",
+                graph_type=Smith Diagram",
                 s_param="S11",
                 tracecolor=trace_color,
                 markercolor=marker_color,
@@ -160,7 +152,7 @@ class EditGraphics(QMainWindow):
             create_right_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
-                graph_type="Modulo",
+                graph_type=Magnitude,
                 s_param="S11",
                 tracecolor=trace_color2,
                 markercolor=marker_color2,

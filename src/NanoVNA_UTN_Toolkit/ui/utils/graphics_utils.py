@@ -15,7 +15,7 @@ from PySide6.QtGui import QDoubleValidator
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
 
-def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S11",
+def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
                       tracecolor="red", markercolor="red", linewidth=2,
                       markersize=2, marker_visible=True):
 
@@ -32,7 +32,7 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
     left_layout.setSpacing(10)
 
     # --- Figura ---
-    if graph_type == "Diagrama de Smith":
+    if graph_type == "Smith Diagram":
         fig, ax = plt.subplots(figsize=(5,5))
         fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.15)
         canvas = FigureCanvas(fig)
@@ -51,7 +51,7 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
                 break
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
-    elif graph_type == "Modulo":
+    elif graph_type == "Magnitude":
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
         canvas = FigureCanvas(fig)
@@ -64,7 +64,7 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
         ax.grid(True)
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
-    elif graph_type == "Fase":
+    elif graph_type == "Phase":
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
         canvas = FigureCanvas(fig)
@@ -146,8 +146,6 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
 
     layout_s.addLayout(hbox_freq)
 
-
-
     # --- Labels ---
     label_val = QLabel(f"{s_param}: -- + j--")
     label_mag = QLabel(f"|{s_param}|: --")
@@ -209,11 +207,11 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        if graph_type == "Diagrama de Smith":
+        if graph_type == "Smith Diagram":
             cursor_graph.set_data([np.real(val_complex)], [np.imag(val_complex)])
-        elif graph_type == "Modulo":
+        elif graph_type == "Magnitude":
             cursor_graph.set_data([freqs[index]*1e-6], [magnitude])
-        elif graph_type == "Fase":
+        elif graph_type == "Phase":
             cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
 
         edit_value.setText(f"{freqs[index]*1e-6:.3f}")
@@ -263,7 +261,7 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
         dragging["active"] = False
     def on_motion(event):
         if dragging["active"] and event.inaxes == ax:
-            if graph_type in ["Modulo", "Fase"]:
+            if graph_type in [Magnitude, Phase]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor(index)
@@ -279,12 +277,11 @@ def create_left_panel(S_data, freqs, graph_type="Diagrama de Smith", s_param="S1
 
     return left_panel, fig, ax, canvas, slider, cursor_graph, labels_dict, update_cursor
 
-
 #############################################################################################
 # =================== RIGHT PANEL ========================================================= #
 #############################################################################################
 
-def create_right_panel(S_data=None, freqs=None, graph_type="Diagrama de Smith", s_param="S11",
+def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_param="S11",
                        tracecolor="red", markercolor="red", linewidth=2, markersize=2, marker_visible=True):
 
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
@@ -300,7 +297,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Diagrama de Smith", 
     right_layout.setSpacing(10)
 
     # --- Figura ---
-    if graph_type == "Diagrama de Smith":
+    if graph_type == "Smith Diagram":
         fig, ax = plt.subplots(figsize=(5,5))
         fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.15)
         canvas = FigureCanvas(fig)
@@ -318,7 +315,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Diagrama de Smith", 
                 break
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
-    elif graph_type == "Modulo":
+    elif graph_type == "Magnitude":
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
         canvas = FigureCanvas(fig)
@@ -331,7 +328,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Diagrama de Smith", 
         ax.grid(True)
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
-    elif graph_type == "Fase":
+    elif graph_type == "Phase":
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
         canvas = FigureCanvas(fig)
@@ -468,11 +465,11 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Diagrama de Smith", 
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        if graph_type == "Diagrama de Smith":
+        if graph_type == "Smith Diagram":
             cursor_graph.set_data([np.real(val_complex)], [np.imag(val_complex)])
-        elif graph_type == "Modulo":
+        elif graph_type == "Magnitude":
             cursor_graph.set_data([freqs[index]*1e-6], [magnitude])
-        elif graph_type == "Fase":
+        elif graph_type == "Phase":
             cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
 
         # --- Solo frecuencia con dos decimales ---
@@ -524,7 +521,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Diagrama de Smith", 
         dragging["active"] = False
     def on_motion(event):
         if dragging["active"] and event.inaxes == ax:
-            if graph_type in ["Modulo", "Fase"]:
+            if graph_type in [Magnitude, Phase]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor(index)

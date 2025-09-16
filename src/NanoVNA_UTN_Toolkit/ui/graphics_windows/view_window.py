@@ -4,6 +4,7 @@ Graphic view window for NanoVNA devices.
 
 import skrf as rf
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton, QTabWidget, QFrame, QSizePolicy, QApplication,
     QGroupBox, QRadioButton
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.view_utils import create_tab1
@@ -26,6 +27,14 @@ except ImportError as e:
 class View(QMainWindow):
     def __init__(self, nano_window=None, freqs=None):
         super().__init__()
+
+        carpeta_ini = os.path.join(os.path.dirname(__file__), "ini")
+
+        os.makedirs(carpeta_ini, exist_ok=True)
+
+        ruta_ini = os.path.join(carpeta_ini, "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
 
         self.nano_window = nano_window 
 
@@ -99,7 +108,7 @@ class View(QMainWindow):
         btn_cancel.setStyleSheet(btn_style)
         btn_apply.setStyleSheet(btn_style)
         btn_cancel.clicked.connect(self.close)
-        btn_apply.clicked.connect(self.on_apply_clicked)
+        btn_apply.clicked.connect(lambda: self.on_apply_clicked(settings=settings))
 
         button_layout.addWidget(btn_cancel)
         button_layout.addWidget(btn_apply)
@@ -111,7 +120,7 @@ class View(QMainWindow):
         # --- Initial plot ---
         self.update_graph()
 
-    def on_apply_clicked(self):
+    def on_apply_clicked(self, settings):
         from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
 
         self.s11 = self.nano_window.s11
@@ -219,9 +228,15 @@ class View(QMainWindow):
             )
             self.nano_window.show()
 
+        settings.setValue("Tab1/SParameter", self.current_s_tab1)
+        settings.setValue("Tab1/GraphType1", selected_graph_left)
+
+        settings.setValue("Tab2/SParameter", self.current_s_tab2)
+        settings.setValue("Tab2/GraphType2", selected_graph_right)
+
+        settings.sync()
+
         self.close()
-
-
 
 if __name__ == "__main__":
     app = QApplication([])

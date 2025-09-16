@@ -44,12 +44,12 @@ def create_tab1(self):
     graphic_type_selector.setStyleSheet("color: white;")
     type_layout = QVBoxLayout()
     self.radio_buttons_tab1 = {}  # <-- corregido
-    for option in ["Diagrama de Smith", "Modulo", "Fase"]:
+    for option in ["Smith Diagram", "Magnitude", "Phase"]:
         rb = QRadioButton(option)
         rb.setStyleSheet("color: white;")
         type_layout.addWidget(rb)
         self.radio_buttons_tab1[option] = rb  # <-- corregido
-    self.radio_buttons_tab1["Diagrama de Smith"].setChecked(True)
+    self.radio_buttons_tab1["Smith Diagram"].setChecked(True)
     graphic_type_selector.setLayout(type_layout)
     left_layout.addWidget(graphic_type_selector)
 
@@ -78,7 +78,7 @@ def create_tab1(self):
     tab1_widget.setLayout(tab1_container)
 
     self.current_s_tab1 = "S11"
-    self.current_graph_tab1 = "Diagrama de Smith"
+    self.current_graph_tab1 = "Smith Diagram"
 
     # --- Función update_graph local ---
     def update_graph():
@@ -86,16 +86,17 @@ def create_tab1(self):
         ax.legend().remove()
 
         self.current_s_tab1 = "S11" if self.radio_s_tab1["S11"].isChecked() else "S21"
-        data = self.s11 if self.current_s_tab1 == "S11" else self.s21
+        #data = self.s11 if self.current_s_tab1 == "S11" else self.s21
+        data = np.array([])
 
-        if self.radio_buttons_tab1["Diagrama de Smith"].isChecked():
-            self.current_graph_tab1 = "Diagrama de Smith"
+        if self.radio_buttons_tab1["Smith Diagram"].isChecked():
+            self.current_graph_tab1 = "Smith Diagram"
             ntw = rf.Network(frequency=self.freqs, s=data[:, np.newaxis, np.newaxis], z0=50)
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
             ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
-        elif self.radio_buttons_tab1["Modulo"].isChecked():
-            self.current_graph_tab1 = "Modulo"
+        elif self.radio_buttons_tab1["Magnitude"].isChecked():
+            self.current_graph_tab1 = "Magnitude"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab1)
             ax.set_xlabel("Frequency [MHz]")
@@ -109,8 +110,8 @@ def create_tab1(self):
             ax.spines['left'].set_linewidth(0.7)
             
 
-        elif self.radio_buttons_tab1["Fase"].isChecked():
-            self.current_graph_tab1 = "Fase"
+        elif self.radio_buttons_tab1["Phase"].isChecked():
+            self.current_graph_tab1 = "Phase"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab1)
             ax.set_xlabel("Frequency [MHz]")
@@ -170,12 +171,12 @@ def create_tab2(self):
     graphic_type_selector.setStyleSheet("color: white;")
     type_layout = QVBoxLayout()
     self.radio_buttons_tab2 = {}
-    for option in ["Diagrama de Smith", "Modulo", "Fase"]:
+    for option in ["Smith Diagram", "Magnitude", "Phase"]:
         rb = QRadioButton(option)
         rb.setStyleSheet("color: white;")
         type_layout.addWidget(rb)
         self.radio_buttons_tab2[option] = rb
-    self.radio_buttons_tab2["Diagrama de Smith"].setChecked(True)
+    self.radio_buttons_tab2["Smith Diagram"].setChecked(True)
     graphic_type_selector.setLayout(type_layout)
     right_layout2.addWidget(graphic_type_selector)
 
@@ -204,23 +205,25 @@ def create_tab2(self):
     tab2_widget.setLayout(tab2_container)
 
     self.current_s_tab2 = "S11"
-    self.current_graph_tab2 = "Modulo"
+    self.current_graph_tab2 = "Magnitude"
 
     def update_graph():
         ax.clear()
         ax.legend().remove()
 
         self.current_s_tab2 = "S11" if self.radio_s_tab2["S11"].isChecked() else "S21"
-        data = self.s11 if self.current_s_tab2 == "S11" else self.s21
+        #data = self.s11 if self.current_s_tab2 == "S11" else self.s21
 
-        if self.radio_buttons_tab2["Diagrama de Smith"].isChecked():  
-            self.current_graph_tab2 = "Diagrama de Smith"
+        data = np.array([])
+
+        if self.radio_buttons_tab2["Smith Diagram"].isChecked():  
+            self.current_graph_tab2 = "Smith Diagram"
             ntw = rf.Network(frequency=self.freqs, s=data[:, np.newaxis, np.newaxis], z0=50)
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
             ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab2], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
-        elif self.radio_buttons_tab2["Modulo"].isChecked(): 
-            self.current_graph_tab2 = "Modulo"
+        elif self.radio_buttons_tab2["Magnitude"].isChecked(): 
+            self.current_graph_tab2 = "Magnitude"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab2)
             ax.set_xlabel("Frequency [MHz]")
@@ -233,8 +236,8 @@ def create_tab2(self):
             ax.spines['left'].set_color('grey')      
             ax.spines['left'].set_linewidth(0.7)
             
-        elif self.radio_buttons_tab2["Fase"].isChecked(): 
-            self.current_graph_tab2 = "Fase"
+        elif self.radio_buttons_tab2["Phase"].isChecked(): 
+            self.current_graph_tab2 = "Phase"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab2)
             ax.set_xlabel("Frequency [MHz]")

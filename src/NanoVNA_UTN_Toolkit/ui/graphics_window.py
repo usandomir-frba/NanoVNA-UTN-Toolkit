@@ -6,7 +6,7 @@ import sys
 import logging
 import numpy as np
 import skrf as rf
-from PySide6.QtCore import QTimer, QThread, Qt
+from PySide6.QtCore import QTimer, QThread, Qt, QSettings
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget,
     QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout,
@@ -27,8 +27,40 @@ except ImportError as e:
     sys.exit(1)
 
 class NanoVNAGraphics(QMainWindow):
-    def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Diagrama de Smith", left_s_param="S11"):
+    def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11"):
         super().__init__()
+
+        project_root = os.path.dirname(os.path.dirname(__file__))
+        graphics_windows_dir = os.path.join(project_root, "graphics_windows")
+        ini_dir = os.path.join(graphics_windows_dir, "ini")
+        ruta_ini = os.path.join(ini_dir, "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+        #settings.clear()  # borra valores cacheados (ten cuidado)
+        #settings.sync()
+
+        with open(ruta_ini, "r") as f:
+            print(f.read())
+
+        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram", type=str)
+        s_param_tab1   = settings.value("Tab1/SParameter", "S11", type=str)
+
+        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude", type=str)
+        s_param_tab2   = settings.value("Tab2/SParameter", "S21", type=str)
+
+        print("Using INI file at:", ruta_ini)
+
+        print("INI values read:")
+        print(f"Tab1 -> GraphType: {graph_type_tab1}, SParameter: {s_param_tab1}")
+        print(f"Tab2 -> GraphType: {graph_type_tab2}, SParameter: {s_param_tab2}")
+
+        print("Reading INI from:", ruta_ini)
+        print("Keys found:", settings.allKeys())
+
+        self.left_graph_type  = graph_type_tab1
+        self.left_s_param     = s_param_tab1
+        self.right_graph_type = graph_type_tab2
+        self.right_s_param    = s_param_tab2
 
         # --- Marker visibility flags ---
         self.show_marker1 = True
@@ -50,6 +82,22 @@ class NanoVNAGraphics(QMainWindow):
 
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
+
+        light_dark_mode = edit_menu.addAction("Light Mode 🔆")
+
+        self.is_dark_mode = False  
+
+        def toggle_menu_dark_mode():
+            if self.is_dark_mode:
+                light_dark_mode.setText("Light Mode 🔆")
+                self.is_dark_mode = False
+                #toggle_dark_mode(tabs, force_light=True)
+            else:
+                light_dark_mode.setText("Dark Mode 🌙")
+                self.is_dark_mode = True
+                #toggle_dark_mode(tabs, force_light=True)
+
+        light_dark_mode.triggered.connect(toggle_menu_dark_mode)
 
         choose_graphics = view_menu.addAction("Graphics")
         choose_graphics.triggered.connect(self.open_view)  
@@ -103,8 +151,8 @@ class NanoVNAGraphics(QMainWindow):
             create_left_panel(
                 S_data=S11, 
                 freqs=freqs, 
-                graph_type="Diagrama de Smith", 
-                s_param="S11", 
+                graph_type=graph_type_tab1, 
+                s_param=s_param_tab1, 
                 tracecolor="red",
                 markercolor="blue",
                 linewidth=2,
@@ -117,8 +165,8 @@ class NanoVNAGraphics(QMainWindow):
             create_right_panel(
                 S_data=S11, 
                 freqs=freqs, 
-                graph_type="Modulo", 
-                s_param="S11",
+                graph_type=graph_type_tab2, 
+                s_param=s_param_tab2,
                 tracecolor="red",
                 markercolor="blue",
                 linewidth=2  ,
