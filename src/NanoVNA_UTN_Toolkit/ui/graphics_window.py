@@ -6,6 +6,12 @@ import sys
 import logging
 import numpy as np
 import skrf as rf
+
+# Suppress verbose matplotlib logging
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
 from PySide6.QtCore import QTimer, QThread, Qt, QSettings
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget,
@@ -27,8 +33,24 @@ except ImportError as e:
     sys.exit(1)
 
 class NanoVNAGraphics(QMainWindow):
-    def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11"):
+    def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None):
         super().__init__()
+        
+        # Store VNA device reference
+        self.vna_device = vna_device
+        
+        # Log graphics window initialization
+        logging.info("[graphics_window.__init__] Initializing graphics window")
+        if vna_device:
+            device_type = type(vna_device).__name__
+            logging.info(f"[graphics_window.__init__] VNA device provided: {device_type}")
+        else:
+            logging.warning("[graphics_window.__init__] No VNA device provided")
+            
+        logging.info(f"[graphics_window.__init__] S11 data: {'Available' if s11 is not None else 'None'}")
+        logging.info(f"[graphics_window.__init__] S21 data: {'Available' if s21 is not None else 'None'}")
+        logging.info(f"[graphics_window.__init__] Frequency data: {'Available' if freqs is not None else 'None'}")
+        logging.info(f"[graphics_window.__init__] Graph configuration - Type: {left_graph_type}, S-param: {left_s_param}")
 
         actual_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
@@ -98,7 +120,9 @@ class NanoVNAGraphics(QMainWindow):
         choose_graphics = view_menu.addAction("Graphics")
         choose_graphics.triggered.connect(self.open_view)  
 
-        sweep_menu.addAction("Options")
+        sweep_options = sweep_menu.addAction("Options")
+        sweep_options.triggered.connect(lambda: self.open_sweep_options())
+        
         calibrate_option = sweep_menu.addAction("Calibration Wizard")
 
         calibrate_option.triggered.connect(lambda: self.open_calibration_wizard())
@@ -234,6 +258,59 @@ class NanoVNAGraphics(QMainWindow):
         self.wizard_window.show()
         self.close()
 
+    # =================== SWEEP OPTIONS FUNCTION ==================
+
+    def open_sweep_options(self):
+        from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
+        
+        # Log sweep options opening
+        logging.info("[graphics_window.open_sweep_options] Opening sweep options window")
+        
+        # Try to get the current VNA device (this is a placeholder for now)
+        vna_device = self.get_current_vna_device()
+        
+        # Log device information being passed to sweep options
+        if vna_device:
+            device_type = type(vna_device).__name__
+            logging.info(f"[graphics_window.open_sweep_options] Device found: {device_type}")
+            if hasattr(vna_device, 'sweep_points_min') and hasattr(vna_device, 'sweep_points_max'):
+                logging.info(f"[graphics_window.open_sweep_options] Device sweep limits: {vna_device.sweep_points_min} to {vna_device.sweep_points_max}")
+            else:
+                logging.info("[graphics_window.open_sweep_options] Device has no sweep_points limits")
+        else:
+            logging.warning("[graphics_window.open_sweep_options] No VNA device available - using default limits")
+        
+        if not hasattr(self, 'sweep_options_window') or self.sweep_options_window is None:
+            logging.info("[graphics_window.open_sweep_options] Creating new sweep options window")
+            self.sweep_options_window = SweepOptionsWindow(self, vna_device)
+        else:
+            logging.info("[graphics_window.open_sweep_options] Reusing existing sweep options window")
+            
+        self.sweep_options_window.show()
+        self.sweep_options_window.raise_()
+        self.sweep_options_window.activateWindow()
+        
+    def get_current_vna_device(self):
+        """Try to get the current VNA device."""
+        logging.info("[graphics_window.get_current_vna_device] Searching for current VNA device")
+        
+        try:
+            # Check if we have device stored in this graphics window
+            if hasattr(self, 'vna_device') and self.vna_device is not None:
+                device_type = type(self.vna_device).__name__
+                logging.info(f"[graphics_window.get_current_vna_device] Found stored device: {device_type}")
+                return self.vna_device
+                
+            # Check if we can access the connection window device
+            # This is a more advanced implementation for future development
+            logging.warning("[graphics_window.get_current_vna_device] No VNA device found in graphics window")
+            logging.warning("[graphics_window.get_current_vna_device] Device wasn't passed from previous window")
+            
+            return None
+        except Exception as e:
+            logging.error(f"[graphics_window.get_current_vna_device] Error getting current VNA device: {e}")
+            return None
+
     # =================== RIGHT CLICK ==================
 
     def contextMenuEvent(self, event):
@@ -284,7 +361,7 @@ class NanoVNAGraphics(QMainWindow):
 
     # =================== TOGGLE MARKERS==================
 
-    def clear_freq_edit(edit_widget):
+    def clear_freq_edit(self, edit_widget):
         edit_widget.blockSignals(True) 
         edit_widget.setText("--")
         edit_widget.setFixedWidth(edit_widget.fontMetrics().horizontalAdvance(edit_widget.text()) + 4)

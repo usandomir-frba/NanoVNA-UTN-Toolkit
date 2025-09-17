@@ -6,6 +6,12 @@ import sys
 import logging
 import numpy as np
 import skrf as rf
+
+# Suppress verbose matplotlib logging
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
 from PySide6.QtCore import QTimer, QThread, Qt
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton,
@@ -28,8 +34,19 @@ except ImportError as e:
     sys.exit(1)
 
 class NanoVNAWelcome(QMainWindow):
-    def __init__(self, s11=None, freqs=None):
+    def __init__(self, s11=None, freqs=None, vna_device=None):
         super().__init__()
+        
+        # Store VNA device reference
+        self.vna_device = vna_device
+        
+        # Log welcome window initialization
+        logging.info("[welcome_windows.__init__] Initializing welcome window")
+        if vna_device:
+            device_type = type(vna_device).__name__
+            logging.info(f"[welcome_windows.__init__] VNA device provided: {device_type}")
+        else:
+            logging.warning("[welcome_windows.__init__] No VNA device provided")
 
         # === Icon ===
         icon_paths = [
@@ -101,7 +118,16 @@ class NanoVNAWelcome(QMainWindow):
         main_layout.addLayout(graphics_selector_layout)
 
     def open_calibration_wizard(self):
-        self.welcome_windows = CalibrationWizard()
+        logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
+        
+        if self.vna_device:
+            device_type = type(self.vna_device).__name__
+            logging.info(f"[welcome_windows.open_calibration_wizard] Passing device {device_type} to calibration wizard")
+            self.welcome_windows = CalibrationWizard(self.vna_device)
+        else:
+            logging.warning("[welcome_windows.open_calibration_wizard] No device to pass to calibration wizard")
+            self.welcome_windows = CalibrationWizard()
+            
         self.welcome_windows.show()
         self.close() 
 

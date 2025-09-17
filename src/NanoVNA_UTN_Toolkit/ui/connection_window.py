@@ -320,7 +320,16 @@ class NanoVNAStatusApp(QMainWindow):
             self.log_message("Stopping device search...")
 
     def open_welcome_window(self):
-        self.welcome_windows = NanoVNAWelcome()
+        """Open the welcome window."""
+        # Log device transfer to welcome window
+        if self.vna:
+            device_type = type(self.vna).__name__
+            self.log_message(f"[connection_window.open_welcome_window] Device {device_type} available - passing to welcome window")
+            self.welcome_windows = NanoVNAWelcome(vna_device=self.vna)
+        else:
+            self.log_message("[connection_window.open_welcome_window] No device connected - using placeholder mode")
+            self.welcome_windows = NanoVNAWelcome()
+            
         self.welcome_windows.show()
         self.close() 
 
@@ -357,12 +366,23 @@ class NanoVNAStatusApp(QMainWindow):
         # Enable disconnect button
         self.disconnect_btn.setEnabled(True)
         
-        # Log success
-        board = device_info.get('board', 'NanoVNA')
+        # Enhanced logging for device detection
+        board = device_info.get('board', 'Unknown')
         version = device_info.get('version', 'Unknown')
-        self.log_message(f"Connection successful: {board}")
-        self.log_message(f"Version: {version}")
-        self.log_message("Automatic search paused - device connected")
+        device_type = type(vna).__name__ if vna else 'Unknown'
+        
+        self.log_message(f"[connection_window.on_device_found] Device connected: {board} (Type: {device_type})")
+        self.log_message(f"Device Details - Version: {version}")
+        
+        # Log device capabilities if available
+        if hasattr(vna, 'sweep_points_min') and hasattr(vna, 'sweep_points_max'):
+            self.log_message(f"Sweep Points Range: {vna.sweep_points_min} - {vna.sweep_points_max}")
+        
+        # Log device attributes for debugging
+        self.log_message(f"Device Object: {device_type}")
+        self.log_message(f"Device Attributes: {[attr for attr in dir(vna) if not attr.startswith('_')][:10]}...")
+        
+        self.log_message("Connection successful - Automatic search paused")
         
         # Log full device info if available
         if device_info.get('full_text'):

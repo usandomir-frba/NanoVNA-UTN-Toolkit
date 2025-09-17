@@ -24,8 +24,19 @@ except ImportError as e:
     sys.exit(1)
 
 class CalibrationWizard(QMainWindow):
-    def __init__(self):
+    def __init__(self, vna_device=None):
         super().__init__()
+        
+        # Store VNA device reference
+        self.vna_device = vna_device
+        
+        # Log wizard initialization
+        logging.info("[wizard_windows.__init__] Initializing calibration wizard")
+        if vna_device:
+            device_type = type(vna_device).__name__
+            logging.info(f"[wizard_windows.__init__] VNA device provided: {device_type}")
+        else:
+            logging.warning("[wizard_windows.__init__] No VNA device provided")
 
         # === Icon ===
 
@@ -61,6 +72,16 @@ class CalibrationWizard(QMainWindow):
 
     def next_step(self):
         # Implement the logic for the next step in the calibration wizard
-        self.graphics_windows = NanoVNAGraphics()
+        logging.info("[wizard_windows.next_step] Moving to graphics window")
+        
+        if self.vna_device:
+            device_type = type(self.vna_device).__name__
+            logging.info(f"[wizard_windows.next_step] Passing device {device_type} to graphics window")
+            # Pass the VNA device to graphics window constructor
+            self.graphics_windows = NanoVNAGraphics(vna_device=self.vna_device)
+        else:
+            logging.warning("[wizard_windows.next_step] No device to pass to graphics window")
+            self.graphics_windows = NanoVNAGraphics()
+        
         self.graphics_windows.show()
         self.close() 

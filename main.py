@@ -26,14 +26,30 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Custom formatter to shorten logger names
+class ShortNameFormatter(logging.Formatter):
+    def format(self, record):
+        # Shorten the logger name by removing 'NanoVNA_UTN_Toolkit.' prefix
+        if record.name.startswith('NanoVNA_UTN_Toolkit.'):
+            record.name = record.name[len('NanoVNA_UTN_Toolkit.'):]
+        return super().format(record)
 
-# Enable debug logging for specific modules
-logging.getLogger('NanoVNA_UTN_Toolkit.compat').setLevel(logging.DEBUG)
-logging.getLogger('NanoVNA_UTN_Toolkit.Hardware.VNA').setLevel(logging.DEBUG)
-logging.getLogger('NanoVNA_UTN_Toolkit.Hardware.Hardware').setLevel(logging.INFO)  # Less verbose for Hardware
+# Configure logging with custom formatter
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(ShortNameFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(handler)
+logging.getLogger().setLevel(logging.INFO)
+
+# Suppress verbose logs from matplotlib font manager
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
+# Enable debug logging for specific modules only when needed
+logging.getLogger('NanoVNA_UTN_Toolkit.compat').setLevel(logging.INFO)
+logging.getLogger('NanoVNA_UTN_Toolkit.Hardware.VNA').setLevel(logging.INFO)
+logging.getLogger('NanoVNA_UTN_Toolkit.Hardware.Hardware').setLevel(logging.INFO)
 
 
 def run_app():
