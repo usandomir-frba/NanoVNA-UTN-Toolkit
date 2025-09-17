@@ -282,7 +282,15 @@ class NanoVNAGraphics(QMainWindow):
             )
 
         # =================== PANELS LAYOUT ===================
+
         panels_layout = QHBoxLayout()
+
+        while panels_layout.count():
+            item = panels_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+
         panels_layout.addWidget(self.left_panel, 1)
         panels_layout.addWidget(self.right_panel, 1)
         main_layout_vertical.addLayout(panels_layout)
@@ -296,55 +304,144 @@ class NanoVNAGraphics(QMainWindow):
         self._clear_all_marker_fields()
 
     def _clear_all_marker_fields(self):
-        """Clear all marker information fields and graphs to show empty state."""
-        logging.info("[graphics_window._clear_all_marker_fields] Clearing all marker fields and graphs for initial empty state")
-        
-        # Clear left panel marker fields
-        if hasattr(self, 'labels_left') and self.labels_left:
-            self.labels_left.get("freq", None) and self.labels_left["freq"].setText("--")
-            self.labels_left.get("val", None) and self.labels_left["val"].setText("S11: -- + j--")
-            self.labels_left.get("mag", None) and self.labels_left["mag"].setText("|S11|: --")
-            self.labels_left.get("phase", None) and self.labels_left["phase"].setText("Phase: --")
-            self.labels_left.get("z", None) and self.labels_left["z"].setText("Z: -- + j--")
-            self.labels_left.get("il", None) and self.labels_left["il"].setText("IL: --")
-            self.labels_left.get("vswr", None) and self.labels_left["vswr"].setText("VSWR: --")
+        """Clear marker values but keep all panels and labels intact."""
+        logging.info("[graphics_window._clear_all_marker_fields] Clearing marker values but keeping layout intact")
+
+        actual_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")
+        s_param_tab1    = settings.value("Tab1/SParameter", "S11")
+
+        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude")
+        s_param_tab2    = settings.value("Tab2/SParameter", "S11")
+
+        if graph_type_tab1 == "Smith Diagram":
+
+            # Left panel
+            if hasattr(self, 'labels_left') and self.labels_left:
+                self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
+                self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.left_s_param}: -- + j--")
+                self.labels_left.get("mag") and self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
+                self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
+                self.labels_left.get("z") and self.labels_left["z"].setText("Z: -- + j--")
+                self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
+                self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+
+            # Hide cursors
+            if hasattr(self, 'cursor_left') and self.cursor_left:
+                self.cursor_left.set_visible(False)
             
-        # Clear right panel marker fields  
-        if hasattr(self, 'labels_right') and self.labels_right:
-            self.labels_right.get("freq", None) and self.labels_right["freq"].setText("--")
-            self.labels_right.get("val", None) and self.labels_right["val"].setText("S21: -- + j--")
-            self.labels_right.get("mag", None) and self.labels_right["mag"].setText("|S21|: --")
-            self.labels_right.get("phase", None) and self.labels_right["phase"].setText("Phase: --")
-            self.labels_right.get("z", None) and self.labels_right["z"].setText("Z: -- + j--")
-            self.labels_right.get("il", None) and self.labels_right["il"].setText("IL: --")
-            self.labels_right.get("vswr", None) and self.labels_right["vswr"].setText("VSWR: --")
-            
-        # Hide cursors initially
-        if hasattr(self, 'cursor_left') and self.cursor_left:
-            self.cursor_left.set_visible(False)
-        if hasattr(self, 'cursor_right') and self.cursor_right:
-            self.cursor_right.set_visible(False)
-            
-        # Clear the actual plots to show empty state
-        if hasattr(self, 'ax_left') and self.ax_left:
-            self.ax_left.clear()
-            self.ax_left.text(0.5, 0.5, 'Waiting for sweep data...', 
-                             transform=self.ax_left.transAxes, 
-                             ha='center', va='center', fontsize=12, color='gray')
-            self.ax_left.set_title('S11 - No Data')
-            
-        if hasattr(self, 'ax_right') and self.ax_right:
-            self.ax_right.clear()
-            self.ax_right.text(0.5, 0.5, 'Waiting for sweep data...', 
-                              transform=self.ax_right.transAxes, 
-                              ha='center', va='center', fontsize=12, color='gray')
-            self.ax_right.set_title('S21 - No Data')
-            
-        # Force canvas redraw
-        if hasattr(self, 'canvas_left') and self.canvas_left:
-            self.canvas_left.draw()
-        if hasattr(self, 'canvas_right') and self.canvas_right:
-            self.canvas_right.draw()
+            # Clear axes but keep empty plot with message
+            if hasattr(self, 'ax_left') and self.ax_left:
+                #self.ax_left.clear()
+                self.ax_left.text(0.5, -0.1, 'Waiting for sweep data...',
+                                transform=self.ax_left.transAxes,
+                                ha='center', va='center', fontsize=12, color='gray')
+
+                for line in self.ax_left.lines:
+                    line.remove()
+
+                """if self.cursor_left:
+                    self.cursor_left.set_visible(False)"""
+
+                #self.slider_left.ax.set_visible(False)
+
+                self.ax_left.grid(False)
+
+            # Redraw
+            if hasattr(self, 'canvas_left') and self.canvas_left:
+                self.canvas_left.draw()
+           
+        if graph_type_tab2 == "Smith Diagram":
+
+            # Right panel
+            if hasattr(self, 'labels_right') and self.labels_right:
+                self.labels_right.get("freq") and self.labels_right["freq"].setText("--")
+                self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.right_s_param}: -- + j--")
+                self.labels_right.get("mag") and self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
+                self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
+                self.labels_right.get("z") and self.labels_right["z"].setText("Z: -- + j--")
+                self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
+                self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+
+
+            if hasattr(self, 'cursor_right') and self.cursor_right:
+                self.cursor_right.set_visible(False)
+
+            if hasattr(self, 'ax_right') and self.ax_right:
+                self.ax_right.text(0.5, -0.1, 'Waiting for sweep data...',
+                                transform=self.ax_right.transAxes,
+                                ha='center', va='center', fontsize=12, color='gray')
+
+                for line in self.ax_right.lines:
+                    line.remove()
+
+                self.ax_right.grid(False)
+
+            if hasattr(self, 'canvas_right') and self.canvas_right:
+                self.canvas_right.draw()
+
+        if graph_type_tab1 == "Magnitude" or graph_type_tab1 == "Phase":
+            # Left panel
+            if hasattr(self, 'labels_left') and self.labels_left:
+                self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
+                self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.left_s_param}: -- + j--")
+                self.labels_left.get("mag") and self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
+                self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
+                self.labels_left.get("z") and self.labels_left["z"].setText("Z: -- + j--")
+                self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
+                self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+
+            # Hide cursors
+            if hasattr(self, 'cursor_left') and self.cursor_left:
+                self.cursor_left.set_visible(False)
+
+            # Clear axes but keep empty plot with message
+            if hasattr(self, 'ax_left') and self.ax_left:
+                self.ax_left.text(0.5, 0.5, 'Waiting for sweep data...',
+                                transform=self.ax_left.transAxes,
+                                ha='center', va='center', fontsize=12, color='gray')
+
+                for line in self.ax_left.lines:
+                    line.remove()
+
+                self.ax_left.grid(False)
+
+            # Redraw
+            if hasattr(self, 'canvas_left') and self.canvas_left:
+                self.canvas_left.draw()
+
+        if graph_type_tab2 == "Magnitude" or graph_type_tab2 == "Phase":
+
+            # Right panel
+            if hasattr(self, 'labels_right') and self.labels_right:
+                self.labels_right.get("freq") and self.labels_right["freq"].setText("--")
+                self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.right_s_param}: -- + j--")
+                self.labels_right.get("mag") and self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
+                self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
+                self.labels_right.get("z") and self.labels_right["z"].setText("Z: -- + j--")
+                self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
+                self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+
+            if hasattr(self, 'cursor_right') and self.cursor_right:
+                self.cursor_right.set_visible(False)
+
+            if hasattr(self, 'ax_right') and self.ax_right:
+                self.ax_right.text(0.5, 0.5, 'Waiting for sweep data...',
+                                transform=self.ax_right.transAxes,
+                                ha='center', va='center', fontsize=12, color='gray')
+
+                for line in self.ax_right.lines:
+                    line.remove()
+
+                self.ax_right.grid(False)
+
+            if hasattr(self, 'canvas_right') and self.canvas_right:
+                self.canvas_right.draw()
+
 
     def _reset_markers_after_sweep(self):
         """Reset markers and all marker-dependent information after a sweep completes."""
@@ -524,6 +621,9 @@ class NanoVNAGraphics(QMainWindow):
                     new_cursor = self.ax_right.plot(x_val, y_val, 'o', color='red', markersize=5, markeredgecolor='darkred', markeredgewidth=2)[0]
                     self.cursor_right = new_cursor
                     
+                    if hasattr(self, 'slider_right') and self.slider_right:
+                        self.slider_right.on_changed(lambda val: self.update_right_cursor(int(val), from_slider=True))
+
                     # Also update in markers list if it exists
                     if hasattr(self, 'markers') and self.markers:
                         for i, marker in enumerate(self.markers):
@@ -552,12 +652,20 @@ class NanoVNAGraphics(QMainWindow):
                                         val_complex = s_data[index]
                                         freq = self.freqs[index]
                                         magnitude = abs(val_complex)
-                                        
-                                        # Use magnitude in dB for right cursor (typical for magnitude plots)
+
                                         magnitude_db = 20 * np.log10(magnitude) if magnitude > 0 else -120
-                                        freq_mhz = float(freq / 1e6)  # Convert to MHz as float
-                                        magnitude_db_float = float(magnitude_db)  # Convert to float
-                                        self.cursor_right.set_data([freq_mhz], [magnitude_db_float])
+                                        freq_mhz = float(freq / 1e6)  
+                                        magnitude_db_float = float(magnitude_db)  
+
+                                        new_cursor = self.ax_right.plot(
+                                            [freq_mhz], [magnitude_db],
+                                            'o', color='red', markersize=5,
+                                            markeredgecolor='darkred', markeredgewidth=2
+                                        )[0]
+                                        self.cursor_right = new_cursor
+                                        
+                                        
+                                        #self.cursor_right.set_data([freq_mhz], [magnitude_db_float])
                                         
                                         # Force redraw
                                         if hasattr(self, 'canvas_right') and self.canvas_right:
@@ -584,7 +692,6 @@ class NanoVNAGraphics(QMainWindow):
                 print(f"Error forcing cursor_right to ax_right: {e}")
 
 
-        
     def _clear_marker_fields_only(self):
         """Clear only marker information fields without affecting the graphs."""
         logging.info("[graphics_window._clear_marker_fields_only] Clearing marker information fields only")
@@ -724,7 +831,6 @@ class NanoVNAGraphics(QMainWindow):
         if file_path_right:
             self.fig_right.savefig(file_path_right)
 
-        # Restaurar visibilidad original de cursors y sliders
         if self.cursor_left is not None and hasattr(self.cursor_left, 'set_visible'):
             self.cursor_left.set_visible(marker1_visible)
         if self.cursor_right is not None and hasattr(self.cursor_right, 'set_visible'):
@@ -1235,7 +1341,7 @@ class NanoVNAGraphics(QMainWindow):
             # Clear existing plots
             self.ax_left.clear()
             self.ax_right.clear()
-            
+
             # Recreate left panel plot
             logging.info(f"[graphics_window.update_plots_with_new_data] Recreating left plot: {graph_type_tab1} - {s_param_tab1}")
             self._recreate_single_plot(
@@ -1291,6 +1397,7 @@ class NanoVNAGraphics(QMainWindow):
             
             if graph_type == "Smith Diagram":
                 # Create network object for Smith chart
+                
                 ntw = rf.Network(frequency=freqs, s=s_data[:, np.newaxis, np.newaxis], z0=50)
                 ntw.plot_s_smith(ax=ax, draw_labels=True)
                 ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], 
@@ -1333,7 +1440,7 @@ class NanoVNAGraphics(QMainWindow):
                 
             # Set axis properties
             ax.tick_params(axis='both', which='major', labelsize=8)
-            fig.tight_layout()
+            #fig.tight_layout()
             
         except Exception as e:
             logging.error(f"[graphics_window._recreate_single_plot] Error recreating plot: {e}")

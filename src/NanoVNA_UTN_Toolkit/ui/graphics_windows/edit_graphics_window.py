@@ -118,6 +118,18 @@ class EditGraphics(QMainWindow):
                      line_width=2, line_width2=2, marker_size=2, marker_size2=2):
         from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
 
+        settings.setValue("Graphic1/TraceColor", trace_color)
+        settings.setValue("Graphic1/MarkerColor", marker_color)
+        settings.setValue("Graphic1/TraceWidth", line_width)
+        settings.setValue("Graphic1/MarkerWidth", marker_size)
+
+        settings.setValue("Graphic2/TraceColor", trace_color2)
+        settings.setValue("Graphic2/MarkerColor", marker_color2)
+        settings.setValue("Graphic2/TraceWidth", line_width2)
+        settings.setValue("Graphic2/MarkerWidth", marker_size2)
+
+        settings.sync()
+
         ui_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
 
@@ -133,28 +145,23 @@ class EditGraphics(QMainWindow):
         self.s21 = self.nano_window.s21
         self.freqs = self.nano_window.freqs
 
-        # --- Layout principal donde están los panels ---
-        panels_layout = self.nano_window.centralWidget().layout().itemAt(0).layout()  # HBox
+        panels_layout = self.nano_window.centralWidget().layout().itemAt(1).layout()  # HBox
 
-        # --- Desconectar sliders viejos para evitar errores de Qt ---
         if hasattr(self.nano_window, "markers"):
                 for marker in self.nano_window.markers:
                     slider = marker["slider"]
                     slider.disconnect_events()
 
-        # --- Remover y borrar paneles antiguos ---
-        old_left_item = panels_layout.takeAt(0)
-        if old_left_item and old_left_item.widget():
-            old_left_item.widget().deleteLater()
-
-        old_right_item = panels_layout.takeAt(0)
-        if old_right_item and old_right_item.widget():
-            old_right_item.widget().deleteLater()
+        while panels_layout.count():
+                item = panels_layout.takeAt(0)  
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
 
         # --- Crear nuevo panel izquierdo ---
         self.nano_window.left_panel, self.nano_window.fig_left, self.nano_window.ax_left, \
         self.nano_window.canvas_left, self.nano_window.slider_left, self.nano_window.cursor_left, \
-        self.nano_window.labels_left, self.nano_window.update_cursor_left = \
+        self.nano_window.labels_left, self.nano_window.update_cursor_left, self.nano_window.update_left_data = \
             create_left_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
@@ -169,7 +176,7 @@ class EditGraphics(QMainWindow):
         # --- Crear nuevo panel derecho ---
         self.nano_window.right_panel, self.nano_window.fig_right, self.nano_window.ax_right, \
         self.nano_window.canvas_right, self.nano_window.slider_right, self.nano_window.cursor_right, \
-        self.nano_window.labels_right, self.nano_window.update_cursor_right = \
+        self.nano_window.labels_right, self.nano_window.update_cursor_right, self.nano_window.update_right_data = \
             create_right_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
@@ -180,6 +187,8 @@ class EditGraphics(QMainWindow):
                 linewidth=line_width2,
                 markersize=marker_size2    
             )
+
+        self.nano_window.update_plots_with_new_data()
 
         self.nano_window.markers = [
             {
@@ -203,18 +212,6 @@ class EditGraphics(QMainWindow):
         # --- Redibujar ---
         self.nano_window.canvas_left.draw_idle()
         self.nano_window.canvas_right.draw_idle()
-
-        settings.setValue("Graphic1/TraceColor", trace_color)
-        settings.setValue("Graphic1/MarkerColor", marker_color)
-        settings.setValue("Graphic1/TraceWidth", line_width)
-        settings.setValue("Graphic1/MarkerWidth", marker_size)
-
-        settings.setValue("Graphic2/TraceColor", trace_color2)
-        settings.setValue("Graphic2/MarkerColor", marker_color2)
-        settings.setValue("Graphic2/TraceWidth", line_width2)
-        settings.setValue("Graphic2/MarkerWidth", marker_size2)
-
-        settings.sync()
 
         self.close()
 

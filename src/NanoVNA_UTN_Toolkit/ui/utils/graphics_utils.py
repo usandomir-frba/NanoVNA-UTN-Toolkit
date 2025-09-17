@@ -69,7 +69,7 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
                       markersize=5, marker_visible=True):
                       
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
-    
+
     if S_data is None:
         phase = -2*np.pi*freqs/1e8
         S_data = 0.5 * np.exp(1j*phase)
@@ -82,8 +82,9 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
 
     # --- Figura ---
     if graph_type == "Smith Diagram":
-        fig, ax = plt.subplots(figsize=(5,5))
-        fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.45)
+
+        fig, ax = plt.subplots(figsize=(10,10))  
+        fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
@@ -101,11 +102,13 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     elif graph_type == "Magnitude":
+
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
+
         ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel(f"|{s_param}|")
@@ -114,11 +117,13 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     elif graph_type == "Phase":
+
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
+
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param)
@@ -302,7 +307,6 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         slider.valtext.set_visible(False)  # Hide the value text
         slider.on_changed(lambda val: update_cursor(int(val), from_slider=True))
 
-    # --- Conectar edición manual ---
     def freq_edited():
         try:
             freq_hz = parse_frequency_input(edit_value.text())
@@ -314,7 +318,6 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
             pass
     edit_value.editingFinished.connect(freq_edited)
 
-    # --- Inicializar ---
     update_cursor(0)
 
     # --- Cursor draggable ---
@@ -381,8 +384,8 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
 
     # --- Figura ---
     if graph_type == "Smith Diagram":
-        fig, ax = plt.subplots(figsize=(5,5))
-        fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.45)
+        fig, ax = plt.subplots(figsize=(5,5))  
+        fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)

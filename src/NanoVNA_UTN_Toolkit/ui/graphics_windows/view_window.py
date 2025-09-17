@@ -132,6 +132,12 @@ class View(QMainWindow):
         trace_size2 = int(settings.value("Graphic2/TraceWidth", 2))
         marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
 
+        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")
+        s_param_tab1    = settings.value("Tab1/SParameter", "S11")
+
+        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude")
+        s_param_tab2    = settings.value("Tab2/SParameter", "S11")
+
         self.s11 = self.nano_window.s11
         self.s21 = self.nano_window.s21
         self.freqs = self.nano_window.freqs
@@ -142,28 +148,34 @@ class View(QMainWindow):
         selected_graph_left = self.current_graph_tab1
         selected_graph_right = self.current_graph_tab2
 
+        settings.setValue("Tab1/SParameter", self.current_s_tab1)
+        settings.setValue("Tab1/GraphType1", selected_graph_left)
+
+        settings.setValue("Tab2/SParameter", self.current_s_tab2)
+        settings.setValue("Tab2/GraphType2", selected_graph_right)
+
+        settings.sync()
+
         if self.nano_window is not None:
-            panels_layout = self.nano_window.centralWidget().layout().itemAt(0).layout()  # HBox
+            panels_layout = self.nano_window.centralWidget().layout().itemAt(1).layout()  # HBox
 
             if hasattr(self.nano_window, "markers"):
                 for marker in self.nano_window.markers:
                     slider = marker["slider"]
                     slider.disconnect_events()
 
-            old_left_panel = panels_layout.takeAt(0)
-            if old_left_panel is not None and old_left_panel.widget() is not None:
-                old_left_panel.widget().deleteLater()
-
-            old_right_panel = panels_layout.takeAt(0)
-            if old_right_panel is not None and old_right_panel.widget() is not None:
-                old_right_panel.widget().deleteLater()
+            while panels_layout.count():
+                item = panels_layout.takeAt(0)  
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
 
             self.nano_window.left_panel, self.nano_window.fig_left, self.nano_window.ax_left, \
             self.nano_window.canvas_left, self.nano_window.slider_left, self.nano_window.cursor_left, \
-            self.nano_window.labels_left, self.nano_window.update_cursor_left = \
+            self.nano_window.labels_left, self.nano_window.update_cursor_left, self.nano_window.update_left_data = \
                 create_left_panel(
-                    S_data=data_left,
-                    freqs=self.freqs,
+                    S_data=None,  # Force empty 
+                    freqs=None,   # Force empty
                     graph_type=selected_graph_left,
                     s_param=self.current_s_tab1,
                     tracecolor=trace_color1,
@@ -174,10 +186,10 @@ class View(QMainWindow):
 
             self.nano_window.right_panel, self.nano_window.fig_right, self.nano_window.ax_right, \
             self.nano_window.canvas_right, self.nano_window.slider_right, self.nano_window.cursor_right, \
-            self.nano_window.labels_right, self.nano_window.update_cursor_right = \
+            self.nano_window.labels_right, self.nano_window.update_cursor_right, self.nano_window.update_right_data = \
                 create_right_panel(
-                    S_data=data_right,
-                    freqs=self.freqs,
+                    S_data=None,  # Force empty 
+                    freqs=None,   # Force empty
                     graph_type=selected_graph_right,
                     s_param=self.current_s_tab2,
                     tracecolor=trace_color2,
@@ -185,6 +197,8 @@ class View(QMainWindow):
                     linewidth=trace_size2,
                     markersize=marker_size2
                 )
+
+            self.nano_window.update_plots_with_new_data()
 
             self.nano_window.markers = [
                 {
@@ -229,14 +243,6 @@ class View(QMainWindow):
                 right_s_param=self.current_s_tab2
             )
             self.nano_window.show()
-
-        settings.setValue("Tab1/SParameter", self.current_s_tab1)
-        settings.setValue("Tab1/GraphType1", selected_graph_left)
-
-        settings.setValue("Tab2/SParameter", self.current_s_tab2)
-        settings.setValue("Tab2/GraphType2", selected_graph_right)
-
-        settings.sync()
 
         self.close()
 
