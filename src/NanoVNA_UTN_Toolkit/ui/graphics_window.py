@@ -255,7 +255,7 @@ class NanoVNAGraphics(QMainWindow):
 
         # =================== LEFT PANEL (EMPTY) ===================
         self.left_panel, self.fig_left, self.ax_left, self.canvas_left, \
-        self.slider_left, self.cursor_left, self.labels_left, self.update_cursor, = \
+        self.slider_left, self.cursor_left, self.labels_left, self.update_cursor, self.update_left_data = \
             create_left_panel(
                 S_data=None,  # Force empty 
                 freqs=None,   # Force empty
@@ -269,7 +269,7 @@ class NanoVNAGraphics(QMainWindow):
 
         # =================== RIGHT PANEL (EMPTY) ===================
         self.right_panel, self.fig_right, self.ax_right, self.canvas_right, \
-        self.slider_right, self.cursor_right, self.labels_right, self.update_right_cursor = \
+        self.slider_right, self.cursor_right, self.labels_right, self.update_right_cursor, self.update_right_data = \
             create_right_panel(
                 S_data=None,  # Force empty
                 freqs=None,   # Force empty
@@ -351,44 +351,34 @@ class NanoVNAGraphics(QMainWindow):
         logging.info("[graphics_window._reset_markers_after_sweep] Resetting markers after sweep completion")
         
         try:
-            # Reset slider positions to middle/default values if they exist
+            # Reset slider positions to leftmost position (index 0) if they exist
             if hasattr(self, 'slider_left') and self.slider_left:
-                # Reset left slider to middle position (try different methods)
+                # Reset left slider to leftmost position (try different methods)
                 try:
                     if hasattr(self.slider_left, 'maximum') and hasattr(self.slider_left, 'minimum'):
-                        max_range = self.slider_left.maximum()
                         min_range = self.slider_left.minimum()
-                        middle_pos = (max_range + min_range) // 2
                         if hasattr(self.slider_left, 'setValue'):
-                            self.slider_left.setValue(middle_pos)
-                            logging.info(f"[graphics_window._reset_markers_after_sweep] Reset left slider to position {middle_pos}")
+                            self.slider_left.setValue(min_range)
+                            logging.info(f"[graphics_window._reset_markers_after_sweep] Reset left slider to leftmost position {min_range}")
                     elif hasattr(self.slider_left, 'set') and hasattr(self.slider_left, 'get_value'):
-                        # Alternative method for matplotlib sliders
-                        current_val = self.slider_left.get_value()
-                        # Reset to 50% of the range (index-based)
-                        if hasattr(self, 'freqs') and self.freqs is not None:
-                            middle_index = len(self.freqs) // 2
-                            self.slider_left.set(middle_index)
-                            logging.info(f"[graphics_window._reset_markers_after_sweep] Reset left slider to index {middle_index}")
+                        # Alternative method for matplotlib sliders - always start at index 0
+                        self.slider_left.set(0)
+                        logging.info("[graphics_window._reset_markers_after_sweep] Reset left slider to index 0 (leftmost)")
                 except Exception as e:
                     logging.warning(f"[graphics_window._reset_markers_after_sweep] Could not reset left slider: {e}")
             
             if hasattr(self, 'slider_right') and self.slider_right:
-                # Reset right slider to middle position  
+                # Reset right slider to leftmost position  
                 try:
                     if hasattr(self.slider_right, 'maximum') and hasattr(self.slider_right, 'minimum'):
-                        max_range = self.slider_right.maximum()
                         min_range = self.slider_right.minimum()
-                        middle_pos = (max_range + min_range) // 2
                         if hasattr(self.slider_right, 'setValue'):
-                            self.slider_right.setValue(middle_pos)
-                            logging.info(f"[graphics_window._reset_markers_after_sweep] Reset right slider to position {middle_pos}")
+                            self.slider_right.setValue(min_range)
+                            logging.info(f"[graphics_window._reset_markers_after_sweep] Reset right slider to leftmost position {min_range}")
                     elif hasattr(self.slider_right, 'set') and hasattr(self.slider_right, 'get_value'):
-                        # Alternative method for matplotlib sliders
-                        if hasattr(self, 'freqs') and self.freqs is not None:
-                            middle_index = len(self.freqs) // 2
-                            self.slider_right.set(middle_index)
-                            logging.info(f"[graphics_window._reset_markers_after_sweep] Reset right slider to index {middle_index}")
+                        # Alternative method for matplotlib sliders - always start at index 0
+                        self.slider_right.set(0)
+                        logging.info("[graphics_window._reset_markers_after_sweep] Reset right slider to index 0 (leftmost)")
                 except Exception as e:
                     logging.warning(f"[graphics_window._reset_markers_after_sweep] Could not reset right slider: {e}")
             
@@ -401,37 +391,200 @@ class NanoVNAGraphics(QMainWindow):
             # Force cursor position updates if update functions exist
             if hasattr(self, 'update_cursor') and callable(self.update_cursor):
                 try:
-                    # Try calling with middle index if freqs data is available
-                    if hasattr(self, 'freqs') and self.freqs is not None:
-                        middle_index = len(self.freqs) // 2
-                        self.update_cursor(middle_index)
-                        logging.info(f"[graphics_window._reset_markers_after_sweep] Updated left cursor to index {middle_index}")
-                    else:
-                        # Try calling without parameters 
-                        self.update_cursor()
-                        logging.info("[graphics_window._reset_markers_after_sweep] Updated left cursor position")
+                    # Always set cursor to leftmost position (index 0)
+                    self.update_cursor(0)
+                    logging.info("[graphics_window._reset_markers_after_sweep] Updated left cursor to index 0 (leftmost)")
+                    
+                    # Force cursor visibility and redraw after data update
+                    if hasattr(self, 'cursor_left') and self.cursor_left and self.show_marker1:
+                        self.cursor_left.set_visible(True)
+                        if hasattr(self.cursor_left, 'get_data'):
+                            x_data, y_data = self.cursor_left.get_data()
+                            logging.info(f"[graphics_window._reset_markers_after_sweep] Left cursor after update: x={x_data}, y={y_data}")
+                        
                 except Exception as e:
                     logging.warning(f"[graphics_window._reset_markers_after_sweep] Could not update left cursor: {e}")
             
             if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
                 try:
-                    # Try calling with middle index if freqs data is available
-                    if hasattr(self, 'freqs') and self.freqs is not None:
-                        middle_index = len(self.freqs) // 2
-                        self.update_right_cursor(middle_index)
-                        logging.info(f"[graphics_window._reset_markers_after_sweep] Updated right cursor to index {middle_index}")
-                    else:
-                        # Try calling without parameters
-                        self.update_right_cursor()
-                        logging.info("[graphics_window._reset_markers_after_sweep] Updated right cursor position")
+                    # Always set cursor to leftmost position (index 0)
+                    self.update_right_cursor(0)
+                    logging.info("[graphics_window._reset_markers_after_sweep] Updated right cursor to index 0 (leftmost)")
+                    
+                    # Force cursor visibility and redraw after data update
+                    if hasattr(self, 'cursor_right') and self.cursor_right and self.show_marker2:
+                        self.cursor_right.set_visible(True)
+                        if hasattr(self.cursor_right, 'get_data'):
+                            x_data, y_data = self.cursor_right.get_data()
+                            logging.info(f"[graphics_window._reset_markers_after_sweep] Right cursor after update: x={x_data}, y={y_data}")
+                        
                 except Exception as e:
                     logging.warning(f"[graphics_window._reset_markers_after_sweep] Could not update right cursor: {e}")
+                    
+            # Final forced redraw with explicit visibility check
+            try:
+                # Force canvas redraw to show the cursors with their new data
+                if hasattr(self, 'canvas_left') and self.canvas_left:
+                    self.canvas_left.draw()  # Use draw() instead of draw_idle() for immediate effect
+                    logging.info("[graphics_window._reset_markers_after_sweep] Forced left canvas redraw")
+                if hasattr(self, 'canvas_right') and self.canvas_right:
+                    self.canvas_right.draw()  # Use draw() instead of draw_idle() for immediate effect
+                    logging.info("[graphics_window._reset_markers_after_sweep] Forced right canvas redraw")
+                    
+            except Exception as e:
+                logging.warning(f"[graphics_window._reset_markers_after_sweep] Could not force canvas redraw: {e}")
+                    
+            # Force marker visibility with debug AND fix cursor references
+            self._force_marker_visibility()
                     
             logging.info("[graphics_window._reset_markers_after_sweep] Marker reset completed successfully")
             
         except Exception as e:
             logging.error(f"[graphics_window._reset_markers_after_sweep] Error resetting markers: {e}")
 
+    def _force_marker_visibility(self):
+        """Force markers to be visible by recreating them directly on axes"""
+        
+        if hasattr(self, 'cursor_left') and hasattr(self, 'ax_left') and self.cursor_left and self.ax_left:
+            try:
+                # Get current data
+                x_data = self.cursor_left.get_xdata()
+                y_data = self.cursor_left.get_ydata()
+                
+                # Create new cursor directly on the axes
+                if hasattr(x_data, '__len__') and hasattr(y_data, '__len__') and len(x_data) > 0 and len(y_data) > 0:
+                    try:
+                        x_val = float(x_data[0])
+                        y_val = float(y_data[0])
+                    except (TypeError, IndexError, ValueError):
+                        x_val, y_val = 0.0, 0.0
+                    
+                    new_cursor = self.ax_left.plot(x_val, y_val, 'o', color='red', markersize=5, markeredgecolor='darkred', markeredgewidth=2)[0]
+                    self.cursor_left = new_cursor
+                    
+                    # Also update in markers list if it exists
+                    if hasattr(self, 'markers') and self.markers:
+                        for i, marker in enumerate(self.markers):
+                            if marker and marker.get('cursor') and i == 0:  # First marker
+                                marker['cursor'] = new_cursor
+                                
+                    # Store the original update_cursor function and replace with a wrapper
+                    if hasattr(self, 'update_cursor') and not hasattr(self, '_original_update_cursor'):
+                        self._original_update_cursor = self.update_cursor
+                        
+                        def cursor_left_wrapper(index, from_slider=False):
+                            # Call the original function first to update labels
+                            result = self._original_update_cursor(index, from_slider)
+                            
+                            # Then update our visible cursor position 
+                            if hasattr(self, 'cursor_left') and self.cursor_left and hasattr(self.cursor_left, 'set_data'):
+                                try:
+                                    if hasattr(self, 's11') and hasattr(self, 'freqs') and self.s11 is not None and self.freqs is not None and index < len(self.s11) and index < len(self.freqs):
+                                        val_complex = self.s11[index]
+                                        
+                                        # Use Smith diagram coordinates for left cursor
+                                        real_part = float(np.real(val_complex))
+                                        imag_part = float(np.imag(val_complex))
+                                        self.cursor_left.set_data([real_part], [imag_part])
+                                        
+                                        # Force redraw
+                                        if hasattr(self, 'canvas_left') and self.canvas_left:
+                                            self.canvas_left.draw_idle()
+                                except Exception as e:
+                                    print(f"Error updating cursor_left position: {e}")
+                            
+                            return result
+                        
+                        self.update_cursor = cursor_left_wrapper
+                        
+                        # Reconnect the slider to use our wrapper
+                        if hasattr(self, 'slider_left') and self.slider_left:
+                            try:
+                                self.slider_left.observers.clear()
+                            except:
+                                try:
+                                    self.slider_left.disconnect()
+                                except:
+                                    pass
+                            self.slider_left.on_changed(lambda val: cursor_left_wrapper(int(val), from_slider=True))
+                
+            except Exception as e:
+                print(f"Error forcing cursor_left to ax_left: {e}")
+                
+        if hasattr(self, 'cursor_right') and hasattr(self, 'ax_right') and self.cursor_right and self.ax_right:
+            try:
+                # Get current data
+                x_data = self.cursor_right.get_xdata()
+                y_data = self.cursor_right.get_ydata()
+                
+                # Create new cursor directly on the axes
+                if hasattr(x_data, '__len__') and hasattr(y_data, '__len__') and len(x_data) > 0 and len(y_data) > 0:
+                    x_val = float(x_data[0])
+                    y_val = float(y_data[0])
+                    new_cursor = self.ax_right.plot(x_val, y_val, 'o', color='red', markersize=5, markeredgecolor='darkred', markeredgewidth=2)[0]
+                    self.cursor_right = new_cursor
+                    
+                    # Also update in markers list if it exists
+                    if hasattr(self, 'markers') and self.markers:
+                        for i, marker in enumerate(self.markers):
+                            if marker and marker.get('cursor') and i == 1:  # Second marker
+                                marker['cursor'] = new_cursor
+                                
+                    # Store the original update_right_cursor function and replace with a wrapper
+                    if hasattr(self, 'update_right_cursor') and not hasattr(self, '_original_update_right_cursor'):
+                        self._original_update_right_cursor = self.update_right_cursor
+                        
+                        def cursor_right_wrapper(index, from_slider=False):
+                            # Call the original function first to update labels
+                            result = self._original_update_right_cursor(index, from_slider)
+                            
+                            # Then update our visible cursor position 
+                            if hasattr(self, 'cursor_right') and self.cursor_right and hasattr(self.cursor_right, 'set_data'):
+                                try:
+                                    # Determine which S parameter is being displayed in the right panel
+                                    s_data = None
+                                    if hasattr(self, 's21') and self.s21 is not None:
+                                        s_data = self.s21  # Default to S21 for right panel
+                                    elif hasattr(self, 's11') and self.s11 is not None:
+                                        s_data = self.s11
+                                    
+                                    if s_data is not None and hasattr(self, 'freqs') and self.freqs is not None and index < len(s_data) and index < len(self.freqs):
+                                        val_complex = s_data[index]
+                                        freq = self.freqs[index]
+                                        magnitude = abs(val_complex)
+                                        
+                                        # Use magnitude in dB for right cursor (typical for magnitude plots)
+                                        magnitude_db = 20 * np.log10(magnitude) if magnitude > 0 else -120
+                                        freq_mhz = float(freq / 1e6)  # Convert to MHz as float
+                                        magnitude_db_float = float(magnitude_db)  # Convert to float
+                                        self.cursor_right.set_data([freq_mhz], [magnitude_db_float])
+                                        
+                                        # Force redraw
+                                        if hasattr(self, 'canvas_right') and self.canvas_right:
+                                            self.canvas_right.draw_idle()
+                                except Exception as e:
+                                    print(f"Error updating cursor_right position: {e}")
+                            
+                            return result
+                        
+                        self.update_right_cursor = cursor_right_wrapper
+                        
+                        # Reconnect the slider to use our wrapper
+                        if hasattr(self, 'slider_right') and self.slider_right:
+                            try:
+                                self.slider_right.observers.clear()
+                            except:
+                                try:
+                                    self.slider_right.disconnect()
+                                except:
+                                    pass
+                            self.slider_right.on_changed(lambda val: cursor_right_wrapper(int(val), from_slider=True))
+                
+            except Exception as e:
+                print(f"Error forcing cursor_right to ax_right: {e}")
+
+
+        
     def _clear_marker_fields_only(self):
         """Clear only marker information fields without affecting the graphs."""
         logging.info("[graphics_window._clear_marker_fields_only] Clearing marker information fields only")
@@ -468,48 +621,58 @@ class NanoVNAGraphics(QMainWindow):
         try:
             num_points = len(self.freqs)
             max_index = num_points - 1
+            middle_index = max_index // 2
             
-            logging.info(f"[graphics_window._update_slider_ranges] Updating sliders for {num_points} frequency points (0 to {max_index})")
+            logging.info(f"[graphics_window._update_slider_ranges] Updating sliders for {num_points} frequency points (indices 0 to {max_index})")
+            logging.info(f"[graphics_window._update_slider_ranges] Frequency range: {self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz")
             
-            # Update left slider range if it exists
+            # Update left slider range if it exists and make it visible
             if hasattr(self, 'slider_left') and self.slider_left:
                 try:
-                    # For matplotlib sliders, we need to update the range and reset
-                    if hasattr(self.slider_left, 'valmin') and hasattr(self.slider_left, 'valmax'):
-                        # Update slider range to match frequency data indices
-                        self.slider_left.valmin = 0
-                        self.slider_left.valmax = max_index
-                        self.slider_left.valstep = 1
-                        
-                        # Reset slider to middle position
-                        middle_index = max_index // 2
-                        self.slider_left.set_val(middle_index)
-                        
-                        logging.info(f"[graphics_window._update_slider_ranges] Left slider updated: range 0-{max_index}, positioned at {middle_index}")
-                    else:
-                        logging.warning("[graphics_window._update_slider_ranges] Left slider does not have expected attributes")
+                    # Update slider range to match frequency data indices
+                    self.slider_left.valmin = 0
+                    self.slider_left.valmax = max_index
+                    self.slider_left.valstep = 1
+                    
+                    # Set slider to middle position
+                    self.slider_left.set_val(middle_index)
+                    
+                    # Make sure the slider is visible and active
+                    if hasattr(self.slider_left, 'ax'):
+                        self.slider_left.ax.set_visible(True)
+                    if hasattr(self.slider_left, 'set_active'):
+                        self.slider_left.set_active(True)
+                    
+                    logging.info(f"[graphics_window._update_slider_ranges] Left slider updated: range 0-{max_index}, positioned at index {middle_index} ({self.freqs[middle_index]/1e6:.3f} MHz)")
                 except Exception as e:
                     logging.warning(f"[graphics_window._update_slider_ranges] Could not update left slider: {e}")
             
-            # Update right slider range if it exists  
+            # Update right slider range if it exists and make it visible
             if hasattr(self, 'slider_right') and self.slider_right:
                 try:
-                    # For matplotlib sliders, we need to update the range and reset
-                    if hasattr(self.slider_right, 'valmin') and hasattr(self.slider_right, 'valmax'):
-                        # Update slider range to match frequency data indices
-                        self.slider_right.valmin = 0
-                        self.slider_right.valmax = max_index
-                        self.slider_right.valstep = 1
-                        
-                        # Reset slider to middle position
-                        middle_index = max_index // 2
-                        self.slider_right.set_val(middle_index)
-                        
-                        logging.info(f"[graphics_window._update_slider_ranges] Right slider updated: range 0-{max_index}, positioned at {middle_index}")
-                    else:
-                        logging.warning("[graphics_window._update_slider_ranges] Right slider does not have expected attributes")
+                    # Update slider range to match frequency data indices  
+                    self.slider_right.valmin = 0
+                    self.slider_right.valmax = max_index
+                    self.slider_right.valstep = 1
+                    
+                    # Set slider to middle position
+                    self.slider_right.set_val(middle_index)
+                    
+                    # Make sure the slider is visible and active
+                    if hasattr(self.slider_right, 'ax'):
+                        self.slider_right.ax.set_visible(True)
+                    if hasattr(self.slider_right, 'set_active'):
+                        self.slider_right.set_active(True)
+                    
+                    logging.info(f"[graphics_window._update_slider_ranges] Right slider updated: range 0-{max_index}, positioned at index {middle_index} ({self.freqs[middle_index]/1e6:.3f} MHz)")
                 except Exception as e:
                     logging.warning(f"[graphics_window._update_slider_ranges] Could not update right slider: {e}")
+            
+            # Force canvas redraw to show updated markers
+            if hasattr(self, 'canvas_left') and self.canvas_left:
+                self.canvas_left.draw_idle()
+            if hasattr(self, 'canvas_right') and self.canvas_right:
+                self.canvas_right.draw_idle()
                     
             logging.info("[graphics_window._update_slider_ranges] Slider ranges updated successfully")
             
@@ -1102,6 +1265,13 @@ class NanoVNAGraphics(QMainWindow):
                 linewidth=trace_size2,
                 markersize=marker_size2
             )
+            
+            # Update data references in cursor functions
+            logging.info("[graphics_window.update_plots_with_new_data] Updating cursor data references")
+            if hasattr(self, 'update_left_data') and self.update_left_data:
+                self.update_left_data(s_data_left, self.freqs)
+            if hasattr(self, 'update_right_data') and self.update_right_data:
+                self.update_right_data(s_data_right, self.freqs)
             
             # Force redraw
             self.canvas_left.draw()

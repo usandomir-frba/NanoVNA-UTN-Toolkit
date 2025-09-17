@@ -13,13 +13,60 @@ from PySide6.QtCore import QObject, QEvent, QSettings
 
 from PySide6.QtGui import QDoubleValidator
 
+def format_frequency_smart(freq_hz):
+    """Format frequency in the most appropriate unit (Hz, kHz, MHz, GHz)."""
+    if freq_hz >= 1e9:
+        return f"{freq_hz/1e9:.3f} GHz"
+    elif freq_hz >= 1e6:
+        return f"{freq_hz/1e6:.3f} MHz"
+    elif freq_hz >= 1e3:
+        return f"{freq_hz/1e3:.3f} kHz"
+    else:
+        return f"{freq_hz:.1f} Hz"
+
+def format_frequency_smart_split(freq_hz):
+    """Format frequency and return (value, unit) tuple."""
+    if freq_hz >= 1e9:
+        return f"{freq_hz/1e9:.3f}", "GHz"
+    elif freq_hz >= 1e6:
+        return f"{freq_hz/1e6:.3f}", "MHz"
+    elif freq_hz >= 1e3:
+        return f"{freq_hz/1e3:.3f}", "kHz"
+    else:
+        return f"{freq_hz:.1f}", "Hz"
+
+def parse_frequency_input(text):
+    """Parse frequency input with units and return value in Hz."""
+    text = text.strip().replace(",", ".")
+    
+    # Extract numeric part and unit
+    import re
+    match = re.match(r'(\d+\.?\d*)\s*([a-zA-Z]*)', text)
+    if not match:
+        return None
+        
+    value = float(match.group(1))
+    unit = match.group(2).lower()
+    
+    # Convert to Hz based on unit
+    if unit.startswith('g'):  # GHz
+        return value * 1e9
+    elif unit.startswith('m'):  # MHz
+        return value * 1e6
+    elif unit.startswith('k'):  # kHz
+        return value * 1e3
+    else:  # Hz or no unit (assume MHz for backward compatibility)
+        if unit == '' or unit.startswith('h'):
+            return value * 1e6 if unit == '' else value
+        return value
+
 #############################################################################################
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
 
 def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
                       tracecolor="red", markercolor="red", linewidth=2,
-                      markersize=2, marker_visible=True):
+                      markersize=5, marker_visible=True):
                       
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
     
@@ -36,7 +83,7 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     # --- Figura ---
     if graph_type == "Smith Diagram":
         fig, ax = plt.subplots(figsize=(5,5))
-        fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.15)
+        fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.45)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
@@ -140,8 +187,8 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
     hbox_freq.addWidget(edit_value)
 
-    # Label de unidad "MHz"
-    lbl_unit = QLabel("MHz")
+    # Label de unidad (now empty since format_frequency_smart includes units)
+    lbl_unit = QLabel("")
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -202,7 +249,8 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         "z": label_z,
         "il": label_il,
         "vswr": label_vswr,
-        "freq": edit_value
+        "freq": edit_value,
+        "unit": lbl_unit
     }
 
     # --- Función actualización ---
@@ -218,7 +266,9 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         elif graph_type == "Phase":
             cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
 
-        edit_value.setText(f"{freqs[index]*1e-6:.3f}")
+        freq_value, freq_unit = format_frequency_smart_split(freqs[index])
+        edit_value.setText(freq_value)
+        labels_dict["unit"].setText(freq_unit)
         labels_dict["val"].setText(f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
         labels_dict["mag"].setText(f"|{s_param}|: {magnitude:.3f}")
         labels_dict["phase"].setText(f"Phase: {phase_deg:.2f}°")
@@ -245,18 +295,20 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     # --- Slider ---
 
     if fig is not None:
-        slider_ax = fig.add_axes([0.25,0.05,0.5,0.03], facecolor='lightgray')
+        slider_ax = fig.add_axes([0.25,0.01,0.5,0.03], facecolor='lightgray')
         slider = Slider(slider_ax, '', 0, len(freqs)-1, valinit=0, valstep=1)
         slider.vline.set_visible(False)
         slider.label.set_visible(False)
+        slider.valtext.set_visible(False)  # Hide the value text
         slider.on_changed(lambda val: update_cursor(int(val), from_slider=True))
 
     # --- Conectar edición manual ---
     def freq_edited():
         try:
-            val_mhz = float(edit_value.text().replace(",","."))
-            index = np.argmin(np.abs(freqs*1e-6 - val_mhz))
-            update_cursor(index)
+            freq_hz = parse_frequency_input(edit_value.text())
+            if freq_hz is not None:
+                index = np.argmin(np.abs(freqs - freq_hz))
+                update_cursor(index)
             edit_value.clearFocus()
         except:
             pass
@@ -288,14 +340,32 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     canvas.mpl_connect("button_release_event", on_release)
     canvas.mpl_connect("motion_notify_event", on_motion)
 
-    return left_panel, fig, ax, canvas, slider, cursor_graph, labels_dict, update_cursor
+    # Function to update data references for new sweep data
+    def update_data_references(new_s_data, new_freqs):
+        nonlocal S_data, freqs
+        S_data = new_s_data
+        freqs = new_freqs
+        # Update freq_edited function to use new freqs
+        def freq_edited():
+            try:
+                freq_hz = parse_frequency_input(edit_value.text())
+                if freq_hz is not None:
+                    index = np.argmin(np.abs(freqs - freq_hz))
+                    update_cursor(index)
+                edit_value.clearFocus()
+            except:
+                pass
+        edit_value.editingFinished.disconnect()
+        edit_value.editingFinished.connect(freq_edited)
+
+    return left_panel, fig, ax, canvas, slider, cursor_graph, labels_dict, update_cursor, update_data_references
 
 #############################################################################################
 # =================== RIGHT PANEL ========================================================= #
 #############################################################################################
 
 def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_param="S11",
-                       tracecolor="red", markercolor="red", linewidth=2, markersize=2, marker_visible=True):
+                       tracecolor="red", markercolor="red", linewidth=2, markersize=5, marker_visible=True):
 
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
     
@@ -312,7 +382,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     # --- Figura ---
     if graph_type == "Smith Diagram":
         fig, ax = plt.subplots(figsize=(5,5))
-        fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.15)
+        fig.subplots_adjust(left=0.12, right=0.9, top=0.88, bottom=0.45)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
@@ -408,8 +478,8 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
     hbox_freq.addWidget(edit_value)
 
-    # Label de unidad "MHz"
-    lbl_unit = QLabel("MHz")
+    # Label de unidad (now empty since format_frequency_smart includes units)
+    lbl_unit = QLabel("")
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -464,6 +534,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
 
     labels_dict = {
         "freq": edit_value,
+        "unit": lbl_unit,
         "val": label_val,
         "mag": label_mag,
         "phase": label_phase,
@@ -484,8 +555,9 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         elif graph_type == "Phase":
             cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
 
-
-        edit_value.setText(f"  {freqs[index]*1e-6:.2f}")
+        freq_value, freq_unit = format_frequency_smart_split(freqs[index])
+        edit_value.setText(f"  {freq_value}")
+        labels_dict["unit"].setText(freq_unit)
 
         labels_dict["val"].setText(f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
         labels_dict["mag"].setText(f"|{s_param}|: {magnitude:.3f}")
@@ -511,18 +583,20 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         settings.setValue("Cursor2/index", index)
 
     # --- Slider ---
-    slider_ax = fig.add_axes([0.25,0.05,0.5,0.03], facecolor='lightgray')
+    slider_ax = fig.add_axes([0.25,0.01,0.5,0.03], facecolor='lightgray')
     slider = Slider(slider_ax, '', 0, len(freqs)-1, valinit=0, valstep=1)
     slider.vline.set_visible(False)
     slider.label.set_visible(False)
+    slider.valtext.set_visible(False)  # Hide the value text
     slider.on_changed(lambda val: update_cursor(int(val), from_slider=True))
 
     # --- Conectar edición manual ---
     def freq_edited():
         try:
-            val_mhz = float(edit_value.text().replace(",","."))
-            index = np.argmin(np.abs(freqs*1e-6 - val_mhz))
-            update_cursor(index)
+            freq_hz = parse_frequency_input(edit_value.text())
+            if freq_hz is not None:
+                index = np.argmin(np.abs(freqs - freq_hz))
+                update_cursor(index)
             edit_value.clearFocus()
         except:
             pass
@@ -554,4 +628,10 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     canvas.mpl_connect("button_release_event", on_release)
     canvas.mpl_connect("motion_notify_event", on_motion)
 
-    return right_panel, fig, ax, canvas, slider, cursor_graph, labels_dict, update_cursor
+    # Function to update data references for new sweep data
+    def update_data_references(new_s_data, new_freqs):
+        nonlocal S_data, freqs
+        S_data = new_s_data
+        freqs = new_freqs
+
+    return right_panel, fig, ax, canvas, slider, cursor_graph, labels_dict, update_cursor, update_data_references
