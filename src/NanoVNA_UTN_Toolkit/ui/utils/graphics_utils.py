@@ -4,6 +4,7 @@ import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit, QApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 from matplotlib.widgets import Slider
 from PySide6.QtCore import Qt
 from matplotlib.lines import Line2D
