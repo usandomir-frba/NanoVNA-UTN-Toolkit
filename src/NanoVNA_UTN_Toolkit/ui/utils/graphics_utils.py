@@ -156,7 +156,10 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     lbl_text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_text.setContentsMargins(0, 0, 5, 0)
     hbox_freq.addWidget(lbl_text)
-    edit_value = QLineEdit(f"{freqs[0]*1e-6:.2f}")
+    
+    # Initialize with smart frequency formatting
+    initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
+    edit_value = QLineEdit(initial_freq_value)
 
     def limit_frequency_input(text, max_digits=3, max_decimals=2, allow_dashes=False):
         if allow_dashes and text == "--":
@@ -192,8 +195,8 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
     hbox_freq.addWidget(edit_value)
 
-    # Label de unidad (now empty since format_frequency_smart includes units)
-    lbl_unit = QLabel("")
+    # Label de unidad initialized with correct unit
+    lbl_unit = QLabel(initial_freq_unit)
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -448,7 +451,9 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     lbl_text.setContentsMargins(0, 0, 5, 0)  # margen derecho de 5 px
     hbox_freq.addWidget(lbl_text)
 
-    edit_value = QLineEdit(f"{freqs[0]*1e-6:.2f}")
+    # Initialize with smart frequency formatting
+    initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
+    edit_value = QLineEdit(initial_freq_value)
 
     def limit_frequency_input(text, max_digits=3, max_decimals=2):
         filtered = "".join(c for c in text if c.isdigit() or c == ".")
@@ -481,8 +486,8 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
     hbox_freq.addWidget(edit_value)
 
-    # Label de unidad (now empty since format_frequency_smart includes units)
-    lbl_unit = QLabel("")
+    # Label de unidad initialized with correct unit
+    lbl_unit = QLabel(initial_freq_unit)
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
