@@ -730,6 +730,57 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"[graphics_window._reset_sliders_before_sweep] Error resetting sliders before sweep: {e}")
 
+    def _reset_sliders_after_reconnect(self):
+        """Reset sliders and show cursor information after successful device reconnection."""
+        try:
+            logging.info("[graphics_window._reset_sliders_after_reconnect] Resetting sliders after successful reconnection")
+            
+            # Only reset if we have data available
+            if not (hasattr(self, 'freqs') and self.freqs is not None and len(self.freqs) > 0):
+                logging.info("[graphics_window._reset_sliders_after_reconnect] No sweep data available, skipping reset")
+                return
+            
+            # Reset slider positions to leftmost position (index 0)
+            if hasattr(self, 'slider_left') and self.slider_left:
+                try:
+                    self.slider_left.set_val(0)
+                    logging.info("[graphics_window._reset_sliders_after_reconnect] Reset left slider to index 0")
+                except Exception as e:
+                    logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not reset left slider: {e}")
+            
+            if hasattr(self, 'slider_right') and self.slider_right:
+                try:
+                    self.slider_right.set_val(0)
+                    logging.info("[graphics_window._reset_sliders_after_reconnect] Reset right slider to index 0")
+                except Exception as e:
+                    logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not reset right slider: {e}")
+            
+            # Update cursor information to show data for minimum position
+            if hasattr(self, 'update_cursor') and callable(self.update_cursor):
+                try:
+                    self.update_cursor(0)
+                    logging.info("[graphics_window._reset_sliders_after_reconnect] Updated left cursor info to index 0")
+                except Exception as e:
+                    logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not update left cursor: {e}")
+            
+            if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
+                try:
+                    self.update_right_cursor(0)
+                    logging.info("[graphics_window._reset_sliders_after_reconnect] Updated right cursor info to index 0")
+                except Exception as e:
+                    logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not update right cursor: {e}")
+            
+            # Force canvas redraw to ensure visual update
+            if hasattr(self, 'canvas_left') and self.canvas_left:
+                self.canvas_left.draw()
+            if hasattr(self, 'canvas_right') and self.canvas_right:
+                self.canvas_right.draw()
+                    
+            logging.info("[graphics_window._reset_sliders_after_reconnect] Sliders reset and info updated after reconnection")
+            
+        except Exception as e:
+            logging.error(f"[graphics_window._reset_sliders_after_reconnect] Error resetting sliders after reconnection: {e}")
+
     def _force_marker_visibility(self):
         """Force markers to be visible by recreating them directly on axes"""
         
@@ -776,14 +827,26 @@ class NanoVNAGraphics(QMainWindow):
                             # Then update our visible cursor position 
                             if hasattr(self, 'cursor_left') and self.cursor_left and hasattr(self.cursor_left, 'set_data'):
                                 try:
-                                    if hasattr(self, 's11') and hasattr(self, 'freqs') and self.s11 is not None and self.freqs is not None and index < len(self.s11) and index < len(self.freqs):
-                                        val_complex = self.s11[index]
-                                        
-                                        # Get current graph type for left panel
-                                        actual_dir = os.path.dirname(os.path.dirname(__file__))  
-                                        ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
-                                        settings = QSettings(ruta_ini, QSettings.IniFormat)
-                                        graph_type_left = settings.value("Tab1/GraphType1", "Smith Diagram")
+                                    # Get current graph type and S parameter for left panel
+                                    actual_dir = os.path.dirname(os.path.dirname(__file__))  
+                                    ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
+                                    settings = QSettings(ruta_ini, QSettings.IniFormat)
+                                    graph_type_left = settings.value("Tab1/GraphType1", "Smith Diagram")
+                                    s_param_left = settings.value("Tab1/SParameter", "S11")
+                                    
+                                    # Determine which S parameter data to use
+                                    s_data = None
+                                    if s_param_left == "S21" and hasattr(self, 's21') and self.s21 is not None:
+                                        s_data = self.s21
+                                    elif s_param_left == "S11" and hasattr(self, 's11') and self.s11 is not None:
+                                        s_data = self.s11
+                                    elif hasattr(self, 's21') and self.s21 is not None:
+                                        s_data = self.s21  # Default fallback to S21
+                                    elif hasattr(self, 's11') and self.s11 is not None:
+                                        s_data = self.s11  # Final fallback to S11
+                                    
+                                    if s_data is not None and hasattr(self, 'freqs') and self.freqs is not None and index < len(s_data) and index < len(self.freqs):
+                                        val_complex = s_data[index]
                                         
                                         # Use appropriate coordinates based on graph type
                                         if graph_type_left == "Smith Diagram":
@@ -1528,6 +1591,9 @@ class NanoVNAGraphics(QMainWindow):
                 success_msg = f"Successfully reconnected to {device_type}"
                 logging.info(f"[graphics_window.reconnect_device] {success_msg}")
                 QMessageBox.information(self, "Reconnection Successful", success_msg)
+                
+                # Reset sliders and cursors to initial position after successful reconnection
+                self._reset_sliders_after_reconnect()
                 
                 # Enable sweep button since device is now connected
                 self.sweep_button.setEnabled(True)
