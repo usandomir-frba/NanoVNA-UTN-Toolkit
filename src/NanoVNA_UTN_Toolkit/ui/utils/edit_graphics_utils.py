@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox, 
-    QColorDialog, QSpinBox, QCheckBox, QPushButton, QSizePolicy, QSpacerItem
+    QColorDialog, QSpinBox, QCheckBox, QPushButton, QSizePolicy, QSpacerItem, QApplication
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QPixmap, QIcon
@@ -23,27 +23,8 @@ spin_style = """
         color: black;
         background-color: white;
         border: 1px solid gray;
-        border-radius: 8px;
-        padding: 2px 4px;
-    }
-    QSpinBox::up-button, QSpinBox::down-button {
-        subcontrol-origin: border;
-        subcontrol-position: top right; /* arranca en top para el up */
-        width: 16px;
-        height: 12px;
-    }
-
-    QSpinBox::up-button {
-        subcontrol-position: top right;
-    }
-
-    QSpinBox::down-button {
-        subcontrol-position: bottom right;
-    }
-
-    QSpinBox::up-arrow, QSpinBox::down-arrow {
-        width: 8px;
-        height: 8px;
+        border-radius: 2px;
+        padding: 0px 2px;
     }
 """
 
@@ -122,7 +103,7 @@ def create_edit_tab1(self, tabs):
     # --- Trace color ---
     trace_layout = QHBoxLayout()
     lbl_trace = QLabel("Trace color:")
-    lbl_trace.setStyleSheet("color: white;")
+    lbl_trace.setStyleSheet("color: white; font-size: 13pt;")
     btn_trace = QFrame()
     btn_trace.setFixedSize(30, 30)
     btn_trace.setStyleSheet(f"background-color: {trace_color1}; border: 1px solid white; border-radius: 6px;")
@@ -133,7 +114,7 @@ def create_edit_tab1(self, tabs):
     # --- Marker color ---
     marker_layout = QHBoxLayout()
     lbl_marker = QLabel("Marker color:")
-    lbl_marker.setStyleSheet("color: white;")
+    lbl_marker.setStyleSheet("color: white; font-size: 13pt;")
     btn_marker = QFrame()
     btn_marker.setFixedSize(30, 30)
     btn_marker.setStyleSheet(f"background-color: {marker_color1}; border: 1px solid white; border-radius: 6px;")
@@ -144,11 +125,19 @@ def create_edit_tab1(self, tabs):
     # --- Line width ---
     line_layout = QHBoxLayout()
     lbl_line = QLabel("Line width (all):")
-    lbl_line.setStyleSheet("color: white;")
+    lbl_line.setStyleSheet("color: white;  font-size: 13pt;")
     spin_line_tab1 = QSpinBox()
     spin_line_tab1.setRange(1, 10)
     spin_line_tab1.setValue(trace_size1)
-    spin_line_tab1.setStyleSheet(spin_style)
+    spin_line_tab1.setStyle(QApplication.style())
+    spin_line_tab1.setStyleSheet("""
+        QSpinBox {
+            background-color: white;   /* fondo blanco */
+            border: 1px solid black;   /* borde negro */
+        }
+    """)
+    spin_line_tab1.setAlignment(Qt.AlignCenter)
+    spin_line_tab1.setFrame(True)                
     spin_line_tab1.setFixedWidth(50)
     line_layout.addWidget(lbl_line)
     line_layout.addWidget(spin_line_tab1, alignment=Qt.AlignVCenter)
@@ -157,11 +146,19 @@ def create_edit_tab1(self, tabs):
     # --- Marker size ---
     marker_size_layout = QHBoxLayout()
     lbl_marker_size = QLabel("Marker size (all):")
-    lbl_marker_size.setStyleSheet("color: white;")
+    lbl_marker_size.setStyleSheet("color: white;  font-size: 13pt;")
     spin_marker_tab1 = QSpinBox()
     spin_marker_tab1.setRange(1, 20)
     spin_marker_tab1.setValue(marker_size1)
-    spin_marker_tab1.setStyleSheet(spin_style)
+    spin_marker_tab1.setStyle(QApplication.style())
+    spin_marker_tab1.setStyleSheet("""
+        QSpinBox {
+            background-color: white;   /* fondo blanco */
+            border: 1px solid black;   /* borde negro */
+        }
+    """)
+    spin_marker_tab1.setFrame(True)  
+    spin_marker_tab1.setAlignment(Qt.AlignCenter)             
     spin_marker_tab1.setFixedWidth(50)
     marker_size_layout.addWidget(lbl_marker_size)
     marker_size_layout.addWidget(spin_marker_tab1, alignment=Qt.AlignVCenter)
@@ -171,7 +168,7 @@ def create_edit_tab1(self, tabs):
     dark_mode_layout = QHBoxLayout()
     dark_mode_layout.setAlignment(Qt.AlignLeft)
     lbl_dark_mode = QLabel("Dark Mode:")
-    lbl_dark_mode.setStyleSheet("color: white;")
+    lbl_dark_mode.setStyleSheet("color: white;  font-size: 13pt;")
     btn_dark_mode = QLabel("☀")
     btn_dark_mode.setFixedSize(30, 30)
     btn_dark_mode.setAlignment(Qt.AlignCenter)

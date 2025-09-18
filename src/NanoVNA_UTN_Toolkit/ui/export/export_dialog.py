@@ -4,6 +4,7 @@ Provides functionality to export graph data and images in various formats.
 """
 
 import io
+import numpy as np
 import matplotlib.pyplot as plt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QPushButton, QMessageBox, QApplication, QFileDialog)
@@ -102,8 +103,8 @@ class ExportDialog(QDialog):
             
             # Generate preview image
             buf = io.BytesIO()
-            self.figure.savefig(buf, format='png', dpi=100, bbox_inches='tight', 
-                              facecolor='white', edgecolor='none')
+            self.figure.savefig(buf, format='png', dpi=100, 
+                    facecolor='white', edgecolor='none')
             buf.seek(0)
             
             # Restore interactive elements
@@ -231,64 +232,31 @@ class ExportDialog(QDialog):
             )
             
             if file_path:
-                # Create high-resolution figure for saving
-                fig_copy = plt.figure(figsize=(10, 8), dpi=300)
+                # Clonar la figura completa
+                import copy
+                fig_copy = copy.deepcopy(self.figure)
                 
-                # Copy graph data (same logic as clipboard copy)
-                for i, original_ax in enumerate(self.figure.axes):
-                    if hasattr(original_ax, 'get_position'):
-                        pos = original_ax.get_position()
-                        if pos.height < 0.1 or pos.width < 0.1:  # Skip sliders
-                            continue
-                    
-                    new_ax = fig_copy.add_subplot(1, 1, 1)
-                    
-                    # Copy lines with scaling
-                    for line in original_ax.lines:
-                        if line.get_visible():
-                            scaled_linewidth = line.get_linewidth() * 2
-                            scaled_markersize = line.get_markersize() * 2 if line.get_markersize() else 0
-                            
-                            new_ax.plot(line.get_xdata(), line.get_ydata(),
-                                      color=line.get_color(),
-                                      linewidth=scaled_linewidth,
-                                      linestyle=line.get_linestyle(),
-                                      marker=line.get_marker(),
-                                      markersize=scaled_markersize,
-                                      markerfacecolor=line.get_markerfacecolor(),
-                                      markeredgecolor=line.get_markeredgecolor())
-                    
-                    # Copy patches
-                    for patch in original_ax.patches:
-                        if hasattr(patch, 'center') and hasattr(patch, 'radius'):
-                            import matplotlib.patches as mpatches
-                            new_patch = mpatches.Circle(patch.center, patch.radius,
-                                                      fill=patch.get_fill(),
-                                                      facecolor=patch.get_facecolor(),
-                                                      edgecolor=patch.get_edgecolor(),
-                                                      linewidth=patch.get_linewidth())
-                            new_ax.add_patch(new_patch)
-                    
-                    # Copy axis properties
-                    new_ax.set_xlim(original_ax.get_xlim())
-                    new_ax.set_ylim(original_ax.get_ylim())
-                    new_ax.set_xlabel(original_ax.get_xlabel())
-                    new_ax.set_ylabel(original_ax.get_ylabel())
-                    new_ax.set_title(original_ax.get_title())
-                    new_ax.grid(original_ax.get_xgridlines()[0].get_visible() if original_ax.get_xgridlines() else False)
-                    
-                    if "Smith" in original_ax.get_title() or len(original_ax.patches) > 10:
-                        new_ax.set_aspect('equal')
-                    
-                    break
+                # Ajustar DPI y tamaño
+                fig_copy.set_size_inches(10, 8)
                 
-                # Save the file
-                fig_copy.savefig(file_path, dpi=300, bbox_inches='tight', 
-                               facecolor='white', edgecolor='none')
+                # Ajustar límites y aspecto para cada eje
+                for ax in fig_copy.axes:
+                    if "Smith" in ax.get_title() or len(ax.patches) > 10:
+                        ax.set_aspect('equal')
+                    
+                    # Opcional: recortar ejes muy pequeños (sliders)
+                    pos = ax.get_position()
+                    new_pos = [pos.x0, pos.y0 + 0.02, pos.width - 0.02, pos.height - 0.02]
+                    ax.set_position(new_pos)
+                    if pos.height < 0.1 or pos.width < 0.1:
+                        fig_copy.delaxes(ax)
+                
+                # Guardar
+                fig_copy.savefig(file_path, dpi=300, facecolor='white', edgecolor='none')
                 plt.close(fig_copy)
                 
                 QMessageBox.information(self, "Save", f"Graph saved as: {file_path}")
-                
+        
         except Exception as e:
             QMessageBox.critical(self, "Save Error", f"Failed to save image: {str(e)}")
 

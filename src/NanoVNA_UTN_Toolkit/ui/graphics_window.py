@@ -539,7 +539,7 @@ class NanoVNAGraphics(QMainWindow):
             logging.error(f"[graphics_window._reset_markers_after_sweep] Error resetting markers: {e}")
 
 
-    def _recreate_cursors_for_new_plots(self):
+    def _recreate_cursors_for_new_plots(self, marker_color_left, marker_color_right):
         """Recreate cursors when the plot type changes."""
         try:
             logging.info("[graphics_window._recreate_cursors_for_new_plots] Recreating cursors for plot type changes")
@@ -570,11 +570,11 @@ class NanoVNAGraphics(QMainWindow):
             # Create new cursors at position (0,0) - they will be positioned correctly later
             # Make them invisible initially to avoid the "fixed cursor" problem
             if hasattr(self, 'ax_left') and self.ax_left:
-                self.cursor_left = self.ax_left.plot(0, 0, 'o', color='red', markersize=5, 
+                self.cursor_left = self.ax_left.plot(0, 0, 'o', color=marker_color_left, markersize=5, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
             
             if hasattr(self, 'ax_right') and self.ax_right:
-                self.cursor_right = self.ax_right.plot(0, 0, 'o', color='red', markersize=5, 
+                self.cursor_right = self.ax_right.plot(0, 0, 'o', color=marker_color_right, markersize=5, 
                                                       markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
             
             # Update markers list with new cursor references
@@ -585,7 +585,7 @@ class NanoVNAGraphics(QMainWindow):
                     self.markers[1]['cursor'] = self.cursor_right
             
             # Force marker visibility setup to create the wrapper functions again
-            self._force_marker_visibility()
+            self._force_marker_visibility(marker_color_left=marker_color_left, marker_color_right=marker_color_right)
             
             logging.info("[graphics_window._recreate_cursors_for_new_plots] Cursors recreated successfully")
             
@@ -770,7 +770,7 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"[graphics_window._reset_sliders_after_reconnect] Error resetting sliders after reconnection: {e}")
 
-    def _force_marker_visibility(self):
+    def _force_marker_visibility(self, marker_color_left, marker_color_right):
         """Force markers to be visible by recreating them directly on axes"""
         
         if hasattr(self, 'cursor_left') and hasattr(self, 'ax_left') and self.cursor_left and self.ax_left:
@@ -795,7 +795,7 @@ class NanoVNAGraphics(QMainWindow):
                     pass  # Use defaults
                 
                 # Create new cursor directly on the axes
-                new_cursor = self.ax_left.plot(x_val, y_val, 'o', color='red', markersize=5, markeredgecolor='darkred', markeredgewidth=2)[0]
+                new_cursor = self.ax_left.plot(x_val, y_val, 'o', color=marker_color_left, markersize=5, markeredgewidth=2)[0]
                 self.cursor_left = new_cursor
                 logging.info(f"[graphics_window._force_marker_visibility] Created new left cursor at ({x_val}, {y_val})")
                 
@@ -906,7 +906,7 @@ class NanoVNAGraphics(QMainWindow):
                     pass  # Use defaults
                 
                 # Create new cursor directly on the axes
-                new_cursor = self.ax_right.plot(x_val, y_val, 'o', color='red', markersize=5, markeredgecolor='darkred', markeredgewidth=2)[0]
+                new_cursor = self.ax_right.plot(x_val, y_val, 'o', color=marker_color_right, markersize=5, markeredgewidth=2)[0]
                 self.cursor_right = new_cursor
                 logging.info(f"[graphics_window._force_marker_visibility] Created new right cursor at ({x_val}, {y_val})")
                 
@@ -1757,7 +1757,7 @@ class NanoVNAGraphics(QMainWindow):
             
             # Recreate cursors for the new graph types
             logging.info("[graphics_window.update_plots_with_new_data] Recreating cursors for new graph types")
-            self._recreate_cursors_for_new_plots()
+            self._recreate_cursors_for_new_plots(marker_color_left=marker_color1, marker_color_right=marker_color2)
             
             # Reset sliders and markers to leftmost position (index 0) for graph type changes
             # Skip this reset if we're doing a sweep (will be handled by _reset_markers_after_sweep)
