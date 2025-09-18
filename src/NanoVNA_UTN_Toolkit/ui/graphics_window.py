@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout,
     QMenu, QFileDialog, QMessageBox, QProgressBar
 )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPixmap
+from .export import ExportDialog
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -31,6 +32,7 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
+
 
 class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None):
@@ -46,39 +48,13 @@ class NanoVNAGraphics(QMainWindow):
             logging.info(f"[graphics_window.__init__] VNA device provided: {device_type}")
         else:
             logging.warning("[graphics_window.__init__] No VNA device provided")
-            
-        logging.info(f"[graphics_window.__init__] S11 data: {'Available' if s11 is not None else 'None'}")
-        logging.info(f"[graphics_window.__init__] S21 data: {'Available' if s21 is not None else 'None'}")
-        logging.info(f"[graphics_window.__init__] Frequency data: {'Available' if freqs is not None else 'None'}")
-        logging.info(f"[graphics_window.__init__] Graph configuration - Type: {left_graph_type}, S-param: {left_s_param}")
 
-        actual_dir = os.path.dirname(os.path.dirname(__file__))  
-        ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
+        config = self._load_graph_configuration()
 
-        settings = QSettings(ruta_ini, QSettings.IniFormat)
-
-        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")
-        s_param_tab1    = settings.value("Tab1/SParameter", "S11")
-
-        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude")
-        s_param_tab2    = settings.value("Tab2/SParameter", "S11")
-
-        trace_color1 = settings.value("Graphic1/TraceColor", "blue")
-        marker_color1 = settings.value("Graphic1/MarkerColor", "blue")
-
-        trace_size1 = int(settings.value("Graphic1/TraceWidth", 2))
-        marker_size1 = int(settings.value("Graphic1/MarkerWidth", 6))
-
-        trace_color2 = settings.value("Graphic2/TraceColor", "blue")
-        marker_color2 = settings.value("Graphic2/MarkerColor", "blue")
-
-        trace_size2 = int(settings.value("Graphic2/TraceWidth", 2))
-        marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
-
-        self.left_graph_type  = graph_type_tab1
-        self.left_s_param     = s_param_tab1
-        self.right_graph_type = graph_type_tab2
-        self.right_s_param    = s_param_tab2
+        self.left_graph_type  = config['graph_type_tab1']
+        self.left_s_param     = config['s_param_tab1']
+        self.right_graph_type = config['graph_type_tab2']
+        self.right_s_param    = config['s_param_tab2']
 
         # --- Marker visibility flags ---
         self.show_marker1 = True
@@ -259,12 +235,12 @@ class NanoVNAGraphics(QMainWindow):
             create_left_panel(
                 S_data=None,  # Force empty 
                 freqs=None,   # Force empty
-                graph_type=graph_type_tab1, 
-                s_param=s_param_tab1, 
-                tracecolor=trace_color1,
-                markercolor=marker_color1,
-                linewidth=trace_size1,
-                markersize=marker_size1   
+                graph_type=config['graph_type_tab1'], 
+                s_param=config['s_param_tab1'], 
+                tracecolor=config['trace_color1'],
+                markercolor=config['marker_color1'],
+                linewidth=config['trace_size1'],
+                markersize=config['marker_size1']  
             )
 
         # =================== RIGHT PANEL (EMPTY) ===================
@@ -273,12 +249,12 @@ class NanoVNAGraphics(QMainWindow):
             create_right_panel(
                 S_data=None,  # Force empty
                 freqs=None,   # Force empty
-                graph_type=graph_type_tab2, 
-                s_param=s_param_tab2,
-                tracecolor=trace_color2,
-                markercolor=marker_color2,
-                linewidth=trace_size2,
-                markersize=marker_size2
+                graph_type=config['graph_type_tab2'], 
+                s_param=config['s_param_tab2'],
+                tracecolor=config['trace_color2'],
+                markercolor=config['marker_color2'],
+                linewidth=config['trace_size2'],
+                markersize=config['marker_size2']
             )
 
         # =================== PANELS LAYOUT ===================
@@ -303,32 +279,88 @@ class NanoVNAGraphics(QMainWindow):
         # Clear all marker information fields until first sweep is completed
         self._clear_all_marker_fields()
 
-    def _clear_all_marker_fields(self):
-        """Clear marker values but keep all panels and labels intact."""
-        logging.info("[graphics_window._clear_all_marker_fields] Clearing marker values but keeping layout intact")
-
+    def _load_graph_configuration(self):
+        """Load graph configuration from settings file."""
         actual_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
 
         settings = QSettings(ruta_ini, QSettings.IniFormat)
 
-        graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")
-        s_param_tab1    = settings.value("Tab1/SParameter", "S11")
+        return {
+            'graph_type_tab1': settings.value("Tab1/GraphType1", "Smith Diagram"),
+            's_param_tab1': settings.value("Tab1/SParameter", "S11"),
+            'graph_type_tab2': settings.value("Tab2/GraphType2", "Magnitude"),
+            's_param_tab2': settings.value("Tab2/SParameter", "S11"),
+            'trace_color1': settings.value("Graphic1/TraceColor", "blue"),
+            'marker_color1': settings.value("Graphic1/MarkerColor", "blue"),
+            'trace_size1': int(settings.value("Graphic1/TraceWidth", 2)),
+            'marker_size1': int(settings.value("Graphic1/MarkerWidth", 6)),
+            'trace_color2': settings.value("Graphic2/TraceColor", "blue"),
+            'marker_color2': settings.value("Graphic2/MarkerColor", "blue"),
+            'trace_size2': int(settings.value("Graphic2/TraceWidth", 2)),
+            'marker_size2': int(settings.value("Graphic2/MarkerWidth", 6))
+        }
 
-        graph_type_tab2 = settings.value("Tab2/GraphType2", "Magnitude")
-        s_param_tab2    = settings.value("Tab2/SParameter", "S11")
+    def _clear_panel_labels(self, panel_side='left'):
+        """Clear all labels for a specific panel (left or right)."""
+        if panel_side == 'left' and hasattr(self, 'labels_left') and self.labels_left:
+            self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
+            self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.left_s_param}: -- + j--")
+            self.labels_left.get("mag") and self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
+            self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
+            self.labels_left.get("z") and self.labels_left["z"].setText("Z: -- + j--")
+            self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
+            self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+        elif panel_side == 'right' and hasattr(self, 'labels_right') and self.labels_right:
+            self.labels_right.get("freq") and self.labels_right["freq"].setText("--")
+            self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.right_s_param}: -- + j--")
+            self.labels_right.get("mag") and self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
+            self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
+            self.labels_right.get("z") and self.labels_right["z"].setText("Z: -- + j--")
+            self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
+            self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+
+    def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5)):
+        """Clear axis and show waiting message for a specific panel."""
+        if panel_side == 'right':
+            if hasattr(self, 'ax_right') and self.ax_right:
+                self.ax_right.text(message_pos[0], message_pos[1], 'Waiting for sweep data...',
+                                transform=self.ax_right.transAxes,
+                                ha='center', va='center', fontsize=12, color='gray')
+
+                for line in self.ax_right.lines:
+                    line.remove()
+
+                self.ax_right.grid(False)
+
+            if hasattr(self, 'canvas_right') and self.canvas_right:
+                self.canvas_right.draw()
+        elif panel_side == 'left':
+            if hasattr(self, 'ax_left') and self.ax_left:
+                self.ax_left.text(message_pos[0], message_pos[1], 'Waiting for sweep data...',
+                                transform=self.ax_left.transAxes,
+                                ha='center', va='center', fontsize=12, color='gray')
+
+                for line in self.ax_left.lines:
+                    line.remove()
+
+                self.ax_left.grid(False)
+
+            if hasattr(self, 'canvas_left') and self.canvas_left:
+                self.canvas_left.draw()
+
+    def _clear_all_marker_fields(self):
+        """Clear marker values but keep all panels and labels intact."""
+        logging.info("[graphics_window._clear_all_marker_fields] Clearing marker values but keeping layout intact")
+
+        config = self._load_graph_configuration()
+        graph_type_tab1 = config['graph_type_tab1']
+        graph_type_tab2 = config['graph_type_tab2']
 
         if graph_type_tab1 == "Smith Diagram":
 
             # Left panel
-            if hasattr(self, 'labels_left') and self.labels_left:
-                self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
-                self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.left_s_param}: -- + j--")
-                self.labels_left.get("mag") and self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
-                self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
-                self.labels_left.get("z") and self.labels_left["z"].setText("Z: -- + j--")
-                self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
-                self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+            self._clear_panel_labels('left')
 
             # Hide cursors
             if hasattr(self, 'cursor_left') and self.cursor_left:
@@ -358,42 +390,17 @@ class NanoVNAGraphics(QMainWindow):
         if graph_type_tab2 == "Smith Diagram":
 
             # Right panel
-            if hasattr(self, 'labels_right') and self.labels_right:
-                self.labels_right.get("freq") and self.labels_right["freq"].setText("--")
-                self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.right_s_param}: -- + j--")
-                self.labels_right.get("mag") and self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
-                self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
-                self.labels_right.get("z") and self.labels_right["z"].setText("Z: -- + j--")
-                self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
-                self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+            self._clear_panel_labels('right')
 
 
             if hasattr(self, 'cursor_right') and self.cursor_right:
                 self.cursor_right.set_visible(False)
 
-            if hasattr(self, 'ax_right') and self.ax_right:
-                self.ax_right.text(0.5, -0.1, 'Waiting for sweep data...',
-                                transform=self.ax_right.transAxes,
-                                ha='center', va='center', fontsize=12, color='gray')
-
-                for line in self.ax_right.lines:
-                    line.remove()
-
-                self.ax_right.grid(False)
-
-            if hasattr(self, 'canvas_right') and self.canvas_right:
-                self.canvas_right.draw()
+            self._clear_axis_and_show_message('right', (0.5, -0.1))
 
         if graph_type_tab1 == "Magnitude" or graph_type_tab1 == "Phase":
             # Left panel
-            if hasattr(self, 'labels_left') and self.labels_left:
-                self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
-                self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.left_s_param}: -- + j--")
-                self.labels_left.get("mag") and self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
-                self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
-                self.labels_left.get("z") and self.labels_left["z"].setText("Z: -- + j--")
-                self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
-                self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+            self._clear_panel_labels('left')
 
             # Hide cursors
             if hasattr(self, 'cursor_left') and self.cursor_left:
@@ -417,30 +424,12 @@ class NanoVNAGraphics(QMainWindow):
         if graph_type_tab2 == "Magnitude" or graph_type_tab2 == "Phase":
 
             # Right panel
-            if hasattr(self, 'labels_right') and self.labels_right:
-                self.labels_right.get("freq") and self.labels_right["freq"].setText("--")
-                self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.right_s_param}: -- + j--")
-                self.labels_right.get("mag") and self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
-                self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
-                self.labels_right.get("z") and self.labels_right["z"].setText("Z: -- + j--")
-                self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
-                self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+            self._clear_panel_labels('right')
 
             if hasattr(self, 'cursor_right') and self.cursor_right:
                 self.cursor_right.set_visible(False)
 
-            if hasattr(self, 'ax_right') and self.ax_right:
-                self.ax_right.text(0.5, 0.5, 'Waiting for sweep data...',
-                                transform=self.ax_right.transAxes,
-                                ha='center', va='center', fontsize=12, color='gray')
-
-                for line in self.ax_right.lines:
-                    line.remove()
-
-                self.ax_right.grid(False)
-
-            if hasattr(self, 'canvas_right') and self.canvas_right:
-                self.canvas_right.draw()
+            self._clear_axis_and_show_message('right', (0.5, 0.5))
 
 
     def _reset_markers_after_sweep(self):
@@ -1236,9 +1225,7 @@ class NanoVNAGraphics(QMainWindow):
         marker2_action.setChecked(self.show_marker2)
 
         menu.addSeparator()
-        menu.addAction("Copiar")
-        menu.addAction("Pegar")
-        menu.addAction("Eliminar")
+        export_action = menu.addAction("Export...")
 
         selected_action = menu.exec(event.globalPos())
 
@@ -1250,6 +1237,42 @@ class NanoVNAGraphics(QMainWindow):
         elif selected_action == marker2_action:
             self.show_marker2 = not self.show_marker2
             self.toggle_marker_visibility(1, self.show_marker2)
+        elif selected_action == export_action:
+            self.open_export_dialog(event)
+
+    def open_export_dialog(self, event):
+        """Open the export dialog for the clicked graph."""
+        # Determine which graph was clicked based on event position
+        widget_under_cursor = QApplication.widgetAt(event.globalPos())
+        
+        try:
+            # Default to left figure
+            figure_to_export = self.fig_left
+            panel_name = "Left Panel"
+            
+            # Try to determine which canvas was clicked
+            if hasattr(self, 'canvas_right') and widget_under_cursor:
+                # Walk up the widget hierarchy to find the canvas
+                current_widget = widget_under_cursor
+                while current_widget:
+                    if current_widget == self.canvas_right:
+                        figure_to_export = self.fig_right
+                        panel_name = "Right Panel"
+                        break
+                    elif current_widget == self.canvas_left:
+                        figure_to_export = self.fig_left
+                        panel_name = "Left Panel"
+                        break
+                    current_widget = current_widget.parent()
+            
+            # Create and show the export dialog
+            export_dialog = ExportDialog(self, figure_to_export)
+            export_dialog.setWindowTitle(f"Export Graph - {panel_name}")
+            export_dialog.exec()
+            
+        except Exception as e:
+            logging.error(f"Error opening export dialog: {e}")
+            QMessageBox.warning(self, "Export Error", f"Failed to open export dialog: {str(e)}")
 
     # =================== MARKERS ==================
 
@@ -1757,7 +1780,6 @@ class NanoVNAGraphics(QMainWindow):
                              tracecolor, markercolor, linewidth, markersize):
         """Recreate a single plot with new data."""
         try:
-            import skrf as rf
             from matplotlib.lines import Line2D
             
             if graph_type == "Smith Diagram":
