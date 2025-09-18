@@ -556,7 +556,15 @@ def create_edit_tab2(self, tabs):
     spin_line_tab2 = QSpinBox()
     spin_line_tab2.setRange(1, 10)
     spin_line_tab2.setValue(line_width2)
-    spin_line_tab2.setStyleSheet(spin_style)
+    spin_line_tab2.setStyle(QApplication.style())
+    spin_line_tab2.setStyleSheet("""
+        QSpinBox {
+            background-color: white;   /* fondo blanco */
+            border: 1px solid black;   /* borde negro */
+        }
+    """)
+    spin_line_tab2.setAlignment(Qt.AlignCenter)
+    spin_line_tab2.setFrame(True)      
     spin_line_tab2.setFixedWidth(50)
     line_layout.addWidget(lbl_line)
     line_layout.addWidget(spin_line_tab2, alignment=Qt.AlignVCenter)
@@ -569,7 +577,15 @@ def create_edit_tab2(self, tabs):
     spin_marker_tab2 = QSpinBox()
     spin_marker_tab2.setRange(1, 20)
     spin_marker_tab2.setValue(marker_size2)
-    spin_marker_tab2.setStyleSheet(spin_style)
+    spin_marker_tab2.setStyle(QApplication.style())
+    spin_marker_tab2.setStyleSheet("""
+        QSpinBox {
+            background-color: white;   /* fondo blanco */
+            border: 1px solid black;   /* borde negro */
+        }
+    """)
+    spin_marker_tab2.setAlignment(Qt.AlignCenter)
+    spin_marker_tab2.setFrame(True)  
     spin_marker_tab2.setFixedWidth(50)
     marker_size_layout.addWidget(lbl_marker_size)
     marker_size_layout.addWidget(spin_marker_tab2, alignment=Qt.AlignVCenter)
