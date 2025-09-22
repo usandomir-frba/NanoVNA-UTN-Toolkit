@@ -72,7 +72,9 @@ class NanoVNAGraphics(QMainWindow):
         file_menu.addAction("Save")
         save_as_action =  file_menu.addAction("Save As")
         save_as_action.triggered.connect(lambda: self.on_save_as())
-        file_menu.addAction("Export")
+        
+        export_touchstone_action = file_menu.addAction("Export Touchstone Data")
+        export_touchstone_action.triggered.connect(lambda: self.export_touchstone_data())
 
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
@@ -1831,6 +1833,127 @@ class NanoVNAGraphics(QMainWindow):
             
         except Exception as e:
             logging.error(f"[graphics_window._recreate_single_plot] Error recreating plot: {e}")
+
+    def export_touchstone_data(self):
+        """Export sweep data to Touchstone format."""
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        
+        logging.info("[graphics_window.export_touchstone_data] Starting Touchstone export")
+        
+        # Check if we have sweep data available
+        if not hasattr(self, 'freqs') or self.freqs is None:
+            error_msg = "No sweep data available for export.\nPlease run a sweep first."
+            QMessageBox.warning(self, "No Data", error_msg)
+            logging.warning("[graphics_window.export_touchstone_data] No frequency data available")
+            return
+        
+        if not hasattr(self, 's11') or self.s11 is None:
+            error_msg = "No S11 data available for export.\nPlease run a sweep first."
+            QMessageBox.warning(self, "No Data", error_msg)
+            logging.warning("[graphics_window.export_touchstone_data] No S11 data available")
+            return
+        
+        if not hasattr(self, 's21') or self.s21 is None:
+            error_msg = "No S21 data available for export.\nPlease run a sweep first."
+            QMessageBox.warning(self, "No Data", error_msg)
+            logging.warning("[graphics_window.export_touchstone_data] No S21 data available")
+            return
+        
+        # Check data consistency
+        if len(self.freqs) != len(self.s11) or len(self.freqs) != len(self.s21):
+            error_msg = f"Data length mismatch detected.\nFreqs: {len(self.freqs)}, S11: {len(self.s11)}, S21: {len(self.s21)}"
+            QMessageBox.critical(self, "Data Error", error_msg)
+            logging.error(f"[graphics_window.export_touchstone_data] {error_msg}")
+            return
+        
+        # Get save file path from user
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Touchstone Data",
+            "",
+            "Touchstone S2P Files (*.s2p);;All Files (*)"
+        )
+        
+        if not file_path:
+            logging.info("[graphics_window.export_touchstone_data] Export cancelled by user")
+            return
+        
+        # Ensure file has .s2p extension
+        if not file_path.lower().endswith('.s2p'):
+            file_path += '.s2p'
+        
+        try:
+            # Create Touchstone content manually since the existing class doesn't support 2-parameter format
+            self._export_touchstone_s2p(file_path)
+            
+            # Success message
+            num_points = len(self.freqs)
+            freq_range = f"{self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz"
+            success_msg = f"Touchstone data exported successfully!\n\nFile: {file_path}\nPoints: {num_points}\nFrequency range: {freq_range}"
+            QMessageBox.information(self, "Export Successful", success_msg)
+            logging.info(f"[graphics_window.export_touchstone_data] Successfully exported {num_points} points to {file_path}")
+            
+        except Exception as e:
+            error_msg = f"Error exporting Touchstone data:\n{str(e)}"
+            QMessageBox.critical(self, "Export Error", error_msg)
+            logging.error(f"[graphics_window.export_touchstone_data] Export error: {e}")
+            logging.error(f"[graphics_window.export_touchstone_data] Exception details: {type(e).__name__}")
+
+    def _export_touchstone_s2p(self, file_path: str):
+        """Export data to Touchstone S2P format with S11 and S21 parameters.
+        
+        Args:
+            file_path: Path where to save the S2P file
+        """
+        import os
+        from datetime import datetime
+        
+        logging.info(f"[graphics_window._export_touchstone_s2p] Writing S2P file: {file_path}")
+        
+        # Get device information if available
+        device_name = "Unknown"
+        if self.vna_device:
+            device_name = getattr(self.vna_device, 'name', type(self.vna_device).__name__)
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            # Write header comments
+            f.write(f"! Touchstone file exported from NanoVNA UTN Toolkit\n")
+            f.write(f"! Device: {device_name}\n")
+            f.write(f"! Export date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"! Frequency range: {self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz\n")
+            f.write(f"! Number of points: {len(self.freqs)}\n")
+            f.write(f"!\n")
+            
+            # Write option line (frequency in Hz, S-parameters, Real/Imaginary format, 50 ohm reference)
+            f.write("# HZ S RI R 50\n")
+            
+            # Write data points
+            for i in range(len(self.freqs)):
+                freq_hz = int(self.freqs[i])
+                
+                # S11 data (reflection coefficient port 1)
+                s11 = self.s11[i]
+                s11_real = float(s11.real)
+                s11_imag = float(s11.imag)
+                
+                # S21 data (transmission coefficient port 2 to port 1)
+                s21 = self.s21[i]
+                s21_real = float(s21.real)
+                s21_imag = float(s21.imag)
+                
+                # For a 2-port S2P file, we need S11, S21, S12, S22
+                # Since VNA typically only measures S11 and S21, we'll set S12=S21 and S22=0
+                # This is a reasonable assumption for most VNA measurements
+                s12_real = s21_real  # Assume reciprocal network (S12 = S21)
+                s12_imag = s21_imag
+                s22_real = 0.0       # Assume matched port 2 (no reflection)
+                s22_imag = 0.0
+                
+                # Write data line: freq S11_real S11_imag S21_real S21_imag S12_real S12_imag S22_real S22_imag
+                f.write(f"{freq_hz} {s11_real:.6e} {s11_imag:.6e} {s21_real:.6e} {s21_imag:.6e} "
+                       f"{s12_real:.6e} {s12_imag:.6e} {s22_real:.6e} {s22_imag:.6e}\n")
+        
+        logging.info(f"[graphics_window._export_touchstone_s2p] Successfully wrote {len(self.freqs)} data points")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
