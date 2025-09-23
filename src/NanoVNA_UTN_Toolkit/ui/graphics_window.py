@@ -33,11 +33,155 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-
 class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None):
         super().__init__()
-        
+
+        ui_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        # QWidget
+        background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
+
+        # QTabWidget pane
+        tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
+
+        # QTabBar
+        tabbar_bg = settings.value("Dark_Light/QTabBar/background-color", "#2b2b2b")
+        tabbar_color = settings.value("Dark_Light/QTabBar/color", "white")
+        tabbar_padding = settings.value("Dark_Light/QTabBar/padding", "5px 12px")
+        tabbar_border = settings.value("Dark_Light/QTabBar/border", "none")
+        tabbar_border_tl_radius = settings.value("Dark_Light/QTabBar/border-top-left-radius", "6px")
+        tabbar_border_tr_radius = settings.value("Dark_Light/QTabBar/border-top-right-radius", "6px")
+
+        # QTabBar selected
+        tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#4d4d4d")
+        tabbar_selected_color = settings.value("Dark_Light/QTabBar/color", "white")
+
+        # QSpinBox
+        spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#3b3b3b")
+        spinbox_color = settings.value("Dark_Light/QSpinBox/color", "white")
+        spinbox_border = settings.value("Dark_Light/QSpinBox/border", "1px solid white")
+        spinbox_border_radius = settings.value("Dark_Light/QSpinBox/border-radius", "8px")
+
+        # QGroupBox title
+        groupbox_title_color = settings.value("Dark_Light/QGroupBox_title/color", "white")
+
+        # QLabel
+        label_color = settings.value("Dark_Light/QLabel/color", "white")
+
+        # QLineEdit
+        lineedit_bg = settings.value("Dark_Light/QLineEdit/background-color", "#3b3b3b")
+        lineedit_color = settings.value("Dark_Light/QLineEdit/color", "white")
+        lineedit_border = settings.value("Dark_Light/QLineEdit/border", "1px solid white")
+        lineedit_border_radius = settings.value("Dark_Light/QLineEdit/border-radius", "6px")
+        lineedit_padding = settings.value("Dark_Light/QLineEdit/padding", "4px")
+        lineedit_focus_bg = settings.value("Dark_Light/QLineEdit_focus/background-color", "#454545")
+        lineedit_focus_border = settings.value("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
+
+        # QPushButton
+        pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#3b3b3b")
+        pushbutton_color = settings.value("Dark_Light/QPushButton/color", "white")
+        pushbutton_border = settings.value("Dark_Light/QPushButton/border", "1px solid white")
+        pushbutton_border_radius = settings.value("Dark_Light/QPushButton/border-radius", "6px")
+        pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
+        pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
+        pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
+
+        # QMenu
+        menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
+        menu_color = settings.value("Dark_Light/QMenu/color", "white")
+        menu_border = settings.value("Dark_Light/QMenu/border", "1px solid #3b3b3b")
+        menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#4d4d4d")
+
+        # QMenuBar
+        menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "4d4d4d")
+        menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#3a3a3a")
+        menubar_color = settings.value("Dark_Light/QMenuBar/color", "white")
+        menubar_item_bg = settings.value("Dark_Light/QMenuBar_item/background", "transparent")
+        menubar_item_color = settings.value("Dark_Light/QMenuBar_item/color", "white")
+        menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
+        menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
+
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {background_color};
+            }}
+            QTabWidget::pane {{
+                background-color: {tabwidget_pane_bg}; 
+            }}
+            QTabBar::tab {{
+                background-color: {tabbar_bg}; 
+                color: {tabbar_color};
+                padding: {tabbar_padding};
+                border: {tabbar_border}; 
+                border-top-left-radius: {tabbar_border_tl_radius};
+                border-top-right-radius: {tabbar_border_tr_radius};
+            }}
+            QTabBar::tab:selected {{
+                background-color: {tabbar_selected_bg};  
+                color: {tabbar_selected_color};
+            }}
+            QSpinBox {{
+                background-color: {spinbox_bg};
+                color: {spinbox_color};
+                border: {spinbox_border};
+                border-radius: {spinbox_border_radius};
+            }}
+            QGroupBox:title {{
+                color: {groupbox_title_color};  
+            }}
+            QLabel {{
+                color: {label_color};  
+            }}
+            QLineEdit {{
+                background-color: {lineedit_bg};
+                color: {lineedit_color};
+                border: {lineedit_border};
+                border-radius: {lineedit_border_radius};
+                padding: {lineedit_padding};
+            }}
+            QLineEdit:focus {{
+                background-color: {lineedit_focus_bg};
+                border: {lineedit_focus_border};
+            }}
+            QPushButton {{
+                background-color: {pushbutton_bg};
+                color: {pushbutton_color};
+                border: {pushbutton_border};
+                border-radius: {pushbutton_border_radius};
+                padding: {pushbutton_padding};
+            }}
+            QPushButton:hover {{
+                background-color: {pushbutton_hover_bg};
+            }}
+            QPushButton:pressed {{
+                background-color: {pushbutton_pressed_bg};
+            }}
+            QMenuBar {{
+                background-color: {menubar_bg};
+                color: {menubar_color};
+            }}
+            QMenuBar::item {{
+                background: {menubar_item_bg};
+                color: {menubar_item_color};
+                padding: {menubar_item_padding};
+            }}
+            QMenuBar::item:selected {{
+                background: {menubar_item_selected_bg};
+            }}
+            QMenu {{
+                background-color: {menu_bg};
+                color: {menu_color};
+                border: {menu_border};
+            }}
+            QMenu::item:selected {{
+                background-color: {menu_item_color};
+            }}
+        """)
+
         # Store VNA device reference
         self.vna_device = vna_device
         
@@ -79,19 +223,344 @@ class NanoVNAGraphics(QMainWindow):
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
 
-        light_dark_mode = edit_menu.addAction("Light Mode 🔆")
+        text_light_dark = settings.value("Dark_Light/text_light_dark", "text_light_dark")
 
-        self.is_dark_mode = False  
+        light_dark_mode = edit_menu.addAction(text_light_dark)
+
+        self.is_dark_mode = settings.value("Dark_Light/is_dark_mode", False, type=bool)
 
         def toggle_menu_dark_mode():
+
+            ui_dir = os.path.dirname(os.path.dirname(__file__))  
+            ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
+
+            settings = QSettings(ruta_ini, QSettings.IniFormat)
+
             if self.is_dark_mode:
                 light_dark_mode.setText("Light Mode 🔆")
+
+                # --- QWidget ---
+                settings.setValue("Dark_Light/QWidget/background-color", "#7f7f7f")
+
+                # --- Qframe ---
+                settings.setValue("Dark_Light/Qframe/background-color", "white")
+                settings.setValue("Dark_Light/Qframe/color", "white")
+
+                # --- QTabWidget pane ---
+                settings.setValue("Dark_Light/QTabWidget_pane/background-color", "#6f6f6f")
+
+                # --- QTabBar ---
+                settings.setValue("Dark_Light/QTabBar/background-color", "#4d4d4d")
+                settings.setValue("Dark_Light/QTabBar/color", "white")
+                settings.setValue("Dark_Light/QTabBar/padding", "5px 12px")
+                settings.setValue("Dark_Light/QTabBar/border", "none")
+                settings.setValue("Dark_Light/QTabBar/border-top-left-radius", "6px")
+                settings.setValue("Dark_Light/QTabBar/border-top-right-radius", "6px")
+
+                # --- QTabBar selected ---
+                settings.setValue("Dark_Light/QTabBar_selected/background-color", "#2b2b2b")
+                settings.setValue("Dark_Light/QTabBar_selected/color", "white")
+
+                # --- QSpinBox ---
+                settings.setValue("Dark_Light/QSpinBox/color", "white")
+                settings.setValue("Dark_Light/QSpinBox/background-color", "#6f6f6f")
+                settings.setValue("Dark_Light/QSpinBox/border", "1px solid #5f5f5f")
+                settings.setValue("Dark_Light/QSpinBox/border-radius", "8px")
+
+                # --- QGroupBox title ---
+                settings.setValue("Dark_Light/QGroupBox_title/color", "white")
+
+                # --- QLabel ---
+                settings.setValue("Dark_Light/QLabel/color", "white")
+
+                # --- QLineEdit ---
+                settings.setValue("Dark_Light/QLineEdit/background-color", "#6f6f6f")
+                settings.setValue("Dark_Light/QLineEdit/color", "white")
+                settings.setValue("Dark_Light/QLineEdit/border", "1px solid #5f5f5f")
+                settings.setValue("Dark_Light/QLineEdit/border-radius", "6px")
+                settings.setValue("Dark_Light/QLineEdit/padding", "4px")
+
+                # --- QLineEdit focus ---
+                settings.setValue("Dark_Light/QLineEdit_focus/background-color", "#5f5f5f")
+                settings.setValue("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
+
+                # --- QPushButton ---
+                settings.setValue("Dark_Light/QPushButton/background-color", "#6f6f6f")
+                settings.setValue("Dark_Light/QPushButton/color", "white")
+                settings.setValue("Dark_Light/QPushButton/border", "1px solid #5f5f5f")
+                settings.setValue("Dark_Light/QPushButton/border-radius", "6px")
+                settings.setValue("Dark_Light/QPushButton/padding", "4px 10px")
+
+                # --- QPushButton hover/pressed ---
+                settings.setValue("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
+                settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
+
+                # --- QMenu ---
+                settings.setValue("Dark_Light/QMenu/background", "#7f7f7f")
+                settings.setValue("Dark_Light/QMenu/color", "white")
+                settings.setValue("Dark_Light/QMenu/border", "1px solid #6f6f6f")
+
+                # --- QMenuBar ---
+                settings.setValue("Dark_Light/QMenuBar/background-color", "#7f7f7f")
+                settings.setValue("Dark_Light/QMenuBar/color", "white")
+
+                # --- QMenuBar items ---
+                settings.setValue("Dark_Light/QMenuBar_item/background", "transparent")
+                settings.setValue("Dark_Light/QMenuBar_item/color", "white")
+                settings.setValue("Dark_Light/QMenuBar_item/padding", "4px 10px")
+
+                # --- QMenuBar selected item ---
+                settings.setValue("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
+
+                # --- QMenu selected item ---
+                settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#4d4d4d")
+
+                self.setStyleSheet("""
+                    QWidget {
+                        background-color: #7f7f7f;
+                    }
+                    QTabWidget::pane {
+                        background-color: #6f6f6f; 
+                    }
+                    QTabBar::tab {
+                        background-color: #2b2b2b; 
+                        color: white;
+                        padding: 5px 12px;
+                        border: none; 
+                        border-top-left-radius: 6px;
+                        border-top-right-radius: 6px;
+                    }
+                    QTabBar::tab:selected {
+                        background-color: #4d4d4d;  
+                        color: white;
+                    }
+                    QSpinBox {
+                        background-color: #6f6f6f;
+                        color: white;
+                        border: 1px solid #5f5f5f;
+                        border-radius: 8px;
+                    }
+                    QGroupBox:title {
+                        color: white;  
+                    }
+                    QLabel {
+                        color: white;  
+                    }
+                    QLineEdit {
+                        background-color: #6f6f6f;
+                        color: white;
+                        border: 1px solid #5f5f5f;
+                        border-radius: 6px;
+                        padding: 4px;
+                    }
+                    QLineEdit:focus {
+                        background-color: #5f5f5f;
+                        border: 1px solid #4d90fe;
+                    }
+
+                    QPushButton {
+                        background-color: #6f6f6f;
+                        color: white;
+                        border: 1px solid #5f5f5f;
+                        border-radius: 6px;
+                        padding: 4px 10px;
+                    }
+                    QPushButton:hover {
+                        background-color: #4d4d4d;
+                    }
+                    QPushButton:pressed {
+                        background-color: #5c5c5c;
+                    }
+                    QMenuBar {
+                        background-color: #7f7f7f;
+                        color: white;
+                    }
+                    QMenuBar::item {
+                        background: transparent;
+                        color: white;
+                        padding: 4px 10px;
+                    }
+                    QMenuBar::item:selected {
+                        background: #4d4d4d;
+                    }
+                    QMenu {
+                        background-color: #7f7f7f;
+                        color: white;
+                        border: 1px solid #6f6f6f;
+                    }
+                    QMenu::item:selected {
+                        background-color: #4d4d4d;
+                    }
+                """)
+
+
                 self.is_dark_mode = False
-                #toggle_dark_mode(tabs, force_light=True)
+
+                settings.setValue("Dark_Light/is_dark_mode", self.is_dark_mode)
+                settings.setValue("Dark_Light/text_light_dark", "Light Mode 🔆")
+
             else:
                 light_dark_mode.setText("Dark Mode 🌙")
+
+                # --- QWidget ---
+                settings.setValue("Dark_Light/QWidget/background-color", "#f0f0f0")
+
+                # --- Qframe ---
+                settings.setValue("Dark_Light/Qframe/background-color", "black")
+                settings.setValue("Dark_Light/Qframe/color", "black")
+
+                # --- QTabWidget pane ---
+                settings.setValue("Dark_Light/QTabWidget_pane/background-color", "#e0e0e0")
+
+                # --- QTabBar ---
+                settings.setValue("Dark_Light/QTabBar/background-color", "#c8c8c8")
+                settings.setValue("Dark_Light/QTabBar/color", "black")
+                settings.setValue("Dark_Light/QTabBar/padding", "5px 12px")
+                settings.setValue("Dark_Light/QTabBar/border", "none")
+                settings.setValue("Dark_Light/QTabBar/border-top-left-radius", "6px")
+                settings.setValue("Dark_Light/QTabBar/border-top-right-radius", "6px")
+
+                # --- QTabBar selected ---
+                settings.setValue("Dark_Light/QTabBar_selected/background-color", "#dcdcdc")
+                settings.setValue("Dark_Light/QTabBar/color", "black")
+
+                # --- QTabBar alternate background ---
+                settings.setValue("Dark_Light/QTabBar/background-color", "#e0e0e0")
+
+                # --- QSpinBox ---
+                settings.setValue("Dark_Light/QSpinBox/color", "black")
+                settings.setValue("Dark_Light/QSpinBox/border", "1px solid #b0b0b0")
+                settings.setValue("Dark_Light/QSpinBox/border-radius", "8px")
+
+                # --- QGroupBox title ---
+                settings.setValue("Dark_Light/QGroupBox_title/color", "black")
+
+                # --- QLabel ---
+                settings.setValue("Dark_Light/QLabel/color", "black")
+
+                # --- QLineEdit ---
+                settings.setValue("Dark_Light/QLineEdit/background-color", "#ffffff")
+                settings.setValue("Dark_Light/QLineEdit/color", "black")
+                settings.setValue("Dark_Light/QLineEdit/border", "1px solid #b0b0b0")
+                settings.setValue("Dark_Light/QLineEdit/border-radius", "6px")
+                settings.setValue("Dark_Light/QLineEdit/padding", "4px")
+
+                # --- QLineEdit focus ---
+                settings.setValue("Dark_Light/QLineEdit_focus/background-color", "#f0f8ff")
+                settings.setValue("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
+
+                # --- QPushButton ---
+                settings.setValue("Dark_Light/QPushButton/background-color", "#e0e0e0")
+                settings.setValue("Dark_Light/QPushButton/color", "black")
+                settings.setValue("Dark_Light/QPushButton/border", "1px solid #b0b0b0")
+                settings.setValue("Dark_Light/QPushButton/border-radius", "6px")
+                settings.setValue("Dark_Light/QPushButton/padding", "4px 10px")
+
+                # --- QPushButton hover/pressed ---
+                settings.setValue("Dark_Light/QPushButton_hover/background-color", "#d0d0d0")
+                settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#c0c0c0")
+
+                # --- QMenu ---
+                settings.setValue("Dark_Light/QMenu/background", "#f0f0f0")
+                settings.setValue("Dark_Light/QMenu/color", "black")
+                settings.setValue("Dark_Light/QMenu/border", "1px solid #b0b0b0")
+
+                # --- QMenuBar ---
+                settings.setValue("Dark_Light/QMenuBar/background-color", "#f0f0f0")
+                settings.setValue("Dark_Light/QMenuBar/color", "black")
+
+                # --- QMenuBar items ---
+                settings.setValue("Dark_Light/QMenuBar_item/background", "transparent")
+                settings.setValue("Dark_Light/QMenuBar_item/color", "black")
+                settings.setValue("Dark_Light/QMenuBar_item/padding", "4px 10px")
+
+                # --- QMenuBar selected item ---
+                settings.setValue("Dark_Light/QMenuBar_item_selected/background-color", "#dcdcdc")
+
+                # --- QMenu selected item ---
+                settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#dcdcdc")
+
+                self.setStyleSheet("""
+                    QWidget {
+                        background-color: #f0f0f0;
+                    }
+                    QTabWidget::pane {
+                        background-color: #e0e0e0; 
+                    }
+                    QTabBar::tab {
+                        background-color: #dcdcdc;  
+                        color: black;             
+                        padding: 5px 12px;
+                        border: none;
+                        border-top-left-radius: 6px;
+                        border-top-right-radius: 6px;
+                    }
+                    QTabBar::tab:selected {
+                        background-color: #c8c8c8;  
+                        color: black;
+                    }
+                    QSpinBox {
+                        background-color: #ffffff;
+                        color: black;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 8px;
+                    }
+                    QGroupBox:title {
+                        color: black; 
+                    }
+                    QLabel {
+                        color: black;
+                    }
+                    QLineEdit {
+                        background-color: #ffffff;
+                        color: black;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 6px;
+                        padding: 4px;
+                    }
+                    QLineEdit:focus {
+                        background-color: #f0f8ff;
+                        border: 1px solid #4d90fe;
+                    }
+                    QPushButton {
+                        background-color: #e0e0e0;
+                        color: black;
+                        border: 1px solid #b0b0b0;
+                        border-radius: 6px;
+                        padding: 4px 10px;
+                    }
+                    QPushButton:hover {
+                        background-color: #d0d0d0;
+                    }
+                    QPushButton:pressed {
+                        background-color: #c0c0c0;
+                    }
+                    QMenuBar {
+                        background-color: #f0f0f0;
+                        color: black;
+                    }
+                    QMenuBar::item {
+                        background: transparent;
+                        color: black;
+                        padding: 4px 10px;
+                    }
+                    QMenuBar::item:selected {
+                        background: #dcdcdc;
+                    }
+                    QMenu {
+                        background-color: #f0f0f0;
+                        color: black;
+                        border: 1px solid #b0b0b0;
+                    }
+                    QMenu::item:selected {
+                        background-color: #dcdcdc;
+                    }
+                """)
+
                 self.is_dark_mode = True
-                #toggle_dark_mode(tabs, force_light=True)
+
+                settings.setValue("Dark_Light/is_dark_mode", self.is_dark_mode)  
+                settings.setValue("Dark_Light/text_light_dark", "Dark Mode 🌙")
 
         light_dark_mode.triggered.connect(toggle_menu_dark_mode)
 
@@ -1111,7 +1580,6 @@ class NanoVNAGraphics(QMainWindow):
         slider1_visible = self.slider_left.ax.get_visible()
         slider2_visible = self.slider_right.ax.get_visible()
 
-        # Ocultar ambos cursors y sliders para la captura
         if self.cursor_left is not None and hasattr(self.cursor_left, 'set_visible'):
             self.cursor_left.set_visible(False)
         if self.cursor_right is not None and hasattr(self.cursor_right, 'set_visible'):
@@ -1287,8 +1755,15 @@ class NanoVNAGraphics(QMainWindow):
 
     def open_view(self):
         from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_window import View
-        if not hasattr(self, 'view_window') or self.view_window is None:
-            self.view_window = View(nano_window=self)
+        
+        # Cerrar la instancia anterior si existe
+        if hasattr(self, 'view_window') and self.view_window is not None:
+            self.view_window.close()
+            self.view_window.deleteLater()
+            self.view_window = None
+
+        # Crear nueva instancia de View
+        self.view_window = View(nano_window=self)
         self.view_window.show()
         self.view_window.raise_()
         self.view_window.activateWindow()

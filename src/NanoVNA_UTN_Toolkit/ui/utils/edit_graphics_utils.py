@@ -67,8 +67,8 @@ def create_edit_tab1(self, tabs):
     tab1_container.setSpacing(0)
 
     line_tab = QFrame()
+    line_tab.setObjectName("separatorLine")
     line_tab.setFixedHeight(3)
-    line_tab.setStyleSheet("background-color: white;")  
     tab1_container.addWidget(line_tab)
 
     spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
@@ -103,7 +103,7 @@ def create_edit_tab1(self, tabs):
     # --- Trace color ---
     trace_layout = QHBoxLayout()
     lbl_trace = QLabel("Trace color:")
-    lbl_trace.setStyleSheet("color: white; font-size: 13pt;")
+    lbl_trace.setStyleSheet("font-size: 13pt;")
     btn_trace = QFrame()
     btn_trace.setFixedSize(30, 30)
     btn_trace.setStyleSheet(f"background-color: {trace_color1}; border: 1px solid white; border-radius: 6px;")
@@ -114,7 +114,7 @@ def create_edit_tab1(self, tabs):
     # --- Marker color ---
     marker_layout = QHBoxLayout()
     lbl_marker = QLabel("Marker color:")
-    lbl_marker.setStyleSheet("color: white; font-size: 13pt;")
+    lbl_marker.setStyleSheet("font-size: 13pt;")
     btn_marker = QFrame()
     btn_marker.setFixedSize(30, 30)
     btn_marker.setStyleSheet(f"background-color: {marker_color1}; border: 1px solid white; border-radius: 6px;")
@@ -125,7 +125,7 @@ def create_edit_tab1(self, tabs):
     # --- Line width ---
     line_layout = QHBoxLayout()
     lbl_line = QLabel("Line width (all):")
-    lbl_line.setStyleSheet("color: white;  font-size: 13pt;")
+    lbl_line.setStyleSheet("font-size: 13pt;")
     spin_line_tab1 = QSpinBox()
     spin_line_tab1.setRange(1, 10)
     spin_line_tab1.setValue(trace_size1)
@@ -146,7 +146,7 @@ def create_edit_tab1(self, tabs):
     # --- Marker size ---
     marker_size_layout = QHBoxLayout()
     lbl_marker_size = QLabel("Marker size (all):")
-    lbl_marker_size.setStyleSheet("color: white;  font-size: 13pt;")
+    lbl_marker_size.setStyleSheet("font-size: 13pt;")
     spin_marker_tab1 = QSpinBox()
     spin_marker_tab1.setRange(1, 20)
     spin_marker_tab1.setValue(marker_size1)
@@ -163,25 +163,6 @@ def create_edit_tab1(self, tabs):
     marker_size_layout.addWidget(lbl_marker_size)
     marker_size_layout.addWidget(spin_marker_tab1, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_size_layout)
-
-    # --- Dark mode ---
-    dark_mode_layout = QHBoxLayout()
-    dark_mode_layout.setAlignment(Qt.AlignLeft)
-    lbl_dark_mode = QLabel("Dark Mode:")
-    lbl_dark_mode.setStyleSheet("color: white;  font-size: 13pt;")
-    btn_dark_mode = QLabel("☀")
-    btn_dark_mode.setFixedSize(30, 30)
-    btn_dark_mode.setAlignment(Qt.AlignCenter)
-    btn_dark_mode.setStyleSheet("""
-        border: 1px solid black;
-        border-radius: 6px;
-        font-size: 18px;
-    """)
-    btn_dark_mode.setCursor(Qt.PointingHandCursor)
-    dark_mode_layout.addWidget(lbl_dark_mode)
-    dark_mode_layout.addStretch()
-    dark_mode_layout.addWidget(btn_dark_mode)
-    left_layout.addLayout(dark_mode_layout)
 
 ####################################################################################################
 #--------- Getters --------------------------------------------------------------------------------#
@@ -328,146 +309,9 @@ def create_edit_tab1(self, tabs):
 
     # --- Line above buttons ---
     line_above_buttons = QFrame()
-    line_above_buttons.setStyleSheet("color: white; background-color: white;")
+    line_above_buttons.setObjectName("separatorLine")
     line_above_buttons.setFixedHeight(3)
     tab1_container.addWidget(line_above_buttons)
-
-    def toggle_dark_mode(tabs, event=None):
-        if btn_dark_mode.text() == "☀":  # Dark mode
-            btn_dark_mode.setText("🌙")
-
-            # Main widget style for dark mode
-            self.setStyleSheet("""
-                QWidget {
-                    background-color: #2b2b2b;
-                }
-                QTabWidget::pane {
-                    background-color: #3b3b3b; 
-                }
-                QTabBar::tab {
-                    background-color: #2b2b2b;   /* fondo del tab */
-                    color: white;
-                    padding: 5px 12px;
-                    border: none; 
-                    border-top-left-radius: 6px;
-                    border-top-right-radius: 6px;
-                }
-                QTabBar::tab:selected {
-                    background-color: #4d4d4d;   /* más claro que el fondo */
-                    color: white;
-                }
-                QSpinBox {
-                    color: white;
-                    background-color: #3b3b3b;
-                    border: 1px solid white;
-                    border-radius: 8px;
-                }
-                QGroupBox:title {
-                    color: white;  
-                }
-            """)
-
-            # Tabs style for dark mode
-            tabs.setStyleSheet("""
-                QTabBar::tab {
-                    background-color: #2b2b2b;   /* fondo del tab */
-                    color: white;
-                    padding: 5px 12px;
-                    border: none; 
-                    border-top-left-radius: 6px;
-                    border-top-right-radius: 6px;
-                }
-                QTabBar::tab:selected {
-                    background-color: #4d4d4d;   /* más claro que el fondo */
-                    color: white;
-                }
-            """)
-
-            # Set lines color and height
-            line_tab.setStyleSheet("background-color: white;")
-            line_tab.setFixedHeight(3)
-            line_above_buttons.setStyleSheet("background-color: white;")
-            line_above_buttons.setFixedHeight(3)
-
-            # GroupBox color in dark mode
-            left_group.setStyleSheet("QGroupBox { color: white; }")
-
-            # Labels color
-            for w in self.findChildren(QLabel):
-                w.setStyleSheet("color: white;")
-
-            # Dark mode button style: dark gray but lighter than background
-            btn_dark_mode.setStyleSheet("border: 1px solid #555555; border-radius: 6px; background-color: #4d4d4d;")
-
-        else:  # Light mode
-            btn_dark_mode.setText("☀")
-
-            # Main widget style for light mode
-            self.setStyleSheet("""
-                QWidget {
-                    background-color: #e6e6e6;
-                }
-                QTabWidget::pane {
-                    background-color: #dcdcdc; 
-                }
-                QTabBar::tab {
-                    background-color: #dcdcdc;  
-                    color: black;             
-                    padding: 5px;
-                    border: 1px solid #aaa;
-                    border-bottom: none;
-                    border-top-left-radius: 4px;
-                    border-top-right-radius: 4px;
-                }
-                QTabBar::tab:selected {
-                    background-color: #d0d0d0;  /* slightly darker gray for selected tab */
-                    color: black;
-                }
-                QSpinBox {
-                    color: black;
-                    background-color: #ffffff;
-                    border: 1px solid black;
-                    border-radius: 8px;
-                }
-                QGroupBox:title {
-                    color: black; 
-                }
-            """)
-
-            # Tabs style for light mode
-            tabs.setStyleSheet("""
-                QTabBar::tab {
-                    background-color: #dcdcdc; 
-                    color: black;             
-                    padding: 5px 12px;
-                    border: none;
-                    border-top-left-radius: 6px;
-                    border-top-right-radius: 6px;
-                }
-                QTabBar::tab:selected {
-                    background-color: #d0d0d0; 
-                    color: black;
-                }
-            """)
-
-            # Set lines color and height
-            line_tab.setStyleSheet("background-color: black;")
-            line_tab.setFixedHeight(3)
-            line_above_buttons.setStyleSheet("background-color: black;")
-            line_above_buttons.setFixedHeight(3)
-
-            # GroupBox color in light mode (black background)
-            left_group.setStyleSheet("QGroupBox { color: black;}")
-            right_group.setStyleSheet("QGroupBox { color: black;}")
-
-            # Labels color
-            for w in self.findChildren(QLabel):
-                w.setStyleSheet("color: black;")
-
-            # Dark mode button style: light gray distinct from background
-            btn_dark_mode.setStyleSheet("border: 1px solid #bbbbbb; border-radius: 6px; background-color: #cccccc;")
-
-    btn_dark_mode.mousePressEvent = lambda event: toggle_dark_mode(tabs)    
 
     return tab1, get_trace_color, get_marker_color, get_line_width, get_marker_size
 
@@ -501,7 +345,7 @@ def create_edit_tab2(self, tabs):
     # Línea arriba
     line_tab = QFrame()
     line_tab.setFixedHeight(3)
-    line_tab.setStyleSheet("background-color: white;")
+    line_tab.setObjectName("separatorLine")
     tab2_container.addWidget(line_tab)
 
     tab2_container.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed))
@@ -528,7 +372,6 @@ def create_edit_tab2(self, tabs):
     # Trace color
     trace_layout = QHBoxLayout()
     lbl_trace = QLabel("Trace color:")
-    lbl_trace.setStyleSheet("color: white;")
 
     btn_trace = QFrame()
     btn_trace.setFixedSize(30, 30)
@@ -540,7 +383,6 @@ def create_edit_tab2(self, tabs):
     # Marker color
     marker_layout = QHBoxLayout()
     lbl_marker = QLabel("Marker color:")
-    lbl_marker.setStyleSheet("color: white;")
 
     btn_marker = QFrame()
     btn_marker.setFixedSize(30, 30)
@@ -552,7 +394,6 @@ def create_edit_tab2(self, tabs):
     # Line width
     line_layout = QHBoxLayout()
     lbl_line = QLabel("Line width (all):")
-    lbl_line.setStyleSheet("color: white;")
     spin_line_tab2 = QSpinBox()
     spin_line_tab2.setRange(1, 10)
     spin_line_tab2.setValue(line_width2)
@@ -573,7 +414,6 @@ def create_edit_tab2(self, tabs):
     # Marker size
     marker_size_layout = QHBoxLayout()
     lbl_marker_size = QLabel("Marker size (all):")
-    lbl_marker_size.setStyleSheet("color: white;")
     spin_marker_tab2 = QSpinBox()
     spin_marker_tab2.setRange(1, 20)
     spin_marker_tab2.setValue(marker_size2)
@@ -590,27 +430,6 @@ def create_edit_tab2(self, tabs):
     marker_size_layout.addWidget(lbl_marker_size)
     marker_size_layout.addWidget(spin_marker_tab2, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_size_layout)
-
-    # Dark mode
-    dark_mode_layout = QHBoxLayout()
-    dark_mode_layout.setAlignment(Qt.AlignLeft)
-
-    lbl_dark_mode = QLabel("Dark Mode:")
-    lbl_dark_mode.setStyleSheet("color: white;")
-    dark_mode_layout.addWidget(lbl_dark_mode)
-
-    btn_dark_mode = QLabel("☀") 
-    btn_dark_mode.setFixedSize(30, 30)
-    btn_dark_mode.setAlignment(Qt.AlignCenter)
-    btn_dark_mode.setStyleSheet("""
-        border: 1px solid black;
-        border-radius: 6px;
-        font-size: 18px;
-    """)
-    btn_dark_mode.setCursor(Qt.PointingHandCursor)
-    dark_mode_layout.addStretch()
-    dark_mode_layout.addWidget(btn_dark_mode)
-    left_layout.addLayout(dark_mode_layout)
 
 ####################################################################################################
 #--------- Getters --------------------------------------------------------------------------------#
@@ -746,24 +565,8 @@ def create_edit_tab2(self, tabs):
 
     # Línea debajo
     line_above_buttons = QFrame()
-    line_above_buttons.setStyleSheet("background-color: white;")
+    line_above_buttons.setObjectName("separatorLine")
     line_above_buttons.setFixedHeight(3)
     tab2_container.addWidget(line_above_buttons)
-
-####################################################################################################
-#--------- Dark mode toggle ----------------------------------------------------------------------#
-####################################################################################################
-
-    def toggle_dark_mode2(tabs, event=None):
-        if btn_dark_mode.text() == "☀":  # Dark mode
-            btn_dark_mode.setText("🌙")
-            self.setStyleSheet("""...""")  
-            tabs.setStyleSheet("""...""")  
-        else:  # Light mode
-            btn_dark_mode.setText("☀")
-            self.setStyleSheet("""...""")
-            tabs.setStyleSheet("""...""")  
-
-    btn_dark_mode.mousePressEvent = lambda event: toggle_dark_mode2(tabs)
 
     return tab2, get_trace_color2, get_marker_color2, get_line_width2, get_marker_size2
