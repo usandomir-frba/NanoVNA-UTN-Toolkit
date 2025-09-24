@@ -1,6 +1,7 @@
 import sys
 import logging
 import os
+from shiboken6 import isValid
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QComboBox
@@ -260,12 +261,13 @@ class CalibrationWizard(QMainWindow):
         self.clear_content()  # limpia content_layout
         # elimina widgets antiguos si existen
         if hasattr(self, "left_panel_widget") and self.left_panel_widget:
-            self.left_panel_widget.setParent(None)
-            self.left_panel_widget.deleteLater()
+            if isValid(self.left_panel_widget):
+                self.left_panel_widget.setParent(None)
             self.left_panel_widget = None
+
         if hasattr(self, "right_panel_widget") and self.right_panel_widget:
-            self.right_panel_widget.setParent(None)
-            self.right_panel_widget.deleteLater()
+            if isValid(self.right_panel_widget):
+                self.right_panel_widget.setParent(None)
             self.right_panel_widget = None
 
     def clear_content(self):
@@ -281,10 +283,18 @@ class CalibrationWizard(QMainWindow):
         self.selected_method = None
         self.next_button.setEnabled(False)
 
-        # Container that keeps content at the top
+        # --- 🔴 FIX: Reset botón al volver al inicio ---
+        self.next_button.setText("▶▶")
+        try:
+            self.next_button.clicked.disconnect()
+        except Exception:
+            pass
+        self.next_button.clicked.connect(self.next_step)
+
+        # Container que mantiene el contenido arriba
         top_container = QVBoxLayout()
         top_container.setAlignment(Qt.AlignTop)
-        top_container.addSpacing(30)  # small margin from top
+        top_container.addSpacing(30)
 
         label = QLabel("Calibration Methods:")
         label.setStyleSheet("font-size: 16px; font-weight: bold;")
@@ -293,11 +303,11 @@ class CalibrationWizard(QMainWindow):
         self.freq_dropdown = QComboBox()
         self.freq_dropdown.setEditable(False)
 
-        # Placeholder 
+        # Placeholder
         self.freq_dropdown.addItem("Select Method")
         item = self.freq_dropdown.model().item(0)
         item.setEnabled(False)
-        placeholder_color = QColor(120, 120, 120) 
+        placeholder_color = QColor(120, 120, 120)
         item.setForeground(placeholder_color)
 
         methods = [
@@ -308,18 +318,17 @@ class CalibrationWizard(QMainWindow):
             "1-Path 2-Port"
         ]
         self.freq_dropdown.addItems(methods)
-
         self.freq_dropdown.activated.connect(self.on_method_activated)
 
         top_container.addWidget(label)
         top_container.addWidget(self.freq_dropdown)
 
-        # Add the container to the main content layout
         self.content_layout.addLayout(top_container)
 
-        # Hide back button on first screen
+        # Hide back button
         self.back_button.setVisible(False)
         self.current_step = 0
+
 
     def on_method_activated(self, index):
         """Called when user selects a method from the combo box."""
@@ -456,7 +465,7 @@ class CalibrationWizard(QMainWindow):
         ntw = rf.Network(frequency=freqs, s=s, z0=50)
 
         # Dibujamos Smith chart “limpio” pero con los círculos de referencia
-        ntw.plot_s_smith(ax=ax, draw_labels=False, show_legend=False)
+        ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
 
         # Agregamos tu línea azul
         ax.plot(ntw.s[:,0,0].real, ntw.s[:,0,0].imag, color='blue', lw=2)
@@ -471,13 +480,21 @@ class CalibrationWizard(QMainWindow):
         # Layout horizontal
         panel_row = QHBoxLayout()
         panel_row.addWidget(self.left_panel_widget, 2)
-        panel_row.addWidget(self.right_panel_widget, 3)
+        panel_row.addWidget(self.right_panel_widget, 2)
         self.content_layout.addLayout(panel_row)
 
         self.current_step = step
         self.back_button.setVisible(step > 0)
 
-        # Configurar botón next
+        try:
+            self.next_button.clicked.disconnect(self.next_step)
+        except (TypeError, RuntimeError):
+            pass
+        try:
+            self.next_button.clicked.disconnect(self.finish_wizard)
+        except (TypeError, RuntimeError):
+            pass
+
         if step == len(steps):
             self.next_button.setText("Finish")
             try:
@@ -508,7 +525,8 @@ class CalibrationWizard(QMainWindow):
 
     def previous_step(self):
         if self.current_step <= 1:
-            self.show_first_screen()
+            self.show_first_screen() 
+            self.next_button.setEnabled(False)  
         else:
             self.show_step_screen(self.current_step - 1)
 
