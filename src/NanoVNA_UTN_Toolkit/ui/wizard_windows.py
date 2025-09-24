@@ -15,6 +15,11 @@ except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None  # Safe fallback
 
+import numpy as np
+import skrf as rf
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.lines import Line2D
 
 class CalibrationWizard(QMainWindow):
     def __init__(self, vna_device=None):
@@ -250,6 +255,19 @@ class CalibrationWizard(QMainWindow):
                 # Recursively clear nested layout
                 self.clear_layout(child_layout)
 
+    def clear_main_content(self):
+        """Clear everything inside content_layout and remove old panels if exist."""
+        self.clear_content()  # limpia content_layout
+        # elimina widgets antiguos si existen
+        if hasattr(self, "left_panel_widget") and self.left_panel_widget:
+            self.left_panel_widget.setParent(None)
+            self.left_panel_widget.deleteLater()
+            self.left_panel_widget = None
+        if hasattr(self, "right_panel_widget") and self.right_panel_widget:
+            self.right_panel_widget.setParent(None)
+            self.right_panel_widget.deleteLater()
+            self.right_panel_widget = None
+
     def clear_content(self):
         """Clear everything inside content_layout (handles nested layouts)."""
         self.clear_layout(self.content_layout)
@@ -400,35 +418,67 @@ class CalibrationWizard(QMainWindow):
             return []
 
     def show_step_screen(self, step):
-        """Show the given step (unique QLabel) top-right."""
-        self.clear_content()
-
+        """Show the given step with left info panel and right Smith chart."""
+        self.clear_main_content()
         steps = self.get_steps_for_method()
 
-        top_wrapper = QVBoxLayout()
-        top_wrapper.setAlignment(Qt.AlignTop)
-        top_wrapper.addSpacing(10)
+        # Pantalla final
+        if step > len(steps):
+            final_label = QLabel("Calibration Finished!")
+            final_label.setAlignment(Qt.AlignCenter)
+            final_label.setStyleSheet("font-size: 20px; font-weight: bold;")
+            self.content_layout.addWidget(final_label)
+            self.back_button.setVisible(True)
+            self.next_button.setVisible(False)
+            self.current_step = step
+            return
 
-        row = QHBoxLayout()
+        # Panel izquierdo
+        self.left_panel_widget = QWidget()
+        left_layout = QVBoxLayout(self.left_panel_widget)
+        left_layout.setAlignment(Qt.AlignTop)
+        info_label = QLabel(f"Method: {self.selected_method}\nStep: {step}")
+        info_label.setAlignment(Qt.AlignCenter)
+        info_label.setStyleSheet("font-size: 18px; font-weight: bold; padding: 8px;")
+        left_layout.addWidget(info_label)
 
-        # get the QLabel for this step
-        if step <= len(steps):
-            step_label = steps[step - 1]()
-        else:
-            step_label = QLabel("Calibrated!")
-            step_label.setStyleSheet("font-size: 20px; font-weight: bold; padding: 8px;")
-            step_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        # Panel derecho: Smith chart con canvas de matplotlib
+        self.right_panel_widget = QWidget()
+        right_layout = QVBoxLayout(self.right_panel_widget)
 
-        row.addWidget(step_label)
-        row.addStretch()  # empuja el label hacia la derecha
-        top_wrapper.addLayout(row)
-        self.content_layout.addLayout(top_wrapper)
+        fig = Figure(figsize=(5, 4), facecolor='white')
+        canvas = FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+
+        # Creamos un Network placeholder
+        freqs = np.linspace(1e6, 1e9, 101)
+        s = np.zeros((len(freqs), 1, 1), dtype=complex)
+        ntw = rf.Network(frequency=freqs, s=s, z0=50)
+
+        # Dibujamos Smith chart “limpio” pero con los círculos de referencia
+        ntw.plot_s_smith(ax=ax, draw_labels=False, show_legend=False)
+
+        # Agregamos tu línea azul
+        ax.plot(ntw.s[:,0,0].real, ntw.s[:,0,0].imag, color='blue', lw=2)
+        ax.legend([Line2D([0],[0], color='blue')], ["S11"], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
+
+        # Sacamos los ticks de Re/Im
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        right_layout.addWidget(canvas)
+
+        # Layout horizontal
+        panel_row = QHBoxLayout()
+        panel_row.addWidget(self.left_panel_widget, 2)
+        panel_row.addWidget(self.right_panel_widget, 3)
+        self.content_layout.addLayout(panel_row)
 
         self.current_step = step
         self.back_button.setVisible(step > 0)
 
-        # Configure next button
-        if step > len(steps):
+        # Configurar botón next
+        if step == len(steps):
             self.next_button.setText("Finish")
             try:
                 self.next_button.clicked.disconnect()
@@ -461,6 +511,7 @@ class CalibrationWizard(QMainWindow):
             self.show_first_screen()
         else:
             self.show_step_screen(self.current_step - 1)
+
 
     def finish_wizard(self):
         logging.info("Opening NanoVNAGraphics window")
