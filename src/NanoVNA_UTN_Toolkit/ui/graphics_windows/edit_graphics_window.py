@@ -224,20 +224,6 @@ class EditGraphics(QMainWindow):
         button_layout.addStretch()
         btn_cancel = QPushButton("Cancel")
         btn_apply = QPushButton("Apply")
-        btn_style = """
-            QPushButton {
-                background-color: #555555;
-                color: white;
-                border-radius: 8px;
-                padding: 6px 18px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #777777; }
-            QPushButton:pressed { background-color: #333333; }
-        """
-
-        btn_cancel.setStyleSheet(btn_style)
-        btn_apply.setStyleSheet(btn_style)
         btn_cancel.clicked.connect(self.close)
         btn_apply.clicked.connect(lambda: self.on_apply_clicked(trace_color=trace_color(), trace_color2=trace_color2(), 
                                                                 marker_color=marker_color() , marker_color2=marker_color2(),

@@ -262,8 +262,8 @@ class NanoVNAGraphics(QMainWindow):
                 settings.setValue("Dark_Light/QTabBar_selected/color", "white")
 
                 # --- QSpinBox ---
-                settings.setValue("Dark_Light/QSpinBox/color", "white")
-                settings.setValue("Dark_Light/QSpinBox/background-color", "#6f6f6f")
+                settings.setValue("Dark_Light/QSpinBox/color", "black")
+                settings.setValue("Dark_Light/QSpinBox/background-color", "white")
                 settings.setValue("Dark_Light/QSpinBox/border", "1px solid #5f5f5f")
                 settings.setValue("Dark_Light/QSpinBox/border-radius", "8px")
 
@@ -314,6 +314,9 @@ class NanoVNAGraphics(QMainWindow):
 
                 # --- QMenu selected item ---
                 settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#4d4d4d")
+
+                # --- QCombo ---
+                settings.setValue("Dark_Light/QComboBox/color", "white")
 
                 self.setStyleSheet("""
                     QWidget {
@@ -479,6 +482,9 @@ class NanoVNAGraphics(QMainWindow):
 
                 # --- QMenu selected item ---
                 settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#dcdcdc")
+
+                # --- QCombo ---
+                settings.setValue("Dark_Light/QComboBox/color", "white")
 
                 self.setStyleSheet("""
                     QWidget {

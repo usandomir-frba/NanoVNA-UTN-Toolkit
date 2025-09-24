@@ -234,6 +234,10 @@ def create_tab1(self):
     return tab1_widget, fig, ax, canvas, left_panel, update_graph, self.current_s_tab1, self.current_graph_tab1
 
 
+#------------------------------------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------------------------------------------#
+
 def create_tab2(self):
 
     ui_dir = os.path.dirname(os.path.dirname(__file__))  
@@ -258,12 +262,10 @@ def create_tab2(self):
 
     # --- Selector for S parameter ---
     graphic_param_selector = QGroupBox("Select Parameter")
-    graphic_param_selector.setStyleSheet("color: white;")
     param_layout = QVBoxLayout()
     self.radio_s_tab2 = {}
     for option in ["S11", "S21"]:
         rb = QRadioButton(option)
-        rb.setStyleSheet("color: white;")
         param_layout.addWidget(rb)
         self.radio_s_tab2[option] = rb
     self.radio_s_tab2[s_param2].setChecked(True)
@@ -272,12 +274,10 @@ def create_tab2(self):
 
     # --- Selector for graph type ---
     graphic_type_selector = QGroupBox("Selector Graphic 2")
-    graphic_type_selector.setStyleSheet("color: white;")
     type_layout = QVBoxLayout()
     self.radio_buttons_tab2 = {}
     for option in ["Smith Diagram", "Magnitude", "Phase"]:
         rb = QRadioButton(option)
-        rb.setStyleSheet("color: white;")
         type_layout.addWidget(rb)
         self.radio_buttons_tab2[option] = rb
     self.radio_buttons_tab2[graph_type2].setChecked(True)

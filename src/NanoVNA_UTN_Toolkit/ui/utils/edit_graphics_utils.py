@@ -68,7 +68,7 @@ def create_edit_tab1(self, tabs):
 
     line_tab = QFrame()
     line_tab.setObjectName("separatorLine")
-    line_tab.setFixedHeight(3)
+    line_tab.setFixedHeight(2)
     tab1_container.addWidget(line_tab)
 
     spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
@@ -130,12 +130,6 @@ def create_edit_tab1(self, tabs):
     spin_line_tab1.setRange(1, 10)
     spin_line_tab1.setValue(trace_size1)
     spin_line_tab1.setStyle(QApplication.style())
-    spin_line_tab1.setStyleSheet("""
-        QSpinBox {
-            background-color: white;   /* fondo blanco */
-            border: 1px solid black;   /* borde negro */
-        }
-    """)
     spin_line_tab1.setAlignment(Qt.AlignCenter)
     spin_line_tab1.setFrame(True)                
     spin_line_tab1.setFixedWidth(50)
@@ -151,12 +145,6 @@ def create_edit_tab1(self, tabs):
     spin_marker_tab1.setRange(1, 20)
     spin_marker_tab1.setValue(marker_size1)
     spin_marker_tab1.setStyle(QApplication.style())
-    spin_marker_tab1.setStyleSheet("""
-        QSpinBox {
-            background-color: white;   /* fondo blanco */
-            border: 1px solid black;   /* borde negro */
-        }
-    """)
     spin_marker_tab1.setFrame(True)  
     spin_marker_tab1.setAlignment(Qt.AlignCenter)             
     spin_marker_tab1.setFixedWidth(50)
@@ -310,7 +298,7 @@ def create_edit_tab1(self, tabs):
     # --- Line above buttons ---
     line_above_buttons = QFrame()
     line_above_buttons.setObjectName("separatorLine")
-    line_above_buttons.setFixedHeight(3)
+    line_above_buttons.setFixedHeight(2)
     tab1_container.addWidget(line_above_buttons)
 
     return tab1, get_trace_color, get_marker_color, get_line_width, get_marker_size
@@ -344,7 +332,7 @@ def create_edit_tab2(self, tabs):
 
     # Línea arriba
     line_tab = QFrame()
-    line_tab.setFixedHeight(3)
+    line_tab.setFixedHeight(2)
     line_tab.setObjectName("separatorLine")
     tab2_container.addWidget(line_tab)
 
@@ -372,7 +360,7 @@ def create_edit_tab2(self, tabs):
     # Trace color
     trace_layout = QHBoxLayout()
     lbl_trace = QLabel("Trace color:")
-
+    lbl_trace.setStyleSheet("font-size: 13pt;")
     btn_trace = QFrame()
     btn_trace.setFixedSize(30, 30)
     btn_trace.setStyleSheet(f"background-color: {trace_color2}; border: 1px solid white; border-radius: 6px;")
@@ -383,7 +371,7 @@ def create_edit_tab2(self, tabs):
     # Marker color
     marker_layout = QHBoxLayout()
     lbl_marker = QLabel("Marker color:")
-
+    lbl_marker.setStyleSheet("font-size: 13pt;")
     btn_marker = QFrame()
     btn_marker.setFixedSize(30, 30)
     btn_marker.setStyleSheet(f"background-color: {marker_color2}; border: 1px solid white; border-radius: 6px;")
@@ -394,16 +382,11 @@ def create_edit_tab2(self, tabs):
     # Line width
     line_layout = QHBoxLayout()
     lbl_line = QLabel("Line width (all):")
+    lbl_line.setStyleSheet("font-size: 13pt;")
     spin_line_tab2 = QSpinBox()
     spin_line_tab2.setRange(1, 10)
     spin_line_tab2.setValue(line_width2)
     spin_line_tab2.setStyle(QApplication.style())
-    spin_line_tab2.setStyleSheet("""
-        QSpinBox {
-            background-color: white;   /* fondo blanco */
-            border: 1px solid black;   /* borde negro */
-        }
-    """)
     spin_line_tab2.setAlignment(Qt.AlignCenter)
     spin_line_tab2.setFrame(True)      
     spin_line_tab2.setFixedWidth(50)
@@ -414,16 +397,11 @@ def create_edit_tab2(self, tabs):
     # Marker size
     marker_size_layout = QHBoxLayout()
     lbl_marker_size = QLabel("Marker size (all):")
+    lbl_marker_size.setStyleSheet("font-size: 13pt;")
     spin_marker_tab2 = QSpinBox()
     spin_marker_tab2.setRange(1, 20)
     spin_marker_tab2.setValue(marker_size2)
     spin_marker_tab2.setStyle(QApplication.style())
-    spin_marker_tab2.setStyleSheet("""
-        QSpinBox {
-            background-color: white;   /* fondo blanco */
-            border: 1px solid black;   /* borde negro */
-        }
-    """)
     spin_marker_tab2.setAlignment(Qt.AlignCenter)
     spin_marker_tab2.setFrame(True)  
     spin_marker_tab2.setFixedWidth(50)
@@ -563,10 +541,10 @@ def create_edit_tab2(self, tabs):
 
     tab2_container.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
-    # Línea debajo
+    # Line above the buttons
     line_above_buttons = QFrame()
     line_above_buttons.setObjectName("separatorLine")
-    line_above_buttons.setFixedHeight(3)
+    line_above_buttons.setFixedHeight(2)
     tab2_container.addWidget(line_above_buttons)
 
     return tab2, get_trace_color2, get_marker_color2, get_line_width2, get_marker_size2

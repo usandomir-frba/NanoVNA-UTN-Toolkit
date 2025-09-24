@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QComboBox
 )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QSettings
 
 # Import NanoVNAGraphics for the final step
@@ -88,6 +88,10 @@ class CalibrationWizard(QMainWindow):
         menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
         menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
 
+        # QCombo
+
+        color_text_QCombo = settings.value("Dark_Light/QComboBox/color", "white")
+
         self.setStyleSheet(f"""
             QWidget {{
                 background-color: {background_color};
@@ -162,6 +166,25 @@ class CalibrationWizard(QMainWindow):
             }}
             QMenu::item:selected {{
                 background-color: {menu_item_color};
+            }}
+            QComboBox {{
+                color: black;                 
+                background-color: white;
+                border: 1px solid #5f5f5f;
+                border-radius: 5px;
+                padding-left: 5px;            
+            }}
+            QComboBox QAbstractItemView {{
+                color: black;
+                background-color: white;             
+                selection-background-color: lightgray; 
+                selection-color: black;
+            }}
+            QComboBox:focus {{
+                background-color: white;
+            }}
+            QComboBox::placeholder {{
+                color: lightgray;
             }}
         """)
 
@@ -252,9 +275,12 @@ class CalibrationWizard(QMainWindow):
         self.freq_dropdown = QComboBox()
         self.freq_dropdown.setEditable(False)
 
-        # Placeholder inicial
-        self.freq_dropdown.addItem("Select Method")  # solo se ve inicialmente
-        self.freq_dropdown.model().item(0).setEnabled(False)
+        # Placeholder 
+        self.freq_dropdown.addItem("Select Method")
+        item = self.freq_dropdown.model().item(0)
+        item.setEnabled(False)
+        placeholder_color = QColor(120, 120, 120) 
+        item.setForeground(placeholder_color)
 
         methods = [
             "OSM (Open - Short - Match)",
@@ -265,7 +291,6 @@ class CalibrationWizard(QMainWindow):
         ]
         self.freq_dropdown.addItems(methods)
 
-        # Conectamos para habilitar Next solo si selecciona un método válido
         self.freq_dropdown.activated.connect(self.on_method_activated)
 
         top_container.addWidget(label)
