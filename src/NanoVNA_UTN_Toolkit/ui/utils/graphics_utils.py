@@ -161,7 +161,7 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
     initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
     edit_value = QLineEdit(initial_freq_value)
 
-    def limit_frequency_input(text, max_digits=3, max_decimals=2, allow_dashes=False):
+    def limit_frequency_input(text, max_digits=6, max_decimals=3, allow_dashes=False):
         if allow_dashes and text == "--":
             return text
 
@@ -182,17 +182,23 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         return filtered
 
     def on_text_changed():
-        new_text = limit_frequency_input(edit_value.text(), 3, 2)
+        new_text = limit_frequency_input(edit_value.text(), 6, 3)
         if new_text != edit_value.text():
             edit_value.setText(new_text)
-        edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
+        # Calculate appropriate width with more padding for longer values
+        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
+        # Add extra padding for better display, especially for longer values like "600.000"
+        min_width = max(text_width + 20, 80)  # Minimum width of 80px
+        edit_value.setFixedWidth(min_width)
 
-    edit_value.textChanged.connect(lambda _: edit_value.setText(limit_frequency_input(edit_value.text(), 3, 2)))
-    edit_value.textChanged.connect(lambda _: on_text_changed())
+    edit_value.textChanged.connect(on_text_changed)
 
     edit_value.setStyleSheet("font-size:14px; border:none; background:transparent;")
     edit_value.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
+    # Initial width calculation with better padding
+    text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
+    min_width = max(text_width + 20, 80)
+    edit_value.setFixedWidth(min_width)
     hbox_freq.addWidget(edit_value)
 
     # Label de unidad initialized with correct unit
@@ -276,6 +282,10 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
 
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
         edit_value.setText(freq_value)
+        # Update field width when frequency changes from slider
+        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
+        min_width = max(text_width + 20, 80)
+        edit_value.setFixedWidth(min_width)
         labels_dict["unit"].setText(freq_unit)
         labels_dict["val"].setText(f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
         labels_dict["mag"].setText(f"|{s_param}|: {magnitude:.3f}")
@@ -455,7 +465,7 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
     edit_value = QLineEdit(initial_freq_value)
 
-    def limit_frequency_input(text, max_digits=3, max_decimals=2):
+    def limit_frequency_input(text, max_digits=6, max_decimals=3):
         filtered = "".join(c for c in text if c.isdigit() or c == ".")
         
         if filtered.count(".") > 1:
@@ -473,17 +483,23 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         return filtered
 
     def on_text_changed():
-        new_text = limit_frequency_input(edit_value.text(), 3, 2)
+        new_text = limit_frequency_input(edit_value.text(), 6, 3)
         if new_text != edit_value.text():
             edit_value.setText(new_text)
-        edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
+        # Calculate appropriate width with more padding for longer values
+        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
+        # Add extra padding for better display, especially for longer values like "600.000"
+        min_width = max(text_width + 20, 80)  # Minimum width of 80px
+        edit_value.setFixedWidth(min_width)
 
-    edit_value.textChanged.connect(lambda _: edit_value.setText(limit_frequency_input(edit_value.text(), 3, 2)))
-    edit_value.textChanged.connect(lambda _: on_text_changed())
+    edit_value.textChanged.connect(on_text_changed)
 
     edit_value.setStyleSheet("font-size:14px; border:none; background:transparent;")
     edit_value.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    edit_value.setFixedWidth(edit_value.fontMetrics().horizontalAdvance(edit_value.text()) + 4)
+    # Initial width calculation with better padding
+    text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
+    min_width = max(text_width + 20, 80)
+    edit_value.setFixedWidth(min_width)
     hbox_freq.addWidget(edit_value)
 
     # Label de unidad initialized with correct unit
@@ -565,6 +581,10 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
 
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
         edit_value.setText(f"  {freq_value}")
+        # Update field width when frequency changes from slider
+        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
+        min_width = max(text_width + 20, 80)
+        edit_value.setFixedWidth(min_width)
         labels_dict["unit"].setText(freq_unit)
 
         labels_dict["val"].setText(f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
