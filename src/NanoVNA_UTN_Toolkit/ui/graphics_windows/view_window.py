@@ -300,6 +300,7 @@ class View(QMainWindow):
                 create_left_panel(
                     S_data=None,  # Force empty 
                     freqs=None,   # Force empty
+                    settings=settings,
                     graph_type=selected_graph_left,
                     s_param=self.current_s_tab1,
                     tracecolor=trace_color1,
@@ -314,6 +315,7 @@ class View(QMainWindow):
                 create_right_panel(
                     S_data=None,  # Force empty 
                     freqs=None,   # Force empty
+                    settings=settings,
                     graph_type=selected_graph_right,
                     s_param=self.current_s_tab2,
                     tracecolor=trace_color2,

@@ -211,8 +211,8 @@ class EditGraphics(QMainWindow):
         # --- Tabs setup ---
         tabs = QTabWidget()
 
-        tab1_widget, trace_color, marker_color, line_width, marker_size = create_edit_tab1(self, tabs=tabs)
-        tab2_widget, trace_color2, marker_color2, line_width2, marker_size2 = create_edit_tab2(self, tabs=tabs)
+        tab1_widget, trace_color, marker_color, brackground_color_graphics, text_color, axis_color, line_width, marker_size = create_edit_tab1(self, tabs=tabs)
+        tab2_widget, trace_color2, marker_color2, brackground_color_graphics2, text_color2, axis_color2, line_width2, marker_size2 = create_edit_tab2(self, tabs=tabs)
 
         tabs.addTab(tab1_widget, "Graphic 1")
         tabs.addTab(tab2_widget, "Graphic 2")
@@ -226,7 +226,10 @@ class EditGraphics(QMainWindow):
         btn_apply = QPushButton("Apply")
         btn_cancel.clicked.connect(self.close)
         btn_apply.clicked.connect(lambda: self.on_apply_clicked(trace_color=trace_color(), trace_color2=trace_color2(), 
-                                                                marker_color=marker_color() , marker_color2=marker_color2(),
+                                                                brackground_color_graphics=brackground_color_graphics(), brackground_color_graphics2=brackground_color_graphics2(),
+                                                                marker_color=marker_color(), marker_color2=marker_color2(),
+                                                                text_color=text_color(), text_color2=text_color2(),
+                                                                axis_color=axis_color(), axis_color2=axis_color2(),
                                                                 line_width=line_width(), line_width2=line_width2(),
                                                                 marker_size=marker_size(), marker_size2=marker_size2(),
                                                                 settings=settings))
@@ -239,17 +242,23 @@ class EditGraphics(QMainWindow):
         self.setCentralWidget(central_widget)
         #self.setStyleSheet("background-color: #7f7f7f;")
 
-    def on_apply_clicked(self, settings, trace_color="blue", trace_color2="blue", marker_color="blue", marker_color2="blue", 
-                     line_width=2, line_width2=2, marker_size=2, marker_size2=2):
+    def on_apply_clicked(self, settings, trace_color="blue", trace_color2="blue", brackground_color_graphics="blue", brackground_color_graphics2="blue", marker_color="blue", marker_color2="blue", 
+                    text_color="blue", text_color2="blue", axis_color="blue", axis_color2="blue", line_width=2, line_width2=2, marker_size=2, marker_size2=2):
         from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
 
         settings.setValue("Graphic1/TraceColor", trace_color)
         settings.setValue("Graphic1/MarkerColor", marker_color)
+        settings.setValue("Graphic1/BackgroundColor", brackground_color_graphics)
+        settings.setValue("Graphic1/TextColor", text_color)
+        settings.setValue("Graphic1/AxisColor", axis_color)
         settings.setValue("Graphic1/TraceWidth", line_width)
         settings.setValue("Graphic1/MarkerWidth", marker_size)
 
         settings.setValue("Graphic2/TraceColor", trace_color2)
         settings.setValue("Graphic2/MarkerColor", marker_color2)
+        settings.setValue("Graphic2/BackgroundColor", brackground_color_graphics2)
+        settings.setValue("Graphic2/TextColor", text_color2)
+        settings.setValue("Graphic2/AxisColor", axis_color2)
         settings.setValue("Graphic2/TraceWidth", line_width2)
         settings.setValue("Graphic2/MarkerWidth", marker_size2)
 
@@ -283,13 +292,13 @@ class EditGraphics(QMainWindow):
                 if widget is not None:
                     widget.setParent(None)
 
-        # --- Crear nuevo panel izquierdo ---
         self.nano_window.left_panel, self.nano_window.fig_left, self.nano_window.ax_left, \
         self.nano_window.canvas_left, self.nano_window.slider_left, self.nano_window.cursor_left, \
         self.nano_window.labels_left, self.nano_window.update_cursor_left, self.nano_window.update_left_data = \
             create_left_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
+                settings=settings,
                 graph_type=graph_type1,
                 s_param=s_param1,
                 tracecolor=trace_color,
@@ -298,13 +307,13 @@ class EditGraphics(QMainWindow):
                 markersize=marker_size
             )
 
-        # --- Crear nuevo panel derecho ---
         self.nano_window.right_panel, self.nano_window.fig_right, self.nano_window.ax_right, \
         self.nano_window.canvas_right, self.nano_window.slider_right, self.nano_window.cursor_right, \
         self.nano_window.labels_right, self.nano_window.update_cursor_right, self.nano_window.update_right_data = \
             create_right_panel(
                 S_data=self.s11,
                 freqs=self.freqs,
+                settings=settings,
                 graph_type=graph_type2,
                 s_param=s_param2,
                 tracecolor=trace_color2,

@@ -712,6 +712,7 @@ class NanoVNAGraphics(QMainWindow):
             create_left_panel(
                 S_data=None,  # Force empty 
                 freqs=None,   # Force empty
+                settings=settings,
                 graph_type=config['graph_type_tab1'], 
                 s_param=config['s_param_tab1'], 
                 tracecolor=config['trace_color1'],
@@ -724,6 +725,7 @@ class NanoVNAGraphics(QMainWindow):
         self.right_panel, self.fig_right, self.ax_right, self.canvas_right, \
         self.slider_right, self.cursor_right, self.labels_right, self.update_right_cursor, self.update_right_data = \
             create_right_panel(
+                settings=settings,
                 S_data=None,  # Force empty
                 freqs=None,   # Force empty
                 graph_type=config['graph_type_tab2'], 
@@ -803,7 +805,7 @@ class NanoVNAGraphics(QMainWindow):
             if hasattr(self, 'ax_right') and self.ax_right:
                 self.ax_right.text(message_pos[0], message_pos[1], 'Waiting for sweep data...',
                                 transform=self.ax_right.transAxes,
-                                ha='center', va='center', fontsize=12, color='gray')
+                                ha='center', va='center', fontsize=12, color='white')
 
                 for line in self.ax_right.lines:
                     line.remove()
@@ -816,7 +818,7 @@ class NanoVNAGraphics(QMainWindow):
             if hasattr(self, 'ax_left') and self.ax_left:
                 self.ax_left.text(message_pos[0], message_pos[1], 'Waiting for sweep data...',
                                 transform=self.ax_left.transAxes,
-                                ha='center', va='center', fontsize=12, color='gray')
+                                ha='center', va='center', fontsize=12, color='white')
 
                 for line in self.ax_left.lines:
                     line.remove()
@@ -848,7 +850,7 @@ class NanoVNAGraphics(QMainWindow):
                 #self.ax_left.clear()
                 self.ax_left.text(0.5, -0.1, 'Waiting for sweep data...',
                                 transform=self.ax_left.transAxes,
-                                ha='center', va='center', fontsize=12, color='gray')
+                                ha='center', va='center', fontsize=12, color='white')
 
                 for line in self.ax_left.lines:
                     line.remove()
@@ -887,7 +889,7 @@ class NanoVNAGraphics(QMainWindow):
             if hasattr(self, 'ax_left') and self.ax_left:
                 self.ax_left.text(0.5, 0.5, 'Waiting for sweep data...',
                                 transform=self.ax_left.transAxes,
-                                ha='center', va='center', fontsize=12, color='gray')
+                                ha='center', va='center', fontsize=12, color='white')
 
                 for line in self.ax_left.lines:
                     line.remove()
@@ -2185,11 +2187,17 @@ class NanoVNAGraphics(QMainWindow):
             
             trace_color1 = settings.value("Graphic1/TraceColor", "blue")
             marker_color1 = settings.value("Graphic1/MarkerColor", "blue")
+            background_color1 = settings.value("Graphic1/BackgroundColor", "blue")
+            text_color1 = settings.value("Graphic1/TextColor", "blue")
+            axis_color1 = settings.value("Graphic1/AxisColor", "blue")
             trace_size1 = int(settings.value("Graphic1/TraceWidth", 2))
             marker_size1 = int(settings.value("Graphic1/MarkerWidth", 6))
             
             trace_color2 = settings.value("Graphic2/TraceColor", "blue")
             marker_color2 = settings.value("Graphic2/MarkerColor", "blue")
+            background_color2 = settings.value("Graphic2/BackgroundColor", "blue")
+            text_color2 = settings.value("Graphic2/TextColor", "blue")
+            axis_color2 = settings.value("Graphic2/AxisColor", "blue")
             trace_size2 = int(settings.value("Graphic2/TraceWidth", 2))
             marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
             
@@ -2212,6 +2220,9 @@ class NanoVNAGraphics(QMainWindow):
                 s_param=s_param_tab1,
                 tracecolor=trace_color1,
                 markercolor=marker_color1,
+                brackground_color_graphics=background_color1,
+                text_color=text_color1,
+                axis_color=axis_color1,
                 linewidth=trace_size1,
                 markersize=marker_size1
             )
@@ -2227,6 +2238,9 @@ class NanoVNAGraphics(QMainWindow):
                 s_param=s_param_tab2,
                 tracecolor=trace_color2,
                 markercolor=marker_color2,
+                brackground_color_graphics=background_color2,
+                text_color=text_color2,
+                axis_color=axis_color2,
                 linewidth=trace_size2,
                 markersize=marker_size2
             )
@@ -2260,11 +2274,14 @@ class NanoVNAGraphics(QMainWindow):
             logging.error(f"[graphics_window.update_plots_with_new_data] Error updating plots: {e}")
     
     def _recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
-                             tracecolor, markercolor, linewidth, markersize):
+                             tracecolor, markercolor, brackground_color_graphics, text_color, axis_color, linewidth, markersize):
         """Recreate a single plot with new data."""
         try:
             from matplotlib.lines import Line2D
-            
+
+            fig.patch.set_facecolor(f"{brackground_color_graphics}")
+            ax.set_facecolor(f"{brackground_color_graphics}")
+
             if graph_type == "Smith Diagram":
                 # Create network object for Smith chart
                 
@@ -2272,6 +2289,15 @@ class NanoVNAGraphics(QMainWindow):
                 ntw.plot_s_smith(ax=ax, draw_labels=True)
                 ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], 
                          loc='upper left', bbox_to_anchor=(-0.17,1.14))
+
+                for text in ax.texts:
+                    text.set_color("white")
+
+                for patch in ax.patches:
+                    patch.set_edgecolor("white")   
+                    patch.set_facecolor("none")    
+                
+                ax.hlines(0, -1, 1, color="white", linewidth=1.1, zorder=10)
                 
                 # Update line properties
                 for idx, line in enumerate(ax.lines):
@@ -2284,19 +2310,33 @@ class NanoVNAGraphics(QMainWindow):
                 # Plot magnitude
                 magnitude_db = 20 * np.log10(np.abs(s_data))
                 ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
-                ax.set_xlabel('Frequency (MHz)')
-                ax.set_ylabel('Magnitude (dB)')
-                ax.set_title(f'{s_param} Magnitude')
-                ax.grid(True)
+
+                ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
+                ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
+                ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+                ax.tick_params(axis='x', colors=f"{axis_color}")
+                ax.tick_params(axis='y', colors=f"{axis_color}")
+
+                for spine in ax.spines.values():
+                    spine.set_color("white")
+                    
+                ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
                 
             elif graph_type == "Phase":
                 # Plot phase
                 phase_deg = np.angle(s_data) * 180 / np.pi
+
                 ax.plot(freqs / 1e6, phase_deg, color=tracecolor, linewidth=linewidth)
-                ax.set_xlabel('Frequency (MHz)')
-                ax.set_ylabel('Phase (degrees)')
-                ax.set_title(f'{s_param} Phase')
-                ax.grid(True)
+                ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
+                ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
+                ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+                ax.tick_params(axis='x', colors=f"{axis_color}")
+                ax.tick_params(axis='y', colors=f"{axis_color}")
+
+                for spine in ax.spines.values():
+                    spine.set_color("white")
+                    
+                ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
                 
             elif graph_type == "VSWR":
                 # Calculate and plot VSWR

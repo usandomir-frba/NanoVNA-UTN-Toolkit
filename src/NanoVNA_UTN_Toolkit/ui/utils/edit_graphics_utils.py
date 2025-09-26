@@ -48,6 +48,9 @@ def create_edit_tab1(self, tabs):
 
     trace_color1 = settings.value("Graphic1/TraceColor", "blue")
     marker_color1 = settings.value("Graphic1/MarkerColor", "blue")
+    brackground_color_graphics1 = settings.value("Graphic1/BackgroundColor", "red")
+    text_color = settings.value("Graphic1/TextColor", "red")
+    axis_color = settings.value("Graphic1/AxisColor", "red")
 
     trace_size1 = int(settings.value("Graphic1/TraceWidth", 2))
     marker_size1 = int(settings.value("Graphic1/MarkerWidth", 6))
@@ -152,6 +155,39 @@ def create_edit_tab1(self, tabs):
     marker_size_layout.addWidget(spin_marker_tab1, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_size_layout)
 
+    # --- Brackground Color ---
+    graphic_brackground_color_layout = QHBoxLayout()
+    lbl_graphic_color = QLabel("Background Color:")
+    lbl_graphic_color.setStyleSheet("font-size: 13pt;")
+    btn_graphic = QFrame()
+    btn_graphic.setFixedSize(30, 30)
+    btn_graphic.setStyleSheet(f"background-color: {brackground_color_graphics1}; border: 1px solid white; border-radius: 6px;")
+    graphic_brackground_color_layout.addWidget(lbl_graphic_color)
+    graphic_brackground_color_layout.addWidget(btn_graphic, alignment=Qt.AlignVCenter)
+    left_layout.addLayout(graphic_brackground_color_layout)
+
+    # --- Text Color ---
+    text_color_layout = QHBoxLayout()
+    lbl_text_color = QLabel("Text Color:")
+    lbl_text_color.setStyleSheet("font-size: 13pt;")
+    btn_text = QFrame()
+    btn_text.setFixedSize(30, 30)
+    btn_text.setStyleSheet(f"background-color: {text_color}; border: 1px solid white; border-radius: 6px;")
+    text_color_layout.addWidget(lbl_text_color)
+    text_color_layout.addWidget(btn_text, alignment=Qt.AlignVCenter)
+    left_layout.addLayout(text_color_layout)
+
+    # --- Axis Color ---
+    axis_color_layout = QHBoxLayout()
+    lbl_axis_color = QLabel("Axis Color:")
+    lbl_axis_color.setStyleSheet("font-size: 13pt;")
+    btn_axis = QFrame()
+    btn_axis.setFixedSize(30, 30)
+    btn_axis.setStyleSheet(f"background-color: {axis_color}; border: 1px solid white; border-radius: 6px;")
+    axis_color_layout.addWidget(lbl_axis_color)
+    axis_color_layout.addWidget(btn_axis, alignment=Qt.AlignVCenter)
+    left_layout.addLayout(axis_color_layout)
+
 ####################################################################################################
 #--------- Getters --------------------------------------------------------------------------------#
 ####################################################################################################
@@ -161,6 +197,15 @@ def create_edit_tab1(self, tabs):
 
     def get_marker_color():
         return btn_marker.styleSheet().split("background-color:")[1].split(";")[0].strip()
+
+    def get_brackground_color_graphics_color():
+        return btn_graphic.styleSheet().split("background-color:")[1].split(";")[0].strip()
+
+    def get_text_color():
+        return btn_text.styleSheet().split("background-color:")[1].split(";")[0].strip()
+
+    def get_axis_color():
+        return btn_axis.styleSheet().split("background-color:")[1].split(";")[0].strip()
 
     def get_line_width():
         return spin_line_tab1.value()
@@ -283,8 +328,32 @@ def create_edit_tab1(self, tabs):
             update_graph(graph_type1=graph_type1)
             canvas.draw()
 
+    def pick_text_color(event=None):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            btn_text.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
+            update_graph(graph_type1=graph_type1)
+            canvas.draw()
+    
+    def pick_axis_color(event=None):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            btn_axis.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
+            update_graph(graph_type1=graph_type1)
+            canvas.draw()
+
+    def pick_graphic_color(event=None):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            btn_graphic.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
+            update_graph(graph_type1=graph_type1)
+            canvas.draw()
+
     btn_trace.mousePressEvent = pick_trace_color
     btn_marker.mousePressEvent = pick_marker_color
+    btn_graphic.mousePressEvent = pick_graphic_color
+    btn_text.mousePressEvent = pick_text_color
+    btn_axis.mousePressEvent = pick_axis_color
     spin_line_tab1.valueChanged.connect(lambda val: update_line_width())
     spin_marker_tab1.valueChanged.connect(lambda val: update_marker_size())
 
@@ -301,7 +370,11 @@ def create_edit_tab1(self, tabs):
     line_above_buttons.setFixedHeight(2)
     tab1_container.addWidget(line_above_buttons)
 
-    return tab1, get_trace_color, get_marker_color, get_line_width, get_marker_size
+    return tab1, get_trace_color, get_marker_color, get_brackground_color_graphics_color, get_text_color, get_axis_color, get_line_width, get_marker_size
+
+####################################################################################################
+#--------- Tab2 -----------------------------------------------------------------------------------#
+####################################################################################################
 
 def create_edit_tab2(self, tabs):
 
@@ -312,6 +385,9 @@ def create_edit_tab2(self, tabs):
 
     trace_color2 = settings.value("Graphic2/TraceColor", "red")
     marker_color2 = settings.value("Graphic2/MarkerColor", "red")
+    brackground_color_graphics2 = settings.value("Graphic2/BackgroundColor", "red")
+    text_color2 = settings.value("Graphic2/TextColor", "red")
+    axis_color2 = settings.value("Graphic2/AxisColor", "red")
 
     line_width2 = int(settings.value("Graphic2/TraceWidth", 2))
     marker_size2 = int(settings.value("Graphic2/MarkerWidth", 6))
@@ -409,6 +485,39 @@ def create_edit_tab2(self, tabs):
     marker_size_layout.addWidget(spin_marker_tab2, alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker_size_layout)
 
+    # --- Graphic Color ---
+    graphic_brackground_color_layout = QHBoxLayout()
+    lbl_graphic_color = QLabel("Graphic Color:")
+    lbl_graphic_color.setStyleSheet("font-size: 13pt;")
+    btn_graphic = QFrame()
+    btn_graphic.setFixedSize(30, 30)
+    btn_graphic.setStyleSheet(f"background-color: {brackground_color_graphics2}; border: 1px solid white; border-radius: 6px;")
+    graphic_brackground_color_layout.addWidget(lbl_graphic_color)
+    graphic_brackground_color_layout.addWidget(btn_graphic, alignment=Qt.AlignVCenter)
+    left_layout.addLayout(graphic_brackground_color_layout)
+
+    # --- Text Color ---
+    text_color_layout = QHBoxLayout()
+    lbl_text_color = QLabel("Text Color:")
+    lbl_text_color.setStyleSheet("font-size: 13pt;")
+    btn_text = QFrame()
+    btn_text.setFixedSize(30, 30)
+    btn_text.setStyleSheet(f"background-color: {text_color2}; border: 1px solid white; border-radius: 6px;")
+    text_color_layout.addWidget(lbl_text_color)
+    text_color_layout.addWidget(btn_text, alignment=Qt.AlignVCenter)
+    left_layout.addLayout(text_color_layout)
+
+    # --- Axis Color ---
+    axis_color_layout = QHBoxLayout()
+    lbl_axis_color = QLabel("Axis Color:")
+    lbl_axis_color.setStyleSheet("font-size: 13pt;")
+    btn_axis = QFrame()
+    btn_axis.setFixedSize(30, 30)
+    btn_axis.setStyleSheet(f"background-color: {axis_color2}; border: 1px solid white; border-radius: 6px;")
+    axis_color_layout.addWidget(lbl_axis_color)
+    axis_color_layout.addWidget(btn_axis, alignment=Qt.AlignVCenter)
+    left_layout.addLayout(axis_color_layout)
+
 ####################################################################################################
 #--------- Getters --------------------------------------------------------------------------------#
 ####################################################################################################
@@ -418,6 +527,15 @@ def create_edit_tab2(self, tabs):
 
     def get_marker_color2():
         return btn_marker.styleSheet().split("background-color:")[1].split(";")[0].strip()
+
+    def get_brackground_color_graphics_color2():
+        return btn_graphic.styleSheet().split("background-color:")[1].split(";")[0].strip()
+
+    def get_text_color2():
+        return btn_text.styleSheet().split("background-color:")[1].split(";")[0].strip()
+
+    def get_axis_color2():
+        return btn_axis.styleSheet().split("background-color:")[1].split(";")[0].strip()
 
     def get_line_width2():
         return spin_line_tab2.value()
@@ -508,6 +626,11 @@ def create_edit_tab2(self, tabs):
         cursor_graph2.set_color(color)
         canvas.draw()
 
+    def update_brackground_color_graphics2_event():
+        color = get_brackground_color_graphics_color2()
+        cursor_graph2.set_color(color)
+        canvas.draw()
+
     def update_line_width2_event():
         update_graph2(graph_type2=graph_type2)
 
@@ -527,8 +650,32 @@ def create_edit_tab2(self, tabs):
             update_graph2(graph_type2=graph_type2)
             canvas.draw()
 
+    def pick_graphic_color2(event=None):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            btn_graphic.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
+            update_graph2(graph_type2=graph_type2)
+            canvas.draw()
+
+    def pick_text_color2(event=None):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            btn_text.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
+            update_graph2(graph_type2=graph_type2)
+            canvas.draw()
+
+    def pick_axis_color2(event=None):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            btn_axis.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
+            update_graph2(graph_type2=graph_type2)
+            canvas.draw()
+
     btn_trace.mousePressEvent = pick_trace_color2
     btn_marker.mousePressEvent = pick_marker_color2
+    btn_graphic.mousePressEvent = pick_graphic_color2
+    btn_text.mousePressEvent = pick_text_color2
+    btn_axis.mousePressEvent = pick_axis_color2
     spin_line_tab2.valueChanged.connect(lambda val: update_line_width2_event())
     spin_marker_tab2.valueChanged.connect(lambda val: update_marker_size2_event())
 
@@ -547,4 +694,4 @@ def create_edit_tab2(self, tabs):
     line_above_buttons.setFixedHeight(2)
     tab2_container.addWidget(line_above_buttons)
 
-    return tab2, get_trace_color2, get_marker_color2, get_line_width2, get_marker_size2
+    return tab2, get_trace_color2, get_marker_color2, get_brackground_color_graphics_color2, get_text_color2, get_axis_color2, get_line_width2, get_marker_size2

@@ -1,6 +1,7 @@
 import numpy as np
 import skrf as rf
 import os
+import matplotlib
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit, QApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -64,9 +65,13 @@ def parse_frequency_input(text):
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
 
-def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
+def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_param="S11",
                       tracecolor="red", markercolor="red", linewidth=2,
                       markersize=5, marker_visible=True):
+
+    brackground_color_graphics = settings.value("Graphic1/BackgroundColor", "red")
+    text_color = settings.value("Graphic1/TextColor", "red")
+    axis_color = settings.value("Graphic1/AxisColor", "red")
                       
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
 
@@ -85,6 +90,10 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
 
         fig, ax = plt.subplots(figsize=(10,10))  
         fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+
+        fig.patch.set_facecolor(f"{brackground_color_graphics}")
+        ax.set_facecolor(f"{brackground_color_graphics}")
+
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
@@ -93,42 +102,75 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         ntw.plot_s_smith(ax=ax, draw_labels=True)
         ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], loc='upper left', bbox_to_anchor=(-0.17,1.14))
 
+        for text in ax.texts:
+            text.set_color("white")
+
+        for patch in ax.patches:
+            patch.set_edgecolor("white") 
+            patch.set_facecolor("none")    
+        
+        ax.hlines(0, -1, 1, color="white", linewidth=1.1, zorder=10)
+
         for idx, line in enumerate(ax.lines):
-            xdata = line.get_xdata()
-            if len(xdata) == len(freqs):
+            if len(line.get_xdata()) == len(freqs):
                 line.set_color(tracecolor)
                 line.set_linewidth(linewidth)
                 break
+            
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     elif graph_type == "Magnitude":
 
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{brackground_color_graphics}")
+        ax.set_facecolor(f"{brackground_color_graphics}")
+
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
-        ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
-        ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel(f"|{s_param}|")
-        ax.set_title(f"{s_param} Magnitude")
-        ax.grid(True)
+        ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+
+        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
+        ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
+        ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+            
+        ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     elif graph_type == "Phase":
 
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{brackground_color_graphics}")
+        ax.set_facecolor(f"{brackground_color_graphics}")
+
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
-        ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param)
-        ax.set_title(f"{s_param} Phase")
-        ax.grid(True)
+
+        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
+        ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
+        ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+            
+        ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     else:
@@ -267,7 +309,6 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
         "unit": lbl_unit
     }
 
-    # --- Función actualización ---
     def update_cursor(index, from_slider=False):
         val_complex = S_data[index]
         magnitude = abs(val_complex)
@@ -380,8 +421,12 @@ def create_left_panel(S_data, freqs, graph_type="Smith Diagram", s_param="S11",
 # =================== RIGHT PANEL ========================================================= #
 #############################################################################################
 
-def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_param="S11",
+def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diagram", s_param="S11",
                        tracecolor="red", markercolor="red", linewidth=2, markersize=5, marker_visible=True):
+
+    brackground_color_graphics = settings.value("Graphic2/BackgroundColor", "red")
+    text_color = settings.value("Graphic2/TextColor", "red")
+    axis_color = settings.value("Graphic2/AxisColor", "red")
 
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
     
@@ -399,6 +444,10 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     if graph_type == "Smith Diagram":
         fig, ax = plt.subplots(figsize=(5,5))  
         fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+
+        fig.patch.set_facecolor(f"{brackground_color_graphics}")
+        ax.set_facecolor(f"{brackground_color_graphics}")
+
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
@@ -406,6 +455,15 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
         ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
         ntw.plot_s_smith(ax=ax, draw_labels=True)
         ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], loc='upper left', bbox_to_anchor=(-0.17,1.14))
+
+        for text in ax.texts:
+            text.set_color("white")
+
+        for patch in ax.patches:
+            patch.set_edgecolor("white")   
+            patch.set_facecolor("none")    
+        
+        ax.hlines(0, -1, 1, color="white", linewidth=1.1, zorder=10)
 
         for idx, line in enumerate(ax.lines):
             if len(line.get_xdata()) == len(freqs):
@@ -417,27 +475,53 @@ def create_right_panel(S_data=None, freqs=None, graph_type="Smith Diagram", s_pa
     elif graph_type == "Magnitude":
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{brackground_color_graphics}")
+        ax.set_facecolor(f"{brackground_color_graphics}")
+
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
+
         ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
-        ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel(f"|{s_param}|")
-        ax.set_title(f"{s_param} Magnitude")
-        ax.grid(True)
+
+        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
+        ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
+        ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+            
+        ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     elif graph_type == "Phase":
         fig, ax = plt.subplots(figsize=(4,3))
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{brackground_color_graphics}")
+        ax.set_facecolor(f"{brackground_color_graphics}")
+
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
+
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
-        ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param)
-        ax.set_title(f"{s_param} Phase")
-        ax.grid(True)
+
+        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
+        ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
+        ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+            
+        ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+        
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     # --- Panel info ---
