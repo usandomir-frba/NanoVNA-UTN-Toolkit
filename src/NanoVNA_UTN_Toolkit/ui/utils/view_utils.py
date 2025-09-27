@@ -107,7 +107,7 @@ def create_tab1(self):
     left_layout.setContentsMargins(0, 14, 0, 0)
 
     # --- Selector for S parameter ---
-    graphic_param_selector = QGroupBox("Select Parameter")
+    graphic_param_selector = QGroupBox(" Select Parameter ")
     graphic_param_selector.setStyleSheet("color: white;")
     param_layout = QVBoxLayout()
     self.radio_s_tab1 = {}  
@@ -121,7 +121,7 @@ def create_tab1(self):
     left_layout.addWidget(graphic_param_selector)
 
     # --- Selector for graph type ---
-    graphic_type_selector = QGroupBox("Selector Graphic 1")
+    graphic_type_selector = QGroupBox(" Selector Graphic 1 ")
     graphic_type_selector.setStyleSheet("color: white;")
     type_layout = QVBoxLayout()
     self.radio_buttons_tab1 = {} 
@@ -248,6 +248,66 @@ def create_tab2(self):
     graph_type2 = settings.value("Tab2/GraphType2", "Smith Diagram")
     s_param2 = settings.value("Tab2/SParameter", "S11")
 
+    # QTabWidget pane
+    tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
+
+    # QTabBar
+    tabbar_bg = settings.value("Dark_Light/QTabBar/background-color", "#2b2b2b")
+    tabbar_color = settings.value("Dark_Light/QTabBar/color", "white")
+    tabbar_padding = settings.value("Dark_Light/QTabBar/padding", "5px 12px")
+    tabbar_border = settings.value("Dark_Light/QTabBar/border", "none")
+    tabbar_border_tl_radius = settings.value("Dark_Light/QTabBar/border-top-left-radius", "6px")
+    tabbar_border_tr_radius = settings.value("Dark_Light/QTabBar/border-top-right-radius", "6px")
+
+    # QTabBar selected
+    tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#4d4d4d")
+    tabbar_selected_color = settings.value("Dark_Light/QTabBar/color", "white")
+
+    # QSpinBox
+    spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#3b3b3b")
+    spinbox_color = settings.value("Dark_Light/QSpinBox/color", "white")
+    spinbox_border = settings.value("Dark_Light/QSpinBox/border", "1px solid white")
+    spinbox_border_radius = settings.value("Dark_Light/QSpinBox/border-radius", "8px")
+
+    # QGroupBox title
+    groupbox_title_color = settings.value("Dark_Light/QGroupBox_title/color", "white")
+
+    # QLabel
+    label_color = settings.value("Dark_Light/QLabel/color", "white")
+
+    # QLineEdit
+    lineedit_bg = settings.value("Dark_Light/QLineEdit/background-color", "#3b3b3b")
+    lineedit_color = settings.value("Dark_Light/QLineEdit/color", "white")
+    lineedit_border = settings.value("Dark_Light/QLineEdit/border", "1px solid white")
+    lineedit_border_radius = settings.value("Dark_Light/QLineEdit/border-radius", "6px")
+    lineedit_padding = settings.value("Dark_Light/QLineEdit/padding", "4px")
+    lineedit_focus_bg = settings.value("Dark_Light/QLineEdit_focus/background-color", "#454545")
+    lineedit_focus_border = settings.value("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
+
+    # QPushButton
+    pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#3b3b3b")
+    pushbutton_color = settings.value("Dark_Light/QPushButton/color", "white")
+    pushbutton_border = settings.value("Dark_Light/QPushButton/border", "1px solid white")
+    pushbutton_border_radius = settings.value("Dark_Light/QPushButton/border-radius", "6px")
+    pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
+    pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
+    pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
+
+    # QMenu
+    menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
+    menu_color = settings.value("Dark_Light/QMenu/color", "white")
+    menu_border = settings.value("Dark_Light/QMenu/border", "1px solid #3b3b3b")
+    menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#4d4d4d")
+
+    # QMenuBar
+    menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "4d4d4d")
+    menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#3a3a3a")
+    menubar_color = settings.value("Dark_Light/QMenuBar/color", "white")
+    menubar_item_bg = settings.value("Dark_Light/QMenuBar_item/background", "transparent")
+    menubar_item_color = settings.value("Dark_Light/QMenuBar_item/color", "white")
+    menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
+    menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
+
     tab2 = QWidget()
     tab2_layout = QHBoxLayout(tab2)
     tab2_layout.setContentsMargins(0, 0, 0, 0)
@@ -261,24 +321,26 @@ def create_tab2(self):
     right_layout2.setContentsMargins(0, 14, 0, 0)
 
     # --- Selector for S parameter ---
-    graphic_param_selector = QGroupBox("Select Parameter")
+    graphic_param_selector = QGroupBox(" Select Parameter ")
     param_layout = QVBoxLayout()
     self.radio_s_tab2 = {}
     for option in ["S11", "S21"]:
         rb = QRadioButton(option)
         param_layout.addWidget(rb)
+        rb.setStyleSheet(f"color: {label_color};")
         self.radio_s_tab2[option] = rb
     self.radio_s_tab2[s_param2].setChecked(True)
     graphic_param_selector.setLayout(param_layout)
     right_layout2.addWidget(graphic_param_selector)
 
     # --- Selector for graph type ---
-    graphic_type_selector = QGroupBox("Selector Graphic 2")
+    graphic_type_selector = QGroupBox(" Selector Graphic 2 ")
     type_layout = QVBoxLayout()
     self.radio_buttons_tab2 = {}
     for option in ["Smith Diagram", "Magnitude", "Phase"]:
         rb = QRadioButton(option)
         type_layout.addWidget(rb)
+        rb.setStyleSheet(f"color: {label_color};")
         self.radio_buttons_tab2[option] = rb
     self.radio_buttons_tab2[graph_type2].setChecked(True)
     graphic_type_selector.setLayout(type_layout)

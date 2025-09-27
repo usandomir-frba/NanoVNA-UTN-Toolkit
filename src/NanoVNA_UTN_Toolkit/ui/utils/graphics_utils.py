@@ -103,13 +103,13 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
         ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], loc='upper left', bbox_to_anchor=(-0.17,1.14))
 
         for text in ax.texts:
-            text.set_color("white")
+            text.set_color(f"{axis_color}")
 
         for patch in ax.patches:
-            patch.set_edgecolor("white") 
+            patch.set_edgecolor(f"{axis_color}") 
             patch.set_facecolor("none")    
         
-        ax.hlines(0, -1, 1, color="white", linewidth=1.1, zorder=10)
+        ax.hlines(0, -1, 1, color=f"{axis_color}", linewidth=1.1, zorder=10)
 
         for idx, line in enumerate(ax.lines):
             if len(line.get_xdata()) == len(freqs):
@@ -457,19 +457,20 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
         ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], loc='upper left', bbox_to_anchor=(-0.17,1.14))
 
         for text in ax.texts:
-            text.set_color("white")
+            text.set_color(f"{axis_color}")
 
         for patch in ax.patches:
-            patch.set_edgecolor("white")   
+            patch.set_edgecolor(f"{axis_color}")   
             patch.set_facecolor("none")    
         
-        ax.hlines(0, -1, 1, color="white", linewidth=1.1, zorder=10)
+        ax.hlines(0, -1, 1, color=f"{axis_color}", linewidth=1.1, zorder=10)
 
         for idx, line in enumerate(ax.lines):
             if len(line.get_xdata()) == len(freqs):
                 line.set_color(tracecolor)
                 line.set_linewidth(linewidth)
                 break
+            
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
     elif graph_type == "Magnitude":

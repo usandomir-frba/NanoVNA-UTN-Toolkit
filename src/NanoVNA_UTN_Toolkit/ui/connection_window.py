@@ -39,6 +39,9 @@ class NanoVNAStatusApp(QMainWindow):
         # QWidget
         background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
 
+        # Qframe
+        qframe_color = settings.value("Dark_Light/Qframe/background-color", "white")
+
         # QTabWidget pane
         tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
 
@@ -130,6 +133,12 @@ class NanoVNAStatusApp(QMainWindow):
             QLabel {{
                 color: {label_color};  
             }}
+            QTextEdit {{
+                color: {label_color};  
+            }}
+            QFrame{{
+                border-radius: 5px;
+            }}
             QLineEdit {{
                 background-color: {lineedit_bg};
                 color: {lineedit_color};
@@ -181,7 +190,7 @@ class NanoVNAStatusApp(QMainWindow):
         self.worker = None
         self.worker_thread = None
         
-        self.init_ui()
+        self.init_ui(qframe_color=qframe_color)
         self.setup_hardware_logging()
         
         # Start initial device check
@@ -190,7 +199,7 @@ class NanoVNAStatusApp(QMainWindow):
         # Log initial message
         self.log_message("Application started. Preparing device detection...")
     
-    def init_ui(self):
+    def init_ui(self, qframe_color):
         """Initialize the user interface."""
         # Try to set application icon
         icon_paths = [
@@ -216,7 +225,15 @@ class NanoVNAStatusApp(QMainWindow):
         
         # Status section
         status_frame = QFrame()
+        status_frame.setObjectName("statusFrame")
         status_frame.setFrameStyle(QFrame.Shape.Box)
+
+        status_frame.setStyleSheet(f"""
+            QFrame#statusFrame {{
+                border: 1px solid {qframe_color};
+            }}
+        """)
+
         status_layout = QVBoxLayout(status_frame)
         
         # Connection status label
@@ -233,14 +250,14 @@ class NanoVNAStatusApp(QMainWindow):
         
         # Current operation label
         self.operation_label = QLabel("Preparing system...")
-        self.operation_label.setStyleSheet("font-size: 12px; color: #666; padding: 5px;")
+        self.operation_label.setStyleSheet("font-size: 12px; padding: 5px;")
         status_layout.addWidget(self.operation_label)
         
         layout.addWidget(status_frame)
         
         # Device information section
         self.device_group = QGroupBox("Device Information")
-        self.device_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        
         device_layout = QGridLayout(self.device_group)
         
         # Create labels for device information
@@ -296,7 +313,11 @@ class NanoVNAStatusApp(QMainWindow):
         self.console.setReadOnly(True)
         self.console.setFont(QFont("Courier", 9))
         self.console.setMaximumHeight(200)
-        self.console.setStyleSheet("background-color: #FFFF; border: 1px solid #ccc;")
+        self.console.setStyleSheet(f"""
+            QTextEdit {{
+                border: 1px solid {qframe_color};
+            }}
+        """)
         layout.addWidget(self.console)
         
         # Buttons section

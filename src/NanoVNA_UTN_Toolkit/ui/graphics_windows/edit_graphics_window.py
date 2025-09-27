@@ -23,9 +23,11 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+
 
 class EditGraphics(QMainWindow):
-    def __init__(self, nano_window=None, freqs=None):
+    def __init__(self, nano_window: NanoVNAGraphics, freqs=None):
         super().__init__()
 
         ui_dir = os.path.dirname(os.path.dirname(__file__))  
@@ -191,7 +193,7 @@ class EditGraphics(QMainWindow):
         self.nano_window = nano_window
 
         self.setWindowTitle("Edit Graphics")
-        self.setFixedSize(800, 500)
+        self.setFixedSize(800, 530)
 
         # --- Frequency array placeholder ---
         if freqs is None:
@@ -211,8 +213,8 @@ class EditGraphics(QMainWindow):
         # --- Tabs setup ---
         tabs = QTabWidget()
 
-        tab1_widget, trace_color, marker_color, brackground_color_graphics, text_color, axis_color, line_width, marker_size = create_edit_tab1(self, tabs=tabs)
-        tab2_widget, trace_color2, marker_color2, brackground_color_graphics2, text_color2, axis_color2, line_width2, marker_size2 = create_edit_tab2(self, tabs=tabs)
+        tab1_widget, trace_color, marker_color, brackground_color_graphics, text_color, axis_color, line_width, marker_size = create_edit_tab1(self, tabs=tabs, nano_window=nano_window)
+        tab2_widget, trace_color2, marker_color2, brackground_color_graphics2, text_color2, axis_color2, line_width2, marker_size2 = create_edit_tab2(self, tabs=tabs, nano_window=nano_window)
 
         tabs.addTab(tab1_widget, "Graphic 1")
         tabs.addTab(tab2_widget, "Graphic 2")

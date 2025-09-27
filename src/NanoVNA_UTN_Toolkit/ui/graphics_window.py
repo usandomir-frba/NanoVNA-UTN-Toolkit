@@ -665,7 +665,7 @@ class NanoVNAGraphics(QMainWindow):
         self.sweep_button.clicked.connect(self.run_sweep)
         
         self.sweep_info_label = QLabel("Sweep: 0.050 MHz - 1500.000 MHz, 101 points")
-        self.sweep_info_label.setStyleSheet("color: gray; font-size: 12px;")
+        self.sweep_info_label.setStyleSheet("font-size: 12px;")
         
         # Add progress bar (initially hidden)
         self.sweep_progress_bar = QProgressBar()
@@ -2288,16 +2288,16 @@ class NanoVNAGraphics(QMainWindow):
                 ntw = rf.Network(frequency=freqs, s=s_data[:, np.newaxis, np.newaxis], z0=50)
                 ntw.plot_s_smith(ax=ax, draw_labels=True)
                 ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], 
-                         loc='upper left', bbox_to_anchor=(-0.17,1.14))
+                    loc='upper left', bbox_to_anchor=(-0.17,1.14))
 
                 for text in ax.texts:
-                    text.set_color("white")
+                    text.set_color(f"{axis_color}")
 
                 for patch in ax.patches:
-                    patch.set_edgecolor("white")   
+                    patch.set_edgecolor(f"{axis_color}")   
                     patch.set_facecolor("none")    
                 
-                ax.hlines(0, -1, 1, color="white", linewidth=1.1, zorder=10)
+                ax.hlines(0, -1, 1, color=f"{axis_color}", linewidth=1.1, zorder=10)
                 
                 # Update line properties
                 for idx, line in enumerate(ax.lines):
