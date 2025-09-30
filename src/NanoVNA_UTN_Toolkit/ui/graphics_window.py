@@ -120,6 +120,10 @@ class NanoVNAGraphics(QMainWindow):
                 border-top-left-radius: {tabbar_border_tl_radius};
                 border-top-right-radius: {tabbar_border_tr_radius};
             }}
+            QMenu{{
+                color_ {menubar_color};
+                background-color_ {menu_item_color};
+            }}
             QTabBar::tab:selected {{
                 background-color: {tabbar_selected_bg};  
                 color: {tabbar_selected_color};
@@ -1745,15 +1749,22 @@ class NanoVNAGraphics(QMainWindow):
                         panel_name = "Left Panel"
                         break
                     current_widget = current_widget.parent()
-            
-            # Create and show the export dialog
-            export_dialog = ExportDialog(self, figure_to_export)
-            export_dialog.setWindowTitle(f"Export Graph - {panel_name}")
-            export_dialog.exec()
+
+            # Close previous export dialog if it exists
+            if hasattr(self, 'export_dialog') and self.export_dialog is not None:
+                self.export_dialog.close()
+                self.export_dialog.deleteLater()
+                self.export_dialog = None
+
+            # Create and show new export dialog
+            self.export_dialog = ExportDialog(self, figure_to_export)
+            self.export_dialog.setWindowTitle(f"Export Graph - {panel_name}")
+            self.export_dialog.exec()
             
         except Exception as e:
             logging.error(f"Error opening export dialog: {e}")
             QMessageBox.warning(self, "Export Error", f"Failed to open export dialog: {str(e)}")
+
 
     # =================== MARKERS ==================
 
@@ -1814,7 +1825,12 @@ class NanoVNAGraphics(QMainWindow):
             edit_value = labels["freq"]
             edit_value.setEnabled(True)
             if self.freqs is not None and len(self.freqs) > 0:
-                edit_value.setText(f"{self.freqs[0]*1e-6:.2f}")
+                if self.freqs[0] < 1e6:  
+                    edit_value.setText(f"{self.freqs[0]/1e3:.3f}")
+                elif self.freqs[0] < 1e9:  
+                    edit_value.setText(f"{self.freqs[0]/1e6:.3f}")
+                else: 
+                    edit_value.setText(f"{self.freqs[0]/1e9:.3f}")
             else:
                 edit_value.setText("--") 
 
