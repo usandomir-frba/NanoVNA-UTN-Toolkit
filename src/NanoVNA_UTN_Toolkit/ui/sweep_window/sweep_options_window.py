@@ -16,8 +16,164 @@ from PySide6.QtGui import QIcon, QDoubleValidator, QFont
 
 
 class SweepOptionsWindow(QMainWindow):
-    def __init__(self, parent=None, vna_device=None):
+    def __init__(self, parent: "NanoVNAGraphics", vna_device=None):
         super().__init__(parent)
+
+        self.main_window = parent
+
+        ui_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        # QWidget
+        background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
+
+        # Qframe
+        qframe_color = settings.value("Dark_Light/Qframe/background-color", "white")
+
+        # QTabWidget pane
+        tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
+
+        # QTabBar
+        tabbar_bg = settings.value("Dark_Light/QTabBar/background-color", "#2b2b2b")
+        tabbar_color = settings.value("Dark_Light/QTabBar/color", "white")
+        tabbar_padding = settings.value("Dark_Light/QTabBar/padding", "5px 12px")
+        tabbar_border = settings.value("Dark_Light/QTabBar/border", "none")
+        tabbar_border_tl_radius = settings.value("Dark_Light/QTabBar/border-top-left-radius", "6px")
+        tabbar_border_tr_radius = settings.value("Dark_Light/QTabBar/border-top-right-radius", "6px")
+
+        # QTabBar selected
+        tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#4d4d4d")
+        tabbar_selected_color = settings.value("Dark_Light/QTabBar/color", "white")
+
+        # QSpinBox
+        spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#3b3b3b")
+        spinbox_color = settings.value("Dark_Light/QSpinBox/color", "white")
+        spinbox_border = settings.value("Dark_Light/QSpinBox/border", "1px solid white")
+        spinbox_border_radius = settings.value("Dark_Light/QSpinBox/border-radius", "8px")
+
+        # QGroupBox title
+        groupbox_title_color = settings.value("Dark_Light/QGroupBox_title/color", "white")
+
+        # QLabel
+        label_color = settings.value("Dark_Light/QLabel/color", "white")
+
+        # QLineEdit
+        lineedit_bg = settings.value("Dark_Light/QLineEdit/background-color", "#3b3b3b")
+        lineedit_color = settings.value("Dark_Light/QLineEdit/color", "white")
+        lineedit_border = settings.value("Dark_Light/QLineEdit/border", "1px solid white")
+        lineedit_border_radius = settings.value("Dark_Light/QLineEdit/border-radius", "6px")
+        lineedit_padding = settings.value("Dark_Light/QLineEdit/padding", "4px")
+        lineedit_focus_bg = settings.value("Dark_Light/QLineEdit_focus/background-color", "#454545")
+        lineedit_focus_border = settings.value("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
+
+        # QPushButton
+        pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#3b3b3b")
+        pushbutton_color = settings.value("Dark_Light/QPushButton/color", "white")
+        pushbutton_border = settings.value("Dark_Light/QPushButton/border", "1px solid white")
+        pushbutton_border_radius = settings.value("Dark_Light/QPushButton/border-radius", "6px")
+        pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
+        pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
+        pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
+
+        # QMenu
+        menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
+        menu_color = settings.value("Dark_Light/QMenu/color", "white")
+        menu_border = settings.value("Dark_Light/QMenu/border", "1px solid #3b3b3b")
+        menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#4d4d4d")
+
+        # QMenuBar
+        menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "4d4d4d")
+        menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#3a3a3a")
+        menubar_color = settings.value("Dark_Light/QMenuBar/color", "white")
+        menubar_item_bg = settings.value("Dark_Light/QMenuBar_item/background", "transparent")
+        menubar_item_color = settings.value("Dark_Light/QMenuBar_item/color", "white")
+        menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
+        menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
+
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {background_color};
+            }}
+            QTabWidget::pane {{
+                background-color: {tabwidget_pane_bg}; 
+            }}
+            QTabBar::tab {{
+                background-color: {tabbar_bg}; 
+                color: {tabbar_color};
+                padding: {tabbar_padding};
+                border: {tabbar_border}; 
+                border-top-left-radius: {tabbar_border_tl_radius};
+                border-top-right-radius: {tabbar_border_tr_radius};
+            }}
+            QTabBar::tab:selected {{
+                background-color: {tabbar_selected_bg};  
+                color: {tabbar_selected_color};
+            }}
+            QSpinBox {{
+                background-color: {spinbox_bg};
+                color: {spinbox_color};
+                border: {spinbox_border};
+                border-radius: {spinbox_border_radius};
+            }}
+            QGroupBox:title {{
+                color: {groupbox_title_color};  
+            }}
+            QLabel {{
+                color: {label_color};  
+            }}
+            QTextEdit {{
+                color: {label_color};  
+            }}
+            QFrame{{
+                border-radius: 5px;
+            }}
+            QLineEdit {{
+                background-color: {lineedit_bg};
+                color: {lineedit_color};
+                border: {lineedit_border};
+                border-radius: {lineedit_border_radius};
+                padding: {lineedit_padding};
+            }}
+            QLineEdit:focus {{
+                background-color: {lineedit_focus_bg};
+                border: {lineedit_focus_border};
+            }}
+            QPushButton {{
+                background-color: {pushbutton_bg};
+                color: {pushbutton_color};
+                border: {pushbutton_border};
+                border-radius: {pushbutton_border_radius};
+                padding: {pushbutton_padding};
+            }}
+            QPushButton:hover {{
+                background-color: {pushbutton_hover_bg};
+            }}
+            QPushButton:pressed {{
+                background-color: {pushbutton_pressed_bg};
+            }}
+            QMenuBar {{
+                background-color: {menubar_bg};
+                color: {menubar_color};
+            }}
+            QMenuBar::item {{
+                background: {menubar_item_bg};
+                color: {menubar_item_color};
+                padding: {menubar_item_padding};
+            }}
+            QMenuBar::item:selected {{
+                background: {menubar_item_selected_bg};
+            }}
+            QMenu {{
+                background-color: {menu_bg};
+                color: {menu_color};
+                border: {menu_border};
+            }}
+            QMenu::item:selected {{
+                background-color: {menu_item_color};
+            }}
+        """)
         
         # Store VNA device reference
         self.vna_device = vna_device
@@ -136,6 +292,7 @@ class SweepOptionsWindow(QMainWindow):
         start_freq_layout = QHBoxLayout()
         self.start_freq_edit = QDoubleSpinBox()
         self.start_freq_edit.setRange(0.001, 999999.999)
+        self.start_freq_edit.setStyleSheet("background-color: white;")
         self.start_freq_edit.setDecimals(3)
         self.start_freq_edit.valueChanged.connect(self.on_frequency_changed)
         
@@ -143,6 +300,17 @@ class SweepOptionsWindow(QMainWindow):
         self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.start_freq_unit.setCurrentText("kHz")
         self.start_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
+
+        self.start_freq_unit.setStyleSheet("""
+            QComboBox {
+                background-color: white;      /* fondo del área visible */
+                selection-background-color: lightgray;  /* color al seleccionar */
+            }
+            QComboBox QAbstractItemView {
+                background-color: white;      /* fondo de la lista desplegable */
+                selection-background-color: lightgray;  /* color al seleccionar en la lista */
+            }
+        """)
         
         start_freq_layout.addWidget(self.start_freq_edit)
         start_freq_layout.addWidget(self.start_freq_unit)
@@ -152,6 +320,7 @@ class SweepOptionsWindow(QMainWindow):
         stop_freq_layout = QHBoxLayout()
         self.stop_freq_edit = QDoubleSpinBox()
         self.stop_freq_edit.setRange(0.001, 999999.999)
+        self.stop_freq_edit.setStyleSheet("background-color: white;")
         self.stop_freq_edit.setDecimals(3)
         self.stop_freq_edit.valueChanged.connect(self.on_frequency_changed)
         
@@ -159,6 +328,17 @@ class SweepOptionsWindow(QMainWindow):
         self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.stop_freq_unit.setCurrentText("GHz")
         self.stop_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
+
+        self.stop_freq_unit.setStyleSheet("""
+            QComboBox {
+                background-color: white;      /* fondo del área visible */
+                selection-background-color: lightgray;  /* color al seleccionar */
+            }
+            QComboBox QAbstractItemView {
+                background-color: white;      /* fondo de la lista desplegable */
+                selection-background-color: lightgray;  /* color al seleccionar en la lista */
+            }
+        """)
         
         stop_freq_layout.addWidget(self.stop_freq_edit)
         stop_freq_layout.addWidget(self.stop_freq_unit)
@@ -183,7 +363,7 @@ class SweepOptionsWindow(QMainWindow):
             device_info_label.setText(f"Device: {device_name} (Min: {self.sweep_points_min}, Max: {self.sweep_points_max})")
         else:
             device_info_label.setText(f"No device detected (Default range: {self.sweep_points_min}-{self.sweep_points_max})")
-        device_info_label.setStyleSheet("QLabel { font-size: 10px; color: #666666; font-style: italic; }")
+        device_info_label.setStyleSheet("QLabel { font-size: 10px; font-style: italic; }")
         steps_layout.addWidget(device_info_label)
         
         freq_layout.addRow("Steps:", steps_layout)
@@ -447,7 +627,9 @@ class SweepOptionsWindow(QMainWindow):
             
         # Save settings
         self.save_settings()
-        
+
+        self.main_window.load_sweep_configuration()
+
         # Close window without confirmation message
         self.close()
         

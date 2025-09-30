@@ -20,6 +20,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QIcon, QTextCursor, QFont, QPen
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+except ImportError as e:
+    logging.error("Failed to import NanoVNAGraphics: %s", e)
+    NanoVNAGraphics = None  # Safe fallback
+
 from ..workers.device_worker import DeviceWorker
 from .log_handler import GuiLogHandler
 
@@ -213,54 +219,40 @@ class NanoVNAWelcome(QMainWindow):
         self.setGeometry(100, 100, 1000, 600)
 
         # === Central Widget ===
-
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
 
         # === Welcome message ===
-
         welcome_label = QLabel("Welcome to the NanoVNA UTN Toolkit!")
         welcome_label.setStyleSheet("font-size: 24px; font-weight: bold; padding: 20px;")
-        main_layout.addWidget(welcome_label)
+        main_layout.addWidget(welcome_label, alignment=Qt.AlignTop | Qt.AlignHCenter)
 
-        # === Buttons (Left - Right) ===
+        # === Middle area to center the buttons vertically ===
+        middle_layout = QVBoxLayout()
+        middle_layout.addStretch()
 
+        # === Buttons (Left - Right) centered ===
         button_layout = QHBoxLayout()
         self.left_button = QPushButton("Calibration Kit")
-
         self.right_button = QPushButton("Calibration Wizard")
         self.right_button.clicked.connect(self.open_calibration_wizard)
 
+        button_layout.addStretch()
         button_layout.addWidget(self.left_button)
         button_layout.addWidget(self.right_button)
+        button_layout.addStretch()
+        middle_layout.addLayout(button_layout)
+        middle_layout.addStretch()
+        main_layout.addLayout(middle_layout)
 
-        main_layout.addLayout(button_layout)
-
-        # === Graphics layout (two columns) ===
-
-        graphics_selector_layout = QHBoxLayout()
-
-        # --- Selector 1 ---
-
-        graphic1_selector = QGroupBox("Selector 1")
-        g1_layout = QVBoxLayout()
-        for i in range(1, 5):
-            g1_layout.addWidget(QRadioButton(f"Option {i}"))
-        graphic1_selector.setLayout(g1_layout)
-
-        # --- Selector 2 ---
-        graphic2_selector = QGroupBox("Selector 2")
-        g2_layout = QVBoxLayout()
-        for i in range(1, 5):
-            g2_layout.addWidget(QRadioButton(f"Option {i}"))
-        graphic2_selector.setLayout(g2_layout)
-
-        graphics_selector_layout.addWidget(graphic1_selector)
-        graphics_selector_layout.addWidget(graphic2_selector)
-
-        main_layout.addLayout(graphics_selector_layout)
+        # === Bottom full-width button ===
+        self.bottom_button = QPushButton("Graphics")
+        self.bottom_button.setFixedHeight(50)
+        self.bottom_button.setStyleSheet("margin: 10px; font-size: 16px;")
+        self.bottom_button.clicked.connect(self.graphics_clicked)
+        main_layout.addWidget(self.bottom_button, alignment=Qt.AlignBottom)
 
     def open_calibration_wizard(self):
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
@@ -274,10 +266,18 @@ class NanoVNAWelcome(QMainWindow):
             self.welcome_windows = CalibrationWizard()
             
         self.welcome_windows.show()
-        self.close() 
+        self.close()
+
+    def graphics_clicked(self): 
+        if self.vna_device:
+            graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
+        else:
+            graphics_window = NanoVNAGraphics()
+        graphics_window.show()
+        self.close()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ventana = Ventana()
+    ventana = NanoVNAWelcome()
     ventana.show()
     sys.exit(app.exec())

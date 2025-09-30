@@ -248,7 +248,7 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    lbl_unit.setContentsMargins(2, 0, 0, 0)
+    lbl_unit.setContentsMargins(0, 0, 0, 0)
     hbox_freq.addWidget(lbl_unit)
 
     layout_s.addLayout(hbox_freq)

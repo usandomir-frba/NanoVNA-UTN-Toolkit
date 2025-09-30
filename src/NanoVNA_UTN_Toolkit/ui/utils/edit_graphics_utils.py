@@ -16,6 +16,7 @@ from matplotlib.lines import Line2D
 import skrf as rf
 import numpy as np
 import os
+import logging
 
 # Estilo para SpinBox redondeados y elegantes
 spin_style = """
@@ -245,6 +246,8 @@ def create_edit_tab1(self, tabs, nano_window):
     # --- Datos dummy ---
     freqs = nano_window.freqs
     S_data = nano_window.s11 if s_param1 == "S11" else nano_window.s21
+
+    logging.info(f"[edit_graphics_utils] freqs type: {type(freqs)}, shape: {getattr(freqs, 'shape', 'N/A')}, first 5 values: {freqs[:5] if len(freqs) >= 5 else freqs}")
 
     def update_graph(graph_type1):
         ax.clear()
@@ -688,7 +691,7 @@ def create_edit_tab2(self, tabs, nano_window):
                     line.set_linewidth(get_trace_width2())
                     break
             
-            cursor_graph2, = ax.plot(freqs[index]/1e-6, 20 * np.log10(np.abs(S_data[index])), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+            cursor_graph2, = ax.plot(freqs[index]/1e6, 20 * np.log10(np.abs(S_data[index])), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
 
         elif graph_type2 == "Phase":  
             if np.any(S_data):
@@ -715,7 +718,7 @@ def create_edit_tab2(self, tabs, nano_window):
                     line.set_linewidth(get_trace_width2())
                     break
 
-            cursor_graph2, = ax.plot(freqs[index]/1e-6, np.angle(S_data) * 180 / np.pi, 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+            cursor_graph2, = ax.plot(freqs[index]/1e6, np.angle(S_data[index]) * 180 / np.pi, 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
 
         canvas.draw()
 

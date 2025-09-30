@@ -601,9 +601,6 @@ class NanoVNAGraphics(QMainWindow):
         self.setWindowTitle("NanoVNA Graphics")
         self.setGeometry(100, 100, 1300, 700)
 
-        # Initialize sweep configuration and auto-run sweep
-        self.load_sweep_configuration()
-        
         # Auto-run sweep if device is available and connected
         if self.vna_device:
             device_type = type(self.vna_device).__name__
@@ -666,6 +663,9 @@ class NanoVNAGraphics(QMainWindow):
         
         self.sweep_info_label = QLabel("Sweep: 0.050 MHz - 1500.000 MHz, 101 points")
         self.sweep_info_label.setStyleSheet("font-size: 12px;")
+
+        # Initialize sweep configuration and auto-run sweep
+        self.load_sweep_configuration()
         
         # Add progress bar (initially hidden)
         self.sweep_progress_bar = QProgressBar()
@@ -1638,13 +1638,13 @@ class NanoVNAGraphics(QMainWindow):
 
     def open_sweep_options(self):
         from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
-        
+
         # Log sweep options opening
         logging.info("[graphics_window.open_sweep_options] Opening sweep options window")
-        
+
         # Try to get the current VNA device (this is a placeholder for now)
         vna_device = self.get_current_vna_device()
-        
+
         # Log device information being passed to sweep options
         if vna_device:
             device_type = type(vna_device).__name__
@@ -1655,16 +1655,19 @@ class NanoVNAGraphics(QMainWindow):
                 logging.info("[graphics_window.open_sweep_options] Device has no sweep_points limits")
         else:
             logging.warning("[graphics_window.open_sweep_options] No VNA device available - using default limits")
-        
-        if not hasattr(self, 'sweep_options_window') or self.sweep_options_window is None:
-            logging.info("[graphics_window.open_sweep_options] Creating new sweep options window")
-            self.sweep_options_window = SweepOptionsWindow(self, vna_device)
-        else:
-            logging.info("[graphics_window.open_sweep_options] Reusing existing sweep options window")
-            
+
+        if hasattr(self, 'sweep_options_window') and self.sweep_options_window is not None:
+            self.sweep_options_window.close()
+            self.sweep_options_window.deleteLater()
+            self.sweep_options_window = None
+
+        logging.info("[graphics_window.open_sweep_options] Creating new sweep options window")
+        self.sweep_options_window = SweepOptionsWindow(parent=self, vna_device=self.vna_device)
+
         self.sweep_options_window.show()
         self.sweep_options_window.raise_()
         self.sweep_options_window.activateWindow()
+
         
     def get_current_vna_device(self):
         """Try to get the current VNA device."""
@@ -1842,30 +1845,38 @@ class NanoVNAGraphics(QMainWindow):
     
     def load_sweep_configuration(self):
         """Load sweep configuration from sweep options config file."""
+        
         try:
             # Get path to sweep options config
-            actual_dir = os.path.dirname(os.path.dirname(__file__))
+            actual_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             sweep_config_path = os.path.join(actual_dir, "ui", "sweep_window", "config", "config.ini")
-            
+            sweep_config_path = os.path.normpath(sweep_config_path)
+
             if os.path.exists(sweep_config_path):
                 settings = QSettings(sweep_config_path, QSettings.Format.IniFormat)
-                
+
                 self.start_freq_hz = int(float(str(settings.value("Frequency/StartFreqHz", 50000))))
                 self.stop_freq_hz = int(float(str(settings.value("Frequency/StopFreqHz", 1.5e9))))
                 self.segments = int(str(settings.value("Frequency/Segments", 101)))
-                
+
+                logging.info(f"[graphics_window.load_sweep_configuration] Loaded sweep config: "
+                            f"{self.start_freq_hz/1e6:.3f} MHz - {self.stop_freq_hz/1e6:.3f} MHz, "
+                            f"{self.segments} points")
+
+                self.start_unit = settings.value("Frequency/StartUnit", "kHz")
+                self.stop_unit = settings.value("Frequency/StopUnit", "GHz")
+
                 # Update info label if it exists
                 if hasattr(self, 'sweep_info_label'):
                     self.update_sweep_info_label()
-                
-                logging.info(f"[graphics_window.load_sweep_configuration] Loaded sweep config: {self.start_freq_hz/1e6:.3f} MHz - {self.stop_freq_hz/1e6:.3f} MHz, {self.segments} points")
+
             else:
                 # Default values if config file doesn't exist
                 self.start_freq_hz = 50000
                 self.stop_freq_hz = int(1.5e9)
                 self.segments = 101
                 logging.warning("[graphics_window.load_sweep_configuration] Config file not found, using defaults")
-                
+
         except Exception as e:
             logging.error(f"[graphics_window.load_sweep_configuration] Error loading sweep config: {e}")
             # Fallback defaults
@@ -1873,12 +1884,41 @@ class NanoVNAGraphics(QMainWindow):
             self.stop_freq_hz = int(1.5e9)
             self.segments = 101
 
+
     def update_sweep_info_label(self):
         """Update the sweep information label with current configuration."""
         try:
-            freq_start_str = f"{self.start_freq_hz/1e6:.3f} MHz" if self.start_freq_hz >= 1e6 else f"{self.start_freq_hz/1e3:.1f} kHz"
-            freq_stop_str = f"{self.stop_freq_hz/1e6:.0f} MHz" if self.stop_freq_hz >= 1e6 else f"{self.stop_freq_hz/1e3:.1f} kHz"
-            
+            start_val = self.start_freq_hz
+            stop_val  = self.stop_freq_hz
+
+            logging.info(f"[update_sweep_info_label] start_val={start_val} Hz")
+            logging.info(f"[update_sweep_info_label] stop_val={stop_val} Hz")
+
+            start_unit = self.start_unit
+            stop_unit = self.stop_unit
+
+            logging.info(f"[update_sweep_info_label] start_val={start_val}, stop_val={stop_val}")
+            logging.info(f"[update_sweep_info_label] start_unit={start_unit}, stop_unit={stop_unit}")
+
+            # Convert to proper units
+            if start_unit.lower() == "khz":
+                freq_start_str = f"{start_val/1e3:.1f} kHz"
+            elif start_unit.lower() == "mhz":
+                freq_start_str = f"{start_val/1e6:.3f} MHz"
+            elif start_unit.lower() == "ghz":
+                freq_start_str = f"{start_val/1e9:.3f} GHz"
+            else:
+                freq_start_str = f"{start_val} Hz"
+
+            if stop_unit.lower() == "khz":
+                freq_stop_str = f"{stop_val/1e3:.1f} kHz"
+            elif stop_unit.lower() == "mhz":
+                freq_stop_str = f"{stop_val/1e6:.3f} MHz"
+            elif stop_unit.lower() == "ghz":
+                freq_stop_str = f"{stop_val/1e9:.3f} GHz"
+            else:
+                freq_stop_str = f"{stop_val} Hz"
+
             info_text = f"Sweep: {freq_start_str} - {freq_stop_str}, {self.segments} points"
             self.sweep_info_label.setText(info_text)
             logging.info(f"[graphics_window.update_sweep_info_label] Updated info: {info_text}")
@@ -2320,7 +2360,7 @@ class NanoVNAGraphics(QMainWindow):
                 for spine in ax.spines.values():
                     spine.set_color("white")
                     
-                ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+                ax.grid(True, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
                 
             elif graph_type == "Phase":
                 # Plot phase
@@ -2336,7 +2376,7 @@ class NanoVNAGraphics(QMainWindow):
                 for spine in ax.spines.values():
                     spine.set_color("white")
                     
-                ax.grid(True, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+                ax.grid(True, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
                 
             elif graph_type == "VSWR":
                 # Calculate and plot VSWR
