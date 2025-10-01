@@ -116,6 +116,136 @@ class SweepOptionsWindow(QMainWindow):
                 color: {spinbox_color};
                 border: {spinbox_border};
                 border-radius: {spinbox_border_radius};
+                padding: 4px;
+                min-height: 20px;
+            }}
+            QSpinBox::up-button {{
+                background-color: {spinbox_bg};
+                border: {spinbox_border};
+                border-radius: 3px;
+                width: 18px;
+                min-height: 12px;
+            }}
+            QSpinBox::down-button {{
+                background-color: {spinbox_bg};
+                border: {spinbox_border};
+                border-radius: 3px;
+                width: 18px;
+                min-height: 12px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background-color: {pushbutton_hover_bg};
+            }}
+            QSpinBox::up-button {{
+                background-color: {spinbox_bg};
+                border: {spinbox_border};
+                border-radius: 3px;
+                width: 18px;
+                min-height: 12px;
+            }}
+            QSpinBox::down-button {{
+                background-color: {spinbox_bg};
+                border: {spinbox_border};
+                border-radius: 3px;
+                width: 18px;
+                min-height: 12px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background-color: {pushbutton_hover_bg};
+            }}
+            QSpinBox::up-arrow {{
+                image: none;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-bottom: 3px solid {spinbox_color};
+                width: 0px;
+                height: 0px;
+            }}
+            QSpinBox::down-arrow {{
+                image: none;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 3px solid {spinbox_color};
+                width: 0px;
+                height: 0px;
+            }}
+            QDoubleSpinBox {{
+                background-color: {spinbox_bg};
+                color: {spinbox_color};
+                border: {spinbox_border};
+                border-radius: {spinbox_border_radius};
+                padding: 4px;
+                min-height: 20px;
+            }}
+            QDoubleSpinBox::up-button {{
+                background-color: {spinbox_bg};
+                border: {spinbox_border};
+                border-radius: 3px;
+                width: 18px;
+                min-height: 12px;
+            }}
+            QDoubleSpinBox::down-button {{
+                background-color: {spinbox_bg};
+                border: {spinbox_border};
+                border-radius: 3px;
+                width: 18px;
+                min-height: 12px;
+            }}
+            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
+                background-color: {pushbutton_hover_bg};
+            }}
+            QDoubleSpinBox::up-arrow {{
+                image: none;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-bottom: 3px solid {spinbox_color};
+                width: 0px;
+                height: 0px;
+            }}
+            QDoubleSpinBox::down-arrow {{
+                image: none;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 3px solid {spinbox_color};
+                width: 0px;
+                height: 0px;
+            }}
+            QComboBox {{
+                background-color: {spinbox_bg};
+                color: {spinbox_color};
+                border: {spinbox_border};
+                border-radius: {spinbox_border_radius};
+                padding: 4px 8px;
+                min-height: 20px;
+                min-width: 60px;
+            }}
+            QComboBox::drop-down {{
+                background-color: {spinbox_bg};
+                border: none;
+                border-left: 1px solid {spinbox_color};
+                width: 20px;
+                border-radius: 3px;
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 3px solid {spinbox_color};
+                width: 0px;
+                height: 0px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {spinbox_bg};
+                color: {spinbox_color};
+                border: {spinbox_border};
+                selection-background-color: {pushbutton_hover_bg};
+                selection-color: {spinbox_color};
+            }}
+            QComboBox:hover {{
+                background-color: {pushbutton_hover_bg};
+            }}
+            QComboBox:focus {{
+                border: 1px solid #4d90fe;
             }}
             QGroupBox:title {{
                 color: {groupbox_title_color};  
@@ -292,7 +422,6 @@ class SweepOptionsWindow(QMainWindow):
         start_freq_layout = QHBoxLayout()
         self.start_freq_edit = QDoubleSpinBox()
         self.start_freq_edit.setRange(0.001, 999999.999)
-        self.start_freq_edit.setStyleSheet("background-color: white;")
         self.start_freq_edit.setDecimals(3)
         self.start_freq_edit.valueChanged.connect(self.on_frequency_changed)
         
@@ -300,17 +429,6 @@ class SweepOptionsWindow(QMainWindow):
         self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.start_freq_unit.setCurrentText("kHz")
         self.start_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
-
-        self.start_freq_unit.setStyleSheet("""
-            QComboBox {
-                background-color: white;      /* fondo del área visible */
-                selection-background-color: lightgray;  /* color al seleccionar */
-            }
-            QComboBox QAbstractItemView {
-                background-color: white;      /* fondo de la lista desplegable */
-                selection-background-color: lightgray;  /* color al seleccionar en la lista */
-            }
-        """)
         
         start_freq_layout.addWidget(self.start_freq_edit)
         start_freq_layout.addWidget(self.start_freq_unit)
@@ -320,7 +438,6 @@ class SweepOptionsWindow(QMainWindow):
         stop_freq_layout = QHBoxLayout()
         self.stop_freq_edit = QDoubleSpinBox()
         self.stop_freq_edit.setRange(0.001, 999999.999)
-        self.stop_freq_edit.setStyleSheet("background-color: white;")
         self.stop_freq_edit.setDecimals(3)
         self.stop_freq_edit.valueChanged.connect(self.on_frequency_changed)
         
@@ -328,17 +445,6 @@ class SweepOptionsWindow(QMainWindow):
         self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.stop_freq_unit.setCurrentText("GHz")
         self.stop_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
-
-        self.stop_freq_unit.setStyleSheet("""
-            QComboBox {
-                background-color: white;      /* fondo del área visible */
-                selection-background-color: lightgray;  /* color al seleccionar */
-            }
-            QComboBox QAbstractItemView {
-                background-color: white;      /* fondo de la lista desplegable */
-                selection-background-color: lightgray;  /* color al seleccionar en la lista */
-            }
-        """)
         
         stop_freq_layout.addWidget(self.stop_freq_edit)
         stop_freq_layout.addWidget(self.stop_freq_unit)
@@ -376,17 +482,17 @@ class SweepOptionsWindow(QMainWindow):
         
         # Center Frequency (read-only)
         self.center_freq_label = QLabel("0.000 MHz")
-        self.center_freq_label.setStyleSheet("QLabel { font-weight: bold; color: #0066CC; }")
+        self.center_freq_label.setStyleSheet("QLabel { font-weight: bold; }")
         calc_layout.addRow("Center Frequency:", self.center_freq_label)
         
         # Span (read-only)
         self.span_label = QLabel("0.000 MHz")
-        self.span_label.setStyleSheet("QLabel { font-weight: bold; color: #0066CC; }")
+        self.span_label.setStyleSheet("QLabel { font-weight: bold; }")
         calc_layout.addRow("Span:", self.span_label)
         
         # Hz/step (read-only)
         self.hz_step_label = QLabel("0.000 Hz")
-        self.hz_step_label.setStyleSheet("QLabel { font-weight: bold; color: #0066CC; }")
+        self.hz_step_label.setStyleSheet("QLabel { font-weight: bold; }")
         calc_layout.addRow("Hz/step:", self.hz_step_label)
         
         main_layout.addWidget(calc_group)
@@ -396,51 +502,12 @@ class SweepOptionsWindow(QMainWindow):
         
         apply_button = QPushButton("Apply")
         apply_button.clicked.connect(self.apply_settings)
-        apply_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """)
         
         cancel_button = QPushButton("Cancel")
         cancel_button.clicked.connect(self.cancel_changes)
-        cancel_button.setStyleSheet("""
-            QPushButton {
-                background-color: #f44336;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #d32f2f;
-            }
-        """)
         
         reset_button = QPushButton("Reset to Defaults")
         reset_button.clicked.connect(self.reset_to_defaults)
-        reset_button.setStyleSheet("""
-            QPushButton {
-                background-color: #ff9800;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #f57c00;
-            }
-        """)
         
         button_layout.addWidget(reset_button)
         button_layout.addStretch()
@@ -691,6 +758,13 @@ class SweepOptionsWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = SweepOptionsWindow()
+    
+    # Mock parent for testing
+    class MockParent:
+        def load_sweep_configuration(self):
+            pass
+    
+    mock_parent = MockParent()
+    window = SweepOptionsWindow(mock_parent)
     window.show()
     sys.exit(app.exec())
