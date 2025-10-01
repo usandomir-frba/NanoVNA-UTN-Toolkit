@@ -276,69 +276,65 @@ class ExportDialog(QDialog):
             
         return None
 
-    def copy_to_clipboard(self):
-        """Copy the graph image to clipboard with fresh high-resolution capture."""
-        try:
-            # Create a COMPLETELY NEW figure with high DPI for clipboard
-            # Force a large size in inches (10x8 inches at 300 DPI = 3000x2400 pixels)
-            # This ensures we get truly high resolution output
-            fig_copy = plt.figure(figsize=(10, 8), dpi=300)
+    def _prepare_figure_for_export(self, dpi=300, size_inches=(10, 8), remove_sliders=True):
+        """
+        Prepare a copy of the figure for export with proper styling and formatting.
+        
+        Args:
+            dpi (int): DPI for the output figure
+            size_inches (tuple): Size of the figure in inches (width, height)
+            remove_sliders (bool): Whether to remove slider axes
             
-            # Copy all axes from original figure to the new high-DPI figure
-            for i, original_ax in enumerate(self.figure.axes):
-                # Skip slider axes (small height/width)
-                if hasattr(original_ax, 'get_position'):
-                    pos = original_ax.get_position()
+        Returns:
+            matplotlib.figure.Figure: Prepared figure copy ready for export
+        """
+        import copy
+        
+        # Create a deep copy to preserve all styles and colors
+        fig_copy = copy.deepcopy(self.figure)
+        
+        # Set DPI and size
+        fig_copy.set_dpi(dpi)
+        fig_copy.set_size_inches(*size_inches)
+        
+        # Handle slider removal and axis adjustments
+        if remove_sliders:
+            # Collect slider axes to remove
+            axes_to_remove = []
+            for ax in fig_copy.axes:
+                if hasattr(ax, 'get_position'):
+                    pos = ax.get_position()
                     if pos.height < 0.1 or pos.width < 0.1:  # Likely a slider
-                        continue
-                
-                # Create new axis in the high-DPI figure
-                new_ax = fig_copy.add_subplot(1, 1, 1)
-                
-                # Copy all lines (including cursors and main plot)
-                for line in original_ax.lines:
-                    if line.get_visible():
-                        # Scale line width for high resolution
-                        scaled_linewidth = line.get_linewidth() * 2  # Scale up for high-res
-                        scaled_markersize = line.get_markersize() * 2 if line.get_markersize() else 0
-                        
-                        new_ax.plot(line.get_xdata(), line.get_ydata(),
-                                  color=line.get_color(),
-                                  linewidth=scaled_linewidth,
-                                  linestyle=line.get_linestyle(),
-                                  marker=line.get_marker(),
-                                  markersize=scaled_markersize,
-                                  markerfacecolor=line.get_markerfacecolor(),
-                                  markeredgecolor=line.get_markeredgecolor())
-                
-                # Copy patches (for Smith charts)
-                for patch in original_ax.patches:
-                    if hasattr(patch, 'center') and hasattr(patch, 'radius'):
-                        import matplotlib.patches as mpatches
-                        new_patch = mpatches.Circle(patch.center, patch.radius,
-                                                  fill=patch.get_fill(),
-                                                  facecolor=patch.get_facecolor(),
-                                                  edgecolor=patch.get_edgecolor(),
-                                                  linewidth=patch.get_linewidth())
-                        new_ax.add_patch(new_patch)
-                
-                # Copy axis properties
-                new_ax.set_xlim(original_ax.get_xlim())
-                new_ax.set_ylim(original_ax.get_ylim())
-                new_ax.set_xlabel(original_ax.get_xlabel())
-                new_ax.set_ylabel(original_ax.get_ylabel())
-                new_ax.set_title(original_ax.get_title())
-                
-                # Copy grid settings
-                new_ax.grid(original_ax.get_xgridlines()[0].get_visible() if original_ax.get_xgridlines() else False)
-                
-                # For Smith charts, set equal aspect ratio
-                if "Smith" in original_ax.get_title() or len(original_ax.patches) > 10:
-                    new_ax.set_aspect('equal')
-                
-                break  # Only copy the first main axis
+                        axes_to_remove.append(ax)
             
-            # Generate HIGH RESOLUTION capture
+            # Remove slider axes
+            for ax in axes_to_remove:
+                fig_copy.delaxes(ax)
+        
+        # Adjust remaining axes
+        for ax in fig_copy.axes:
+            # Ensure Smith charts maintain aspect ratio
+            if "Smith" in ax.get_title() or len(ax.patches) > 10:
+                ax.set_aspect('equal')
+            
+            # Adjust position slightly (optional refinement)
+            pos = ax.get_position()
+            new_pos = [pos.x0, pos.y0 + 0.02, pos.width - 0.02, pos.height - 0.02]
+            ax.set_position(new_pos)
+            
+            # For save_as_image compatibility: remove small axes if not already done
+            if not remove_sliders and (pos.height < 0.1 or pos.width < 0.1):
+                fig_copy.delaxes(ax)
+        
+        return fig_copy
+
+    def copy_to_clipboard(self):
+        """Copy the graph image to clipboard preserving all colors and styles."""
+        try:
+            # Use helper method to prepare figure with high DPI for clipboard
+            fig_copy = self._prepare_figure_for_export(dpi=300, size_inches=(10, 8), remove_sliders=True)
+            
+            # Generate HIGH RESOLUTION capture preserving all original styling
             buf_clipboard = io.BytesIO()
             fig_copy.savefig(buf_clipboard, 
                            format='png', 
@@ -383,26 +379,10 @@ class ExportDialog(QDialog):
             )
             
             if file_path:
-                # Clonar la figura completa
-                import copy
-                fig_copy = copy.deepcopy(self.figure)
+                # Use helper method to prepare figure for saving
+                fig_copy = self._prepare_figure_for_export(dpi=300, size_inches=(10, 8), remove_sliders=False)
                 
-                # Ajustar DPI y tamaño
-                fig_copy.set_size_inches(10, 8)
-                
-                # Ajustar límites y aspecto para cada eje
-                for ax in fig_copy.axes:
-                    if "Smith" in ax.get_title() or len(ax.patches) > 10:
-                        ax.set_aspect('equal')
-                    
-                    # Opcional: recortar ejes muy pequeños (sliders)
-                    pos = ax.get_position()
-                    new_pos = [pos.x0, pos.y0 + 0.02, pos.width - 0.02, pos.height - 0.02]
-                    ax.set_position(new_pos)
-                    if pos.height < 0.1 or pos.width < 0.1:
-                        fig_copy.delaxes(ax)
-                
-                # Guardar
+                # Save the prepared figure
                 fig_copy.savefig(file_path, dpi=300, edgecolor='none')
                 plt.close(fig_copy)
                 
