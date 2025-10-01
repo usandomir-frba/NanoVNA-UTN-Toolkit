@@ -136,6 +136,20 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
         ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
         ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
         ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+        # Set X-axis limits with margins to match actual frequency range of the sweep
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05  # 5% margin on each side
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        # Set Y-axis limits with margins to provide visual spacing
+        magnitude_data = np.abs(S_data)
+        y_min = np.min(magnitude_data)
+        y_max = np.max(magnitude_data)
+        y_range = y_max - y_min
+        y_margin = y_range * 0.05  # 5% margin on each side
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -163,6 +177,20 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
         ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
         ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
         ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+        # Set X-axis limits with margins to match actual frequency range of the sweep
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05  # 5% margin on each side
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        # Set Y-axis limits with margins to provide visual spacing
+        phase_data = np.angle(S_data, deg=True)
+        y_min = np.min(phase_data)
+        y_max = np.max(phase_data)
+        y_range = y_max - y_min
+        y_margin = y_range * 0.05  # 5% margin on each side
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -489,6 +517,20 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
         ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
         ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
         ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+        # Set X-axis limits with margins to match actual frequency range of the sweep
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05  # 5% margin on each side
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        # Set Y-axis limits with margins to provide visual spacing
+        magnitude_data = np.abs(S_data)
+        y_min = np.min(magnitude_data)
+        y_max = np.max(magnitude_data)
+        y_range = y_max - y_min
+        y_margin = y_range * 0.05  # 5% margin on each side
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -515,6 +557,20 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
         ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
         ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
         ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+        # Set X-axis limits with margins to match actual frequency range of the sweep
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05  # 5% margin on each side
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        # Set Y-axis limits with margins to provide visual spacing
+        phase_data = np.angle(S_data, deg=True)
+        y_min = np.min(phase_data)
+        y_max = np.max(phase_data)
+        y_range = y_max - y_min
+        y_margin = y_range * 0.05  # 5% margin on each side
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
