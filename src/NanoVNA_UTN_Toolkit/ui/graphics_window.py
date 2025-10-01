@@ -642,23 +642,7 @@ class NanoVNAGraphics(QMainWindow):
         self.reconnect_button = QPushButton("Reconnect")
         self.reconnect_button.setMaximumWidth(100)
         self.reconnect_button.clicked.connect(self.reconnect_device)
-        self.reconnect_button.setStyleSheet("""
-            QPushButton {
-                background-color: #FF9800;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #F57C00;
-            }
-            QPushButton:disabled {
-                background-color: #CCCCCC;
-                color: #666666;
-            }
-        """)
+        # No custom stylesheet - use standard button style like "Run Sweep"
         
         # Sweep button
         self.sweep_button = QPushButton("Run Sweep")
@@ -2127,14 +2111,27 @@ class NanoVNAGraphics(QMainWindow):
         logging.info("[graphics_window.reconnect_device] Manual reconnection requested")
         
         if not self.vna_device:
-            error_msg = "No VNA device available to reconnect."
-            QMessageBox.warning(self, "No Device", error_msg)
-            logging.warning(f"[graphics_window.reconnect_device] {error_msg}")
+            # Show error dialog but don't disable the button
+            error_msg = ("No VNA device is currently available.\n\n"
+                        "Please:\n"
+                        "1. Ensure your VNA device is connected via USB\n"
+                        "2. Remove and reconnect the device\n"
+                        "3. Try clicking Connect again\n\n"
+                        "If the problem persists, check USB connection and restart the program.")
+            QMessageBox.critical(self, "Device Connection Error", error_msg)
+            logging.warning(f"[graphics_window.reconnect_device] No VNA device available")
             return
             
         # Disable reconnect button during reconnection
         self.reconnect_button.setEnabled(False)
         self.reconnect_button.setText("Connecting...")
+        # Remove custom styling to use standard disabled button appearance
+        self.reconnect_button.setStyleSheet("")
+        # Force complete style refresh to clear any persistent styling
+        if hasattr(self.reconnect_button, 'style'):
+            self.reconnect_button.style().unpolish(self.reconnect_button)
+            self.reconnect_button.style().polish(self.reconnect_button)
+            self.reconnect_button.update()
         
         # Also disable sweep button during reconnection
         self.sweep_button.setEnabled(False)
@@ -2154,7 +2151,7 @@ class NanoVNAGraphics(QMainWindow):
             if self.vna_device.connected():
                 success_msg = f"Successfully reconnected to {device_type}"
                 logging.info(f"[graphics_window.reconnect_device] {success_msg}")
-                QMessageBox.information(self, "Reconnection Successful", success_msg)
+                QMessageBox.information(self, "Connection Successful", success_msg)
                 
                 # Reset sliders and cursors to initial position after successful reconnection
                 self._reset_sliders_after_reconnect()
@@ -2162,14 +2159,28 @@ class NanoVNAGraphics(QMainWindow):
                 # Enable sweep button since device is now connected
                 self.sweep_button.setEnabled(True)
             else:
-                error_msg = f"Failed to reconnect to {device_type}. Please check device connection."
-                logging.error(f"[graphics_window.reconnect_device] {error_msg}")
-                QMessageBox.critical(self, "Reconnection Failed", error_msg)
+                # Connection failed - show detailed error dialog but keep button enabled
+                error_msg = (f"Failed to connect to {device_type}.\n\n"
+                           "Please try the following:\n"
+                           "1. Remove and reconnect the VNA device\n"
+                           "2. Check USB cable and port\n"
+                           "3. Ensure device drivers are properly installed\n"
+                           "4. Close other software that might be using the device\n"
+                           "5. Try clicking Connect again\n\n"
+                           "The Connect button remains available for retry.")
+                logging.error(f"[graphics_window.reconnect_device] Connection failed for {device_type}")
+                QMessageBox.critical(self, "Connection Failed", error_msg)
                 
         except Exception as e:
-            error_msg = f"Error during reconnection: {str(e)}"
-            logging.error(f"[graphics_window.reconnect_device] {error_msg}")
-            QMessageBox.critical(self, "Reconnection Error", error_msg)
+            # Exception during connection - show error but keep button enabled
+            error_msg = (f"Error during device connection: {str(e)}\n\n"
+                        "Please try the following:\n"
+                        "1. Remove and reconnect the VNA device\n"
+                        "2. Check USB cable and port\n"
+                        "3. Restart the application if needed\n"
+                        "4. Try clicking Connect again")
+            logging.error(f"[graphics_window.reconnect_device] Exception during connection: {str(e)}")
+            QMessageBox.critical(self, "Connection Error", error_msg)
             
         finally:
             # Reset reconnect button state
@@ -2181,15 +2192,9 @@ class NanoVNAGraphics(QMainWindow):
     def _update_reconnect_button_state(self):
         """Update the reconnect button state based on device connection."""
         if not self.vna_device:
-            self.reconnect_button.setEnabled(False)
-            self.reconnect_button.setText("No Device")
-            return
-            
-        is_connected = self.vna_device.connected()
-        
-        if is_connected:
+            # Instead of disabling, show "Connect" button so user can try to connect
             self.reconnect_button.setEnabled(True)
-            self.reconnect_button.setText("Reconnect")
+            self.reconnect_button.setText("Connect")
             self.reconnect_button.setStyleSheet("""
                 QPushButton {
                     background-color: #4CAF50;
@@ -2203,12 +2208,26 @@ class NanoVNAGraphics(QMainWindow):
                     background-color: #45A049;
                 }
             """)
+            return
+            
+        is_connected = self.vna_device.connected()
+        
+        if is_connected:
+            # Connected state: standard button saying "Reconnect" (same style as Run Sweep button)
+            self.reconnect_button.setEnabled(True)
+            self.reconnect_button.setText("Reconnect")
+            # Force reset to standard button appearance by setting style to None and updating
+            self.reconnect_button.setStyleSheet("")
+            self.reconnect_button.style().unpolish(self.reconnect_button)
+            self.reconnect_button.style().polish(self.reconnect_button)
+            self.reconnect_button.update()
         else:
+            # Disconnected state: green button saying "Connect"
             self.reconnect_button.setEnabled(True)
             self.reconnect_button.setText("Connect")
             self.reconnect_button.setStyleSheet("""
                 QPushButton {
-                    background-color: #FF5722;
+                    background-color: #4CAF50;
                     color: white;
                     border: none;
                     border-radius: 4px;
@@ -2216,7 +2235,7 @@ class NanoVNAGraphics(QMainWindow):
                     font-weight: bold;
                 }
                 QPushButton:hover {
-                    background-color: #E64A19;
+                    background-color: #45A049;
                 }
             """)
 
