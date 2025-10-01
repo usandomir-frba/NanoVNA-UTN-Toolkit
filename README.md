@@ -40,7 +40,12 @@ pip install --upgrade pip
 ### 3. Instalar dependencias
 Instalar las dependencias necesarias para el programa:
 ```bash
-pip install PySide6 numpy scipy pyserial
+pip install -r requirements.txt
+```
+
+**Alternativa (instalación manual):**
+```bash
+pip install PySide6 numpy scipy pyserial matplotlib qtawesome
 ```
 
 ### 4. Ejecutar el programa
