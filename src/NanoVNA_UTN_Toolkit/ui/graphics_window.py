@@ -6,6 +6,19 @@ import sys
 import logging
 import numpy as np
 import skrf as rf
+import tempfile
+import shutil
+from matplotlib.lines import Line2D
+
+
+from pathlib import Path
+from PySide6.QtWidgets import QFileDialog, QMessageBox
+from pylatex import Document, Section, Subsection, Command, Figure, NewPage
+from pylatex.utils import NoEscape
+
+from pathlib import Path
+from PySide6.QtWidgets import QFileDialog, QMessageBox
+from matplotlib.backends.backend_pdf import PdfPages
 
 # Suppress verbose matplotlib logging
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
@@ -14,7 +27,7 @@ logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 from PySide6.QtCore import QTimer, QThread, Qt, QSettings
 from PySide6.QtWidgets import (
-    QLabel, QMainWindow, QVBoxLayout, QWidget,
+    QLabel, QMainWindow, QVBoxLayout, QWidget, QFileDialog,
     QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout,
     QMenu, QFileDialog, QMessageBox, QProgressBar
 )
@@ -220,7 +233,10 @@ class NanoVNAGraphics(QMainWindow):
         file_menu.addAction("Save")
         save_as_action =  file_menu.addAction("Save As")
         save_as_action.triggered.connect(lambda: self.on_save_as())
-        
+
+        export_pdf_action =  file_menu.addAction("Export Latex PDF")
+        export_pdf_action.triggered.connect(lambda: self.export_latex_pdf())
+
         export_touchstone_action = file_menu.addAction("Export Touchstone Data")
         export_touchstone_action.triggered.connect(lambda: self.export_touchstone_data())
 
@@ -2406,7 +2422,7 @@ class NanoVNAGraphics(QMainWindow):
                 ax.tick_params(axis='y', colors=f"{axis_color}")
 
                 for spine in ax.spines.values():
-                    spine.set_color("white")
+                    spine.set_color(f"{axis_color}")
                     
                 ax.grid(True, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
                 
@@ -2435,7 +2451,7 @@ class NanoVNAGraphics(QMainWindow):
                 ax.tick_params(axis='y', colors=f"{axis_color}")
 
                 for spine in ax.spines.values():
-                    spine.set_color("white")
+                    spine.set_color(f"{axis_color}")
                     
                 ax.grid(True, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
                 
@@ -2455,6 +2471,150 @@ class NanoVNAGraphics(QMainWindow):
             
         except Exception as e:
             logging.error(f"[graphics_window._recreate_single_plot] Error recreating plot: {e}")
+
+    def export_latex_pdf(self):
+        """
+        Export a PDF using LaTeX with a title page and structured sections:
+        - Cover page with project name, title, date
+        - S11 section: Magnitude, Phase, Smith
+        - S21 section: Magnitude, Phase
+        """
+        if self.s11 is None or self.s21 is None or self.freqs is None:
+            QMessageBox.warning(self, "Missing Data", "S11, S21 or frequencies are not available.")
+            return
+
+        filename, _ = QFileDialog.getSaveFileName(self, "Export LaTeX PDF", "", "PDF Files (*.pdf)")
+        if not filename:
+            return
+
+        file_path = Path(filename).with_suffix('')
+        pdf_path = str(file_path) + ".pdf"
+
+        try:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                image_files = {}
+
+                # --- Smith Diagram ---
+                fig, ax = plt.subplots(figsize=(10, 10))
+                fig.patch.set_facecolor("white")
+                ax.set_facecolor("white")
+                ntw = rf.Network(frequency=self.freqs, s=self.s11[:, np.newaxis, np.newaxis], z0=50)
+                ntw.plot_s_smith(ax=ax, draw_labels=True)
+                ax.legend([Line2D([0], [0], color='blue')], ['S11'], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
+                smith_path = os.path.join(tmpdirname, "smith.png")
+                fig.savefig(smith_path, dpi=300)
+                plt.close(fig)
+                image_files['smith'] = smith_path
+
+                # --- Magnitude S11 ---
+                fig, ax = plt.subplots(figsize=(6, 4))
+                fig.patch.set_facecolor("white")
+                ax.set_facecolor("white")
+                ax.plot(self.freqs * 1e-6, 20 * np.log10(np.abs(self.s11)), color='blue')
+                ax.set_xlabel("Frequency [MHz]")
+                ax.set_ylabel("|S11|")
+                ax.set_title("Magnitude S11")
+                ax.grid(True, linestyle='--', alpha=0.5)
+                mag_s11_path = os.path.join(tmpdirname, "magnitude_s11.png")
+                fig.savefig(mag_s11_path, dpi=300)
+                plt.close(fig)
+                image_files['mag_s11'] = mag_s11_path
+
+                # --- Phase S11 ---
+                fig, ax = plt.subplots(figsize=(6, 4))
+                fig.patch.set_facecolor("white")
+                ax.set_facecolor("white")
+                ax.plot(self.freqs * 1e-6, np.angle(self.s11, deg=True), color='blue')
+                ax.set_xlabel("Frequency [MHz]")
+                ax.set_ylabel("Phase S11 [deg]")
+                ax.set_title("Phase S11")
+                ax.grid(True, linestyle='--', alpha=0.5)
+                phase_s11_path = os.path.join(tmpdirname, "phase_s11.png")
+                fig.savefig(phase_s11_path, dpi=300)
+                plt.close(fig)
+                image_files['phase_s11'] = phase_s11_path
+
+                # --- Magnitude S21 ---
+                fig, ax = plt.subplots(figsize=(6, 4))
+                fig.patch.set_facecolor("white")
+                ax.set_facecolor("white")
+                ax.plot(self.freqs * 1e-6, 20 * np.log10(np.abs(self.s21)), color='red')
+                ax.set_xlabel("Frequency [MHz]")
+                ax.set_ylabel("|S21|")
+                ax.set_title("Magnitude S21")
+                ax.grid(True, linestyle='--', alpha=0.5)
+                mag_s21_path = os.path.join(tmpdirname, "magnitude_s21.png")
+                fig.savefig(mag_s21_path, dpi=300)
+                plt.close(fig)
+                image_files['mag_s21'] = mag_s21_path
+
+                # --- Phase S21 ---
+                fig, ax = plt.subplots(figsize=(6, 4))
+                fig.patch.set_facecolor("white")
+                ax.set_facecolor("white")
+                ax.plot(self.freqs * 1e-6, np.angle(self.s21, deg=True), color='red')
+                ax.set_xlabel("Frequency [MHz]")
+                ax.set_ylabel("Phase S21 [deg]")
+                ax.set_title("Phase S21")
+                ax.grid(True, linestyle='--', alpha=0.5)
+                phase_s21_path = os.path.join(tmpdirname, "phase_s21.png")
+                fig.savefig(phase_s21_path, dpi=300)
+                plt.close(fig)
+                image_files['phase_s21'] = phase_s21_path
+
+                # --- LaTeX document ---
+                doc = Document(
+                    documentclass='article',
+                    document_options='12pt',
+                    geometry_options={'paper': 'a4paper', 'margin': '2cm'}
+                )
+                doc.preamble.append(Command('usepackage', 'graphicx'))
+
+                # --- Cover page ---
+                doc.append(NoEscape(r'\begin{titlepage}'))
+                doc.append(NoEscape(r'\begin{center}'))
+                doc.append(NoEscape(r'\vspace*{4cm}'))
+                doc.append(NoEscape(r'\Huge \textbf{NanoVNA Report} \\[1.5cm]'))
+                doc.append(NoEscape(r'\LARGE NanoVNA UTN Toolkit \\[1cm]'))
+                doc.append(NoEscape(r'\large ' + r'\today'))
+                doc.append(NoEscape(r'\end{center}'))
+                doc.append(NoEscape(r'\end{titlepage}'))
+
+                # --- S11 Section ---
+                s11_images = {
+                    "Magnitude": "mag_s11",
+                    "Phase": "phase_s11",
+                    "Smith Diagram": "smith"
+                }
+                with doc.create(Section("S11")):
+                    for subname, key in s11_images.items():
+                        with doc.create(Subsection(subname)):
+                            doc.append(NoEscape(r'\begin{center}'))
+                            doc.append(NoEscape(r'\includegraphics[width=0.8\linewidth]{' +
+                                                image_files[key].replace("\\", "/") + '}'))
+                            doc.append(NoEscape(r'\end{center}'))
+
+                # --- S21 Section ---
+                s21_images = {
+                    "Magnitude": "mag_s21",
+                    "Phase": "phase_s21"
+                }
+                with doc.create(Section("S21")):
+                    for subname, key in s21_images.items():
+                        with doc.create(Subsection(subname)):
+                            doc.append(NoEscape(r'\begin{center}'))
+                            doc.append(NoEscape(r'\includegraphics[width=0.8\linewidth]{' +
+                                                image_files[key].replace("\\", "/") + '}'))
+                            doc.append(NoEscape(r'\end{center}'))
+
+                # --- Generate PDF ---
+                doc.generate_pdf(str(file_path), compiler="pdflatex", clean_tex=False)
+
+            QMessageBox.information(self, "Success", f"LaTeX PDF exported successfully to:\n{pdf_path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error generating LaTeX PDF", f"{e}")
+
 
     def export_touchstone_data(self):
         """Export sweep data to Touchstone format."""
