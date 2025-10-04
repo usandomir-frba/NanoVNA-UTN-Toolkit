@@ -2570,13 +2570,51 @@ class NanoVNAGraphics(QMainWindow):
                 )
                 doc.preamble.append(Command('usepackage', 'graphicx'))
 
+                from datetime import datetime
+                current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # --- Leer método de calibración y parámetro desde archivo ini ---
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+                settings = QSettings(config_path, QSettings.IniFormat)
+                calibration_method = settings.value("Calibration/Method", "---")
+                calibrated_parameter = settings.value("Calibration/Parameter", "---")
+
+                # --- Determinar nombre y número de medición ---
+                measurement_name = Path(filename).stem
+                measurement_number = 1
+                tracking_file = os.path.join(base_dir, "Calibration_Config", "measurement_numbers.ini")
+                tracking_settings = QSettings(tracking_file, QSettings.IniFormat)
+                if tracking_settings.contains(measurement_name):
+                    measurement_number = int(tracking_settings.value(measurement_name))
+                else:
+                    all_numbers = [int(tracking_settings.value(k)) for k in tracking_settings.allKeys()]
+                    if all_numbers:
+                        measurement_number = max(all_numbers) + 1
+                    tracking_settings.setValue(measurement_name, measurement_number)
+                    tracking_settings.sync()
+
                 # --- Cover page ---
                 doc.append(NoEscape(r'\begin{titlepage}'))
                 doc.append(NoEscape(r'\begin{center}'))
-                doc.append(NoEscape(r'\vspace*{4cm}'))
-                doc.append(NoEscape(r'\Huge \textbf{NanoVNA Report} \\[1.5cm]'))
-                doc.append(NoEscape(r'\LARGE NanoVNA UTN Toolkit \\[1cm]'))
-                doc.append(NoEscape(r'\large ' + r'\today'))
+
+                doc.append(NoEscape(r'\vspace*{2cm}'))
+                doc.append(NoEscape(r'\Huge \textbf{NanoVNA Report} \\[1.2cm]'))
+                doc.append(NoEscape(r'\LARGE NanoVNA UTN Toolkit \\[0.8cm]'))
+                doc.append(NoEscape(r'\large ' + current_datetime))
+
+                doc.append(NoEscape(r'\vspace{3cm}'))
+                doc.append(NoEscape(r'\begin{flushleft}'))
+                doc.append(NoEscape(r'\Large \textbf{Measurement Details:} \\[0.5cm]'))
+                doc.append(NoEscape(r'\normalsize'))
+                doc.append(NoEscape(r'\begin{itemize}'))
+                doc.append(NoEscape(rf'\item \textbf{{Measurement Name:}} {measurement_name}'))
+                doc.append(NoEscape(rf'\item \textbf{{Measurement Number:}} {measurement_number}'))
+                doc.append(NoEscape(rf'\item \textbf{{Calibration Method:}} {calibration_method}'))
+                doc.append(NoEscape(rf'\item \textbf{{Calibrated Parameter:}} {calibrated_parameter}'))
+                doc.append(NoEscape(rf'\item \textbf{{Date and Time:}} {current_datetime}'))
+                doc.append(NoEscape(r'\end{itemize}'))
+                doc.append(NoEscape(r'\end{flushleft}'))
                 doc.append(NoEscape(r'\end{center}'))
                 doc.append(NoEscape(r'\end{titlepage}'))
 
@@ -2614,6 +2652,7 @@ class NanoVNAGraphics(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Error generating LaTeX PDF", f"{e}")
+
 
 
     def export_touchstone_data(self):

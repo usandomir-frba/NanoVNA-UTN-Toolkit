@@ -530,7 +530,6 @@ class CalibrationWizard(QMainWindow):
         else:
             self.show_step_screen(self.current_step - 1)
 
-
     def finish_wizard(self):
         logging.info("Opening NanoVNAGraphics window")
         if NanoVNAGraphics:
@@ -539,8 +538,37 @@ class CalibrationWizard(QMainWindow):
             else:
                 graphics_window = NanoVNAGraphics()
             graphics_window.show()
-        self.close()
 
+        # --- 🔹 Save Calibration Method and Parameter to Calibration_Config ---
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_dir = os.path.join(base_dir, "Calibration_Config")
+            os.makedirs(config_dir, exist_ok=True)
+
+            config_path = os.path.join(config_dir, "calibration_config.ini")
+            settings = QSettings(config_path, QSettings.IniFormat)
+
+            # Guardar método
+            settings.setValue("Calibration/Method", self.selected_method)
+
+            # Determinar parámetro calibrado según el método
+            if self.selected_method == "OSM (Open - Short - Match)":
+                parameter = "S11"
+            elif self.selected_method == "Normalization":
+                parameter = "S21"
+            else:  # "1-Port+N", "Enhanced-Response", "1-Path 2-Port"
+                parameter = "S11, S21"
+
+            settings.setValue("Calibration/Parameter", parameter)
+            settings.sync()
+
+            logging.info(f"Calibration method saved: {self.selected_method}")
+            logging.info(f"Calibrated parameter saved: {parameter}")
+        except Exception as e:
+            logging.error(f"Failed to save calibration config: {e}")
+        # ----------------------------------------------------------
+
+        self.close()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
