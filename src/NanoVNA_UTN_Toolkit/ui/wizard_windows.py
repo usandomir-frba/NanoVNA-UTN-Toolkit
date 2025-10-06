@@ -539,6 +539,8 @@ class CalibrationWizard(QMainWindow):
                 graphics_window = NanoVNAGraphics()
             graphics_window.show()
 
+        graphics_window.update_calibration_label_from_method(self.selected_method)
+    
         # --- 🔹 Save Calibration Method and Parameter to Calibration_Config ---
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -564,11 +566,17 @@ class CalibrationWizard(QMainWindow):
 
             logging.info(f"Calibration method saved: {self.selected_method}")
             logging.info(f"Calibrated parameter saved: {parameter}")
-        except Exception as e:
-            logging.error(f"Failed to save calibration config: {e}")
-        # ----------------------------------------------------------
 
-        self.close()
+            for child in self.findChildren(QWidget):
+                child.setParent(None)
+
+            self.close()  # Close the wizard window
+
+        except Exception as e:
+            self.close()  # Close the wizard window
+
+            logging.error(f"Failed to save calibration config: {e}")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

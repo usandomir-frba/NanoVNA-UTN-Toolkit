@@ -12,12 +12,12 @@ logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
-from PySide6.QtCore import QTimer, QThread, Qt, QSettings
+from PySide6.QtCore import QTimer, QThread, Qt, QSettings, QPropertyAnimation, QPoint
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QPushButton,
-    QHBoxLayout, QGroupBox, QComboBox, QToolButton, QMenu, 
+    QHBoxLayout, QGroupBox, QComboBox, QToolButton, QMenu, QFrame
 )
-from PySide6.QtGui import QIcon, QAction, QPixmap, QPainter, QPen, QColor
+from PySide6.QtGui import QIcon
 
 try:
     from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
@@ -71,7 +71,7 @@ class NanoVNAWelcome(QMainWindow):
         lineedit_focus_border = settings.value("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
         pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#3b3b3b")
         pushbutton_color = settings.value("Dark_Light/QPushButton/color", "white")
-        pushbutton_border = settings.value("Dark_Light/QPushButton/border", "1px solid white")
+        pushbutton_border = settings.value("Dark_Light/QPushButton/border", "2px solid white")
         pushbutton_border_radius = settings.value("Dark_Light/QPushButton/border-radius", "6px")
         pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
         pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
@@ -86,6 +86,13 @@ class NanoVNAWelcome(QMainWindow):
         menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
         menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
 
+        self.pushbutton_bg = pushbutton_bg
+        self.pushbutton_color = pushbutton_color
+        self.pushbutton_border_radius = pushbutton_border_radius
+        self.pushbutton_padding = pushbutton_padding
+        self.pushbutton_hover_bg = pushbutton_hover_bg
+        self.pushbutton_pressed_bg = pushbutton_pressed_bg
+
         # === Apply stylesheet to unify QPushButton and QToolButton appearance ===
         self.setStyleSheet(f"""
             /* --- QToolButton styled like QPushButton --- */
@@ -97,7 +104,7 @@ class NanoVNAWelcome(QMainWindow):
                 font-size: 16px;
                 font-weight: bold;
                 padding: {pushbutton_padding};
-                margin: 20px;
+                margin: 0px;
             }}
             QToolButton:hover {{
                 background-color: {pushbutton_hover_bg};
@@ -107,15 +114,6 @@ class NanoVNAWelcome(QMainWindow):
             }}
             QToolButton::menu-indicator {{
                 image: none;
-            }}
-            QToolButton::arrow {{
-                width: 10px;
-                height: 10px;
-                border-left: 2px solid {pushbutton_color};  /* mismo color que el texto */
-                border-top: 2px solid {pushbutton_color};   /* mismo color que el texto */
-                transform: rotate(45deg);
-                margin-right: 5px;
-                margin-top: 5px;
             }}
             /* --- Other widgets --- */
             QWidget {{ background-color: {background_color}; }}
@@ -181,7 +179,6 @@ class NanoVNAWelcome(QMainWindow):
 
         # === Store VNA device reference ===
         self.vna_device = vna_device
-
         logging.info("[welcome_windows.__init__] Initializing welcome window")
 
         # === Set application icon ===
@@ -234,22 +231,22 @@ class NanoVNAWelcome(QMainWindow):
         middle_layout.addStretch()
         main_layout.addLayout(middle_layout)
 
+        # === Calibration QToolButton ===
         self.left_button = QToolButton()
-        self.left_button.setFixedSize(200, 200)
+        self.left_button.setFixedSize(300, 200)
         self.left_button.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        self.left_button.setPopupMode(QToolButton.InstantPopup)  # evita que se mueva la flecha
-        self.left_button.setAutoRaise(False)  # evita look transparente
-
-        # Aplica colores del botón igual que QPushButton
+        self.left_button.setAutoRaise(False)
+        self.left_button.setArrowType(Qt.NoArrow)
         self.left_button.setStyleSheet(f"""
             QToolButton {{
                 background-color: {pushbutton_bg};
                 color: {pushbutton_color};
-                border: {pushbutton_border};
+                border: 2px solid {pushbutton_color};
                 border-radius: {pushbutton_border_radius};
                 font-size: 16px;
                 font-weight: bold;
                 padding: {pushbutton_padding};
+                margin: 0px;
             }}
             QToolButton:hover {{
                 background-color: {pushbutton_hover_bg};
@@ -260,45 +257,7 @@ class NanoVNAWelcome(QMainWindow):
             QToolButton::menu-indicator {{
                 image: none;
             }}
-            QToolButton::arrow {{
-                width: 10px;
-                height: 10px;
-                border-left: 2px solid {pushbutton_color};
-                border-top: 2px solid {pushbutton_color};
-                transform: rotate(45deg);
-                margin-right: 5px;
-                margin-top: 5px;
-            }}
-            /* === Corrige el fondo azul y mantiene el borde === */
-            QToolButton::menu-button {{
-                background-color: {pushbutton_bg};
-                border-left: {pushbutton_border};  /* restaura el borde */
-                border-top: none;
-                border-right: none;
-                border-bottom: none;
-                border-top-right-radius: {pushbutton_border_radius};
-                border-bottom-right-radius: {pushbutton_border_radius};
-                width: 20px;
-            }}
         """)
-        # Crear flecha personalizada usando el color de fondo del botón
-        arrow_pixmap = QPixmap(12, 12)
-        arrow_pixmap.fill(Qt.transparent)
-        painter = QPainter(arrow_pixmap)
-        pen = QPen(QColor(pushbutton_bg))  # color igual al fondo del botón
-        pen.setWidth(2)
-        painter.setPen(pen)
-        painter.drawLine(2, 4, 6, 8)
-        painter.drawLine(6, 8, 10, 4)
-        painter.end()
-
-        # Usar la flecha como icono del botón
-        self.left_button.setArrowType(Qt.NoArrow)
-        self.left_button.setIcon(QIcon(arrow_pixmap))
-        self.left_button.setIconSize(arrow_pixmap.size())
-        self.left_button.setPopupMode(QToolButton.InstantPopup)
-        self.left_button.setAutoRaise(False)
-
 
         # --- Load calibration kits ---
         settings_calibration = QSettings(
@@ -306,47 +265,148 @@ class NanoVNAWelcome(QMainWindow):
             QSettings.IniFormat
         )
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
-        kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
+        self.kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
 
         # --- Get current calibration ---
         calibration_name = settings_calibration.value("Calibration/Name", "No Calibration")
         if "_" in calibration_name:
             calibration_name = calibration_name.rsplit("_", 1)[0]
 
-        # --- Setup QToolButton text and menu ---
-        if len(kit_names) <= 1:
-            self.left_button.setText(f"Calibration:\n{kit_names[0] if kit_names else 'No Calibration'}")
-            self.left_button.setMenu(None)
-        else:
-            self.left_button.setText(f"Calibration:\n{calibration_name if calibration_name else kit_names[0]}")
-            self.left_button.setPopupMode(QToolButton.MenuButtonPopup)
-            menu = QMenu(self.left_button)
-            for name in kit_names:
-                action = QAction(name, self.left_button)
-                menu.addAction(action)
+        # === Initialize carousel index ===
+        self.current_index = 0
+        if calibration_name in self.kit_names:
+            self.current_index = self.kit_names.index(calibration_name)
 
-            # --- Update text when a kit is selected ---
-            def on_kit_selected(action):
-                selected_name = action.text()
-                self.left_button.setText(f"Calibration:\n{selected_name}")
-                # Save selected kit to settings
-                for g in kit_groups:
-                    name = settings_calibration.value(f"{g}/kit_name", "")
-                    if name == selected_name:
-                        settings_calibration.beginGroup("Calibration")
-                        settings_calibration.setValue("Name", f"{selected_name}_{g.split('_')[1]}")
-                        settings_calibration.endGroup()
-                        settings_calibration.sync()
-                        break
-
-            menu.triggered.connect(on_kit_selected)
-            self.left_button.setMenu(menu)
+        # --- Update button text with arrows inside ---
+        self.update_left_button_text()
 
         # --- Add calibration button to layout ---
         main_layout.addWidget(self.left_button, alignment=Qt.AlignHCenter | Qt.AlignBottom)
 
-    # --- Open calibration wizard window ---
+    # --- Update left button text and arrows ---
+    def update_left_button_text(self):
+        for child in self.left_button.findChildren(QWidget):
+            child.deleteLater()
+
+        arrow_height = self.left_button.height() - 4
+        arrow_y = 2
+        arrow_width = 40
+        hover_color = self.pushbutton_hover_bg
+        normal_color = self.pushbutton_bg
+        border_radius = self.pushbutton_border_radius
+
+        self.left_arrow_button = QPushButton("<", self.left_button)
+        self.left_arrow_button.setGeometry(0, arrow_y, arrow_width, arrow_height)
+        self.left_arrow_button.setStyleSheet("background-color: transparent; border: none; font-size: 20px;")
+        self.left_arrow_button.clicked.connect(lambda: self.cycle_kit_side(-1))
+        self.left_arrow_button.enterEvent = lambda e: self.left_arrow_button.setStyleSheet(f"background-color: {hover_color}; font-size: 20px;")
+        self.left_arrow_button.leaveEvent = lambda e: self.left_arrow_button.setStyleSheet("background-color: transparent; font-size: 20px;")
+
+        self.right_arrow_button = QPushButton(">", self.left_button)
+        self.right_arrow_button.setGeometry(self.left_button.width()-arrow_width, arrow_y, arrow_width, arrow_height)
+        self.right_arrow_button.setStyleSheet("background-color: transparent; border: none; font-size: 20px;")
+        self.right_arrow_button.clicked.connect(lambda: self.cycle_kit_side(1))
+        self.right_arrow_button.enterEvent = lambda e: self.right_arrow_button.setStyleSheet(f"background-color: {hover_color}; font-size: 20px;")
+        self.right_arrow_button.leaveEvent = lambda e: self.right_arrow_button.setStyleSheet("background-color: transparent; font-size: 20px;")
+
+        inner_x = arrow_width
+        inner_width = self.left_button.width() - 2 * arrow_width
+        inner_y = 2
+        inner_height = self.left_button.height() - 4
+
+        self.kit_frame = QFrame(self.left_button)
+        self.kit_frame.setGeometry(inner_x, inner_y, inner_width, inner_height)
+        self.kit_frame.setStyleSheet(f"background-color: {normal_color}; border-radius: {border_radius};")
+
+        current_text = self.kit_names[self.current_index]
+        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked(name)
+        self.kit_frame.enterEvent = lambda e: self.kit_frame.setStyleSheet(f"background-color: {hover_color}; border-radius: {border_radius};")
+        self.kit_frame.leaveEvent = lambda e: self.kit_frame.setStyleSheet(f"background-color: {normal_color}; border-radius: {border_radius};")
+
+        self.kit_label = QLabel(current_text, self.kit_frame)
+        self.kit_label.setAlignment(Qt.AlignCenter)
+        self.kit_label.setGeometry(0, 0, inner_width, inner_height)
+        self.kit_label.setStyleSheet("background-color: transparent;")
+        self.kit_label.show()
+        self.kit_frame.show()
+
+
+    def cycle_kit_side(self, direction):
+        old_frame = self.kit_frame
+        self.current_index = (self.current_index + direction) % len(self.kit_names)
+        new_text = self.kit_names[self.current_index]
+
+        kit_bg_color = self.pushbutton_bg
+        kit_border_radius = self.pushbutton_border_radius
+
+        new_frame = QFrame(self.left_button)
+        new_frame.setGeometry(40, 2, self.left_button.width()-80, self.left_button.height()-4)
+        new_frame.setStyleSheet(f"background-color: {kit_bg_color}; border-radius: {kit_border_radius};")
+
+        new_label = QLabel(new_text, new_frame)
+        new_label.setAlignment(Qt.AlignCenter)
+        new_label.setGeometry(0, 0, new_frame.width(), new_frame.height())
+        new_label.setStyleSheet("background-color: transparent;")
+        new_label.show()
+        new_frame.show()
+
+        offset = self.left_button.width()-80
+        inside_offset = offset - 40
+        start_x = inside_offset if direction > 0 else -inside_offset
+        new_frame.move(start_x, 2)
+
+        anim_old = QPropertyAnimation(old_frame, b"pos", self)
+        anim_old.setDuration(250)
+        anim_old.setStartValue(old_frame.pos())
+        anim_old.setEndValue(QPoint(-inside_offset if direction > 0 else inside_offset, 2))
+
+        anim_new = QPropertyAnimation(new_frame, b"pos", self)
+        anim_new.setDuration(250)
+        anim_new.setStartValue(new_frame.pos())
+        anim_new.setEndValue(QPoint(40, 2))
+
+        def on_finished():
+            old_frame.deleteLater()
+            self.kit_frame = new_frame
+            self.kit_label = new_label
+            # Asignar el clic usando el nombre correcto del kit
+            new_frame.mousePressEvent = lambda event, name=new_text: self.toolbutton_main_clicked(name)
+
+        anim_new.finished.connect(on_finished)
+        anim_old.start()
+        anim_new.start()
+        self.left_button.update()
+
+
+    def toolbutton_main_clicked(self, kit_name):
+        print(f"Clickeaste en el kit central gay: {kit_name}")
+        logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.IniFormat)
+
+        settings_calibration.setValue("Calibration/Kits", True)
+        settings_calibration.setValue("Calibration/name", kit_name)
+        settings_calibration.sync()
+
+        if self.vna_device:
+            graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
+        else:
+            graphics_window = NanoVNAGraphics()
+        graphics_window.show()
+        self.close()
+
+
     def open_calibration_wizard(self):
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.IniFormat)
+
+        settings_calibration.setValue("Calibration/Kits", False)
+        settings_calibration.sync()
+
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
         if self.vna_device:
             self.welcome_windows = CalibrationWizard(self.vna_device)
@@ -355,8 +415,16 @@ class NanoVNAWelcome(QMainWindow):
         self.welcome_windows.show()
         self.close()
 
-    # --- Open graphics window ---
     def graphics_clicked(self):
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.IniFormat)
+
+        settings_calibration.setValue("Calibration/Kits", False)
+        settings_calibration.sync()
+
+
         if self.vna_device:
             graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
         else:

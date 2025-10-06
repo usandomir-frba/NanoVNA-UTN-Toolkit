@@ -700,12 +700,39 @@ class NanoVNAGraphics(QMainWindow):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
+
+        kits_ok = settings_calibration.value("Calibration/Kits", False, type=bool)
+        kit_name = settings_calibration.value("Calibration/Name", None)
+        settings_calibration = QSettings(config_path, QSettings.IniFormat)
+        settings_calibration.sync()  # 🔹 fuerza recarga desde disco
         calibration_method = settings_calibration.value("Calibration/Method", "---")
 
-        # --- Calibration method label ---
-        calibration_label =QLabel(f"Calibration Method selected: {calibration_method}")
+        # --- Si hay kit, buscar el método correspondiente ---
+        if kits_ok and kit_name:
+            matched_method = None
+            i = 1
+            while True:
+                section = f"Kit_{i}"
+                # Verifica si la clave existe; si no, corta el bucle
+                if not settings_calibration.contains(f"{section}/kit_name"):
+                    break
+                name = settings_calibration.value(f"{section}/kit_name")
+                method = settings_calibration.value(f"{section}/method")
+                if name == kit_name:
+                    matched_method = method
+                    break
+                i += 1
+
+            if matched_method:
+                calibration_label = QLabel(f"Calibration Kit: {kit_name}  |  Method: {matched_method}")
+            else:
+                calibration_label = QLabel(f"Calibration Kit: {kit_name} (method not found)")
+        else:
+            calibration_label = QLabel(f"Calibration Method selected: {calibration_method}")
+
         calibration_label.setStyleSheet("font-size: 12px;")
         sweep_control_layout.addWidget(calibration_label, alignment=Qt.AlignRight)
+
         
         main_layout_vertical.addLayout(sweep_control_layout)
         
