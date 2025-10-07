@@ -531,6 +531,9 @@ class CalibrationWizard(QMainWindow):
             self.show_step_screen(self.current_step - 1)
 
     def finish_wizard(self):
+        # Cierra la ventana wizard inmediatamente
+        self.close()
+
         logging.info("Opening NanoVNAGraphics window")
         if NanoVNAGraphics:
             if self.vna_device:
@@ -539,9 +542,12 @@ class CalibrationWizard(QMainWindow):
                 graphics_window = NanoVNAGraphics()
             graphics_window.show()
 
-        graphics_window.update_calibration_label_from_method(self.selected_method)
-    
-        # --- 🔹 Save Calibration Method and Parameter to Calibration_Config ---
+            try:
+                graphics_window.update_calibration_label_from_method(self.selected_method)
+            except Exception as e:
+                logging.error(f"Failed to update NanoVNAGraphics: {e}")
+
+        # --- Guardar configuración de calibración ---
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             config_dir = os.path.join(base_dir, "Calibration_Config")
@@ -550,15 +556,13 @@ class CalibrationWizard(QMainWindow):
             config_path = os.path.join(config_dir, "calibration_config.ini")
             settings = QSettings(config_path, QSettings.IniFormat)
 
-            # Guardar método
             settings.setValue("Calibration/Method", self.selected_method)
 
-            # Determinar parámetro calibrado según el método
             if self.selected_method == "OSM (Open - Short - Match)":
                 parameter = "S11"
             elif self.selected_method == "Normalization":
                 parameter = "S21"
-            else:  # "1-Port+N", "Enhanced-Response", "1-Path 2-Port"
+            else:
                 parameter = "S11, S21"
 
             settings.setValue("Calibration/Parameter", parameter)
@@ -567,15 +571,15 @@ class CalibrationWizard(QMainWindow):
             logging.info(f"Calibration method saved: {self.selected_method}")
             logging.info(f"Calibrated parameter saved: {parameter}")
 
-            for child in self.findChildren(QWidget):
-                child.setParent(None)
-
-            self.close()  # Close the wizard window
+            graphics_window.show()
+            try:
+                graphics_window.update_calibration_label_from_method(self.selected_method)
+            except Exception as e:
+                logging.error(f"Failed to update NanoVNAGraphics: {e}")
 
         except Exception as e:
-            self.close()  # Close the wizard window
-
             logging.error(f"Failed to save calibration config: {e}")
+
 
 
 if __name__ == "__main__":

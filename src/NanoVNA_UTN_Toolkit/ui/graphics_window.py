@@ -227,6 +227,7 @@ class NanoVNAGraphics(QMainWindow):
         edit_menu = menu_bar.addMenu("Edit")
         view_menu = menu_bar.addMenu("View")
         sweep_menu = menu_bar.addMenu("Sweep")
+        calibration_menu = menu_bar.addMenu("Calibration")
         help_menu = menu_bar.addMenu("Help")
 
         file_menu.addAction("Open")
@@ -595,15 +596,14 @@ class NanoVNAGraphics(QMainWindow):
 
         sweep_options = sweep_menu.addAction("Options")
         sweep_options.triggered.connect(lambda: self.open_sweep_options())
-
-        sweep_save_calibration = sweep_menu.addAction("Save Calibration")
-        sweep_save_calibration.triggered.connect(lambda: self.open_save_calibration())
-
+ 
         sweep_run = sweep_menu.addAction("Run Sweep")
         sweep_run.triggered.connect(lambda: self.run_sweep())
-        
-        calibrate_option = sweep_menu.addAction("Calibration Wizard")
 
+        sweep_load_calibration = calibration_menu.addAction("Save Calibration")
+        sweep_load_calibration.triggered.connect(lambda: self.open_save_calibration())
+
+        calibrate_option = calibration_menu.addAction("Calibration Wizard")
         calibrate_option.triggered.connect(lambda: self.open_calibration_wizard())
 
         # --- Icon ---
@@ -696,44 +696,14 @@ class NanoVNAGraphics(QMainWindow):
         sweep_control_layout.addWidget(self.sweep_progress_bar)
         sweep_control_layout.addStretch()
 
-        # --- Leer método de calibración y parámetro desde archivo ini ---
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
-        settings_calibration = QSettings(config_path, QSettings.IniFormat)
+        # Creamos el QLabel de calibración como atributo de la clase
+        self.calibration_label = QLabel()
+        self.calibration_label.setStyleSheet("font-size: 12px;")
+        sweep_control_layout.addWidget(self.calibration_label, alignment=Qt.AlignRight)
 
-        kits_ok = settings_calibration.value("Calibration/Kits", False, type=bool)
-        kit_name = settings_calibration.value("Calibration/Name", None)
-        settings_calibration = QSettings(config_path, QSettings.IniFormat)
-        settings_calibration.sync()  # 🔹 fuerza recarga desde disco
-        calibration_method = settings_calibration.value("Calibration/Method", "---")
+        # Inicializa el texto del label
+        self.update_calibration_label_from_method()
 
-        # --- Si hay kit, buscar el método correspondiente ---
-        if kits_ok and kit_name:
-            matched_method = None
-            i = 1
-            while True:
-                section = f"Kit_{i}"
-                # Verifica si la clave existe; si no, corta el bucle
-                if not settings_calibration.contains(f"{section}/kit_name"):
-                    break
-                name = settings_calibration.value(f"{section}/kit_name")
-                method = settings_calibration.value(f"{section}/method")
-                if name == kit_name:
-                    matched_method = method
-                    break
-                i += 1
-
-            if matched_method:
-                calibration_label = QLabel(f"Calibration Kit: {kit_name}  |  Method: {matched_method}")
-            else:
-                calibration_label = QLabel(f"Calibration Kit: {kit_name} (method not found)")
-        else:
-            calibration_label = QLabel(f"Calibration Method selected: {calibration_method}")
-
-        calibration_label.setStyleSheet("font-size: 12px;")
-        sweep_control_layout.addWidget(calibration_label, alignment=Qt.AlignRight)
-
-        
         main_layout_vertical.addLayout(sweep_control_layout)
         
         # Set initial state of reconnect button after UI elements are created
@@ -802,6 +772,43 @@ class NanoVNAGraphics(QMainWindow):
         
         # Clear all marker information fields until first sweep is completed
         self._clear_all_marker_fields()
+
+    def update_calibration_label_from_method(self, method=None):
+        """
+        Actualiza el QLabel de calibración leyendo el INI o usando un método dado.
+        """
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        settings = QSettings(config_path, QSettings.IniFormat)
+        settings.sync()
+
+        kits_ok = settings.value("Calibration/Kits", False, type=bool)
+        kit_name = settings.value("Calibration/Name", None)
+        calibration_method = method or settings.value("Calibration/Method", "---")
+
+        matched_method = None
+        if kits_ok and kit_name:
+            i = 1
+            while True:
+                section = f"Kit_{i}"
+                if not settings.contains(f"{section}/kit_name"):
+                    break
+                name = settings.value(f"{section}/kit_name")
+                mthd = settings.value(f"{section}/method")
+                if name == kit_name:
+                    matched_method = mthd
+                    break
+                i += 1
+
+        if kits_ok and kit_name:
+            if matched_method:
+                text = f"Calibration Kit: {kit_name}  |  Method: {matched_method}"
+            else:
+                text = f"Calibration Kit: {kit_name} (method not found)"
+        else:
+            text = f"Calibration Method selected: {calibration_method}"
+
+        self.calibration_label.setText(text)
 
     def _load_graph_configuration(self):
         """Load graph configuration from settings file."""
