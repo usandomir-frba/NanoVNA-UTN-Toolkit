@@ -272,20 +272,32 @@ class NanoVNAStatusApp(QMainWindow):
         self.platform_label = QLabel("Platform:")
         self.platform_value = QLabel("Unknown")
         
+        # Extended device information
+        self.serial_label = QLabel("Serial Number:")
+        self.serial_value = QLabel("Not available")
+        self.device_type_label = QLabel("Device Type:")
+        self.device_type_value = QLabel("Unknown")
+        
         # Parameters section
         self.params_label = QLabel("Parameters:")
         self.params_value = QLabel("Not available")
+        
+        # Features section
+        self.features_label = QLabel("Features:")
+        self.features_value = QLabel("Not available")
         
         # Style the labels
         label_style = "font-weight: bold;"
         value_style = "padding-left: 10px;"
         
         for label in [self.board_label, self.version_label, self.build_time_label, 
-                     self.arch_label, self.platform_label, self.params_label]:
+                     self.arch_label, self.platform_label, self.serial_label, 
+                     self.device_type_label, self.params_label, self.features_label]:
             label.setStyleSheet(label_style)
         
         for value in [self.board_value, self.version_value, self.build_time_value,
-                     self.arch_value, self.platform_value, self.params_value]:
+                     self.arch_value, self.platform_value, self.serial_value,
+                     self.device_type_value, self.params_value, self.features_value]:
             value.setStyleSheet(value_style)
         
         # Add to grid layout
@@ -293,14 +305,20 @@ class NanoVNAStatusApp(QMainWindow):
         device_layout.addWidget(self.board_value, 0, 1)
         device_layout.addWidget(self.version_label, 1, 0)
         device_layout.addWidget(self.version_value, 1, 1)
-        device_layout.addWidget(self.build_time_label, 2, 0)
-        device_layout.addWidget(self.build_time_value, 2, 1)
-        device_layout.addWidget(self.arch_label, 3, 0)
-        device_layout.addWidget(self.arch_value, 3, 1)
+        device_layout.addWidget(self.device_type_label, 2, 0)
+        device_layout.addWidget(self.device_type_value, 2, 1)
+        device_layout.addWidget(self.serial_label, 3, 0)
+        device_layout.addWidget(self.serial_value, 3, 1)
         device_layout.addWidget(self.platform_label, 4, 0)
         device_layout.addWidget(self.platform_value, 4, 1)
-        device_layout.addWidget(self.params_label, 5, 0)
-        device_layout.addWidget(self.params_value, 5, 1)
+        device_layout.addWidget(self.arch_label, 5, 0)
+        device_layout.addWidget(self.arch_value, 5, 1)
+        device_layout.addWidget(self.build_time_label, 6, 0)
+        device_layout.addWidget(self.build_time_value, 6, 1)
+        device_layout.addWidget(self.params_label, 7, 0)
+        device_layout.addWidget(self.params_value, 7, 1)
+        device_layout.addWidget(self.features_label, 8, 0)
+        device_layout.addWidget(self.features_value, 8, 1)
         
         layout.addWidget(self.device_group)
         
@@ -349,6 +367,12 @@ class NanoVNAStatusApp(QMainWindow):
         self.stop_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.stop_btn)
 
+        self.detailed_info_btn = QPushButton("Get Detailed Info")
+        self.detailed_info_btn.clicked.connect(self.get_detailed_info)
+        self.detailed_info_btn.setEnabled(False)  # Initially disabled
+        self.detailed_info_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
+        button_layout.addWidget(self.detailed_info_btn)
+
         layout.addLayout(button_layout)
 
         self.smith_btn = QPushButton("Open Welcome Window")
@@ -385,6 +409,10 @@ class NanoVNAStatusApp(QMainWindow):
         self.arch_value.setText(device_info.get('architecture', 'Unknown'))
         self.platform_value.setText(device_info.get('platform', 'Unknown'))
         
+        # Extended device information
+        self.serial_value.setText(device_info.get('serial_number', 'Not available'))
+        self.device_type_value.setText(device_info.get('device_type', 'Unknown'))
+        
         # Handle parameters
         params = device_info.get('parameters', {})
         if params:
@@ -402,6 +430,25 @@ class NanoVNAStatusApp(QMainWindow):
             self.params_value.setText(param_text.strip())
         else:
             self.params_value.setText("Not available")
+        
+        # Handle features
+        features = device_info.get('features', [])
+        if features:
+            # Show only the most relevant features for the UI
+            important_features = []
+            for feature in features:
+                if any(keyword in feature.lower() for keyword in ['customizable', 'screenshot', 'sn', 'bandwidth', 'average', 'power']):
+                    important_features.append(feature)
+            
+            if important_features:
+                features_text = "• " + "\n• ".join(important_features[:5])  # Limit to 5 most important
+                if len(features) > 5:
+                    features_text += f"\n• ... and {len(features) - 5} more"
+                self.features_value.setText(features_text)
+            else:
+                self.features_value.setText(f"{len(features)} features available")
+        else:
+            self.features_value.setText("Not available")
     
     def clear_device_info(self):
         """Clear the device information display."""
@@ -410,7 +457,10 @@ class NanoVNAStatusApp(QMainWindow):
         self.build_time_value.setText("Unknown")
         self.arch_value.setText("Unknown")
         self.platform_value.setText("Unknown")
+        self.serial_value.setText("Not available")
+        self.device_type_value.setText("Unknown")
         self.params_value.setText("Not available")
+        self.features_value.setText("Not available")
     
     def log_message(self, message):
         """Add a message to the console output."""
@@ -520,6 +570,56 @@ class NanoVNAStatusApp(QMainWindow):
                 self.status_label.setStyleSheet("color: red; font-size: 16px; font-weight: bold; padding: 10px;")
                 self.clear_device_info()
                 self.disconnect_btn.setEnabled(False)
+                self.detailed_info_btn.setEnabled(False)
+    
+    def get_detailed_info(self):
+        """Get detailed device information (slower operations)."""
+        if not self.vna:
+            self.log_message("No device connected for detailed info")
+            return
+            
+        self.log_message("Retrieving detailed device information...")
+        self.detailed_info_btn.setEnabled(False)
+        
+        try:
+            from ..utils.device_parser import extract_extended_device_info
+            
+            # Get detailed info with slow operations enabled
+            detailed_info = extract_extended_device_info(self.vna, quick_mode=False)
+            
+            # Update UI with detailed information
+            if detailed_info['serial_number'] != 'Not available':
+                self.serial_value.setText(detailed_info['serial_number'])
+                self.log_message(f"Serial Number: {detailed_info['serial_number']}")
+            
+            if detailed_info['board_revision'] != 'Unknown':
+                # Update build time field with board revision info
+                current_build = self.build_time_value.text()
+                if current_build == 'Unknown':
+                    self.build_time_value.setText(f"Board Rev: {detailed_info['board_revision']}")
+                self.log_message(f"Board Revision: {detailed_info['board_revision']}")
+            
+            if detailed_info['features']:
+                # Update features display
+                important_features = []
+                for feature in detailed_info['features']:
+                    if any(keyword in feature.lower() for keyword in ['customizable', 'screenshot', 'sn', 'bandwidth', 'average', 'power']):
+                        important_features.append(feature)
+                
+                if important_features:
+                    features_text = "• " + "\n• ".join(important_features[:5])
+                    if len(detailed_info['features']) > 5:
+                        features_text += f"\n• ... and {len(detailed_info['features']) - 5} more"
+                    self.features_value.setText(features_text)
+                    
+                self.log_message(f"Device Features: {', '.join(detailed_info['features'][:3])}...")
+            
+            self.log_message("Detailed device information retrieved successfully")
+            
+        except Exception as e:
+            self.log_message(f"Error getting detailed info: {str(e)}")
+        finally:
+            self.detailed_info_btn.setEnabled(True)
     
     def on_device_found(self, vna, device_info):
         """Handle successful device detection."""
@@ -530,8 +630,9 @@ class NanoVNAStatusApp(QMainWindow):
         # Update device information display
         self.update_device_info(device_info)
         
-        # Enable disconnect button
+        # Enable disconnect button and detailed info button
         self.disconnect_btn.setEnabled(True)
+        self.detailed_info_btn.setEnabled(True)
         
         # Enhanced logging for device detection
         board = device_info.get('board', 'Unknown')

@@ -5,7 +5,7 @@ import time
 from PySide6.QtCore import QObject, Signal
 
 from ..Hardware.Hardware import get_interfaces, get_VNA
-from ..utils.device_parser import parse_device_info
+from ..utils.device_parser import parse_device_info, extract_extended_device_info
 
 
 class DeviceWorker(QObject):
@@ -76,14 +76,33 @@ class DeviceWorker(QObject):
                         return
                         
                     if vna:
-                        self.progress_update.emit(90)
-                        self.status_update.emit("Reading device information...")
-                        time.sleep(0.1)
+                        self.progress_update.emit(80)
+                        self.status_update.emit("Reading firmware information...")
+                        time.sleep(0.05)  # Reduced delay
                         
                         # Get device info
                         try:
                             info_text = vna.readFirmware()
+                            self.progress_update.emit(90)
                             parsed_info = parse_device_info(info_text)
+                            
+                            self.status_update.emit("Reading device capabilities...")
+                            # Get extended device information in quick mode to avoid delays
+                            extended_info = extract_extended_device_info(vna, quick_mode=True)
+                            
+                            self.progress_update.emit(95)
+                            # Merge extended info into parsed_info
+                            if extended_info['serial_number'] != 'Not available':
+                                parsed_info['serial_number'] = extended_info['serial_number']
+                            if extended_info['features']:
+                                parsed_info['features'] = extended_info['features']
+                            if extended_info['board_revision'] != 'Unknown':
+                                parsed_info['board_revision'] = extended_info['board_revision']
+                            if extended_info['device_type'] != 'Unknown':
+                                parsed_info['device_type'] = extended_info['device_type']
+                            if extended_info['bandwidth'] != 'Unknown':
+                                parsed_info['bandwidth'] = extended_info['bandwidth']
+                            
                             self.progress_update.emit(100)
                             self.status_update.emit("Device connected successfully")
                             self.device_found.emit(vna, parsed_info)
