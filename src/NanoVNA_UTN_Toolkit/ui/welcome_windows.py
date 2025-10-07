@@ -283,99 +283,259 @@ class NanoVNAWelcome(QMainWindow):
         # --- Add calibration button to layout ---
         main_layout.addWidget(self.left_button, alignment=Qt.AlignHCenter | Qt.AlignBottom)
 
-    # --- Update left button text and arrows ---
     def update_left_button_text(self):
         for child in self.left_button.findChildren(QWidget):
             child.deleteLater()
 
-        arrow_height = self.left_button.height() - 4
-        arrow_y = 2
         arrow_width = 40
         hover_color = self.pushbutton_hover_bg
         normal_color = self.pushbutton_bg
         border_radius = self.pushbutton_border_radius
 
-        self.left_arrow_button = QPushButton("<", self.left_button)
-        self.left_arrow_button.setGeometry(0, arrow_y, arrow_width, arrow_height)
-        self.left_arrow_button.setStyleSheet("background-color: transparent; border: none; font-size: 20px;")
+        self.left_container = QWidget(self.left_button)
+        self.left_container.setGeometry(0, 0, self.left_button.width(), self.left_button.height())
+
+        # --- Flecha izquierda ---
+        self.left_arrow_button = QPushButton("<", self.left_container)
+        self.left_arrow_button.setGeometry(0, 2, arrow_width, self.left_container.height() - 4)
+        self.left_arrow_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {normal_color};
+                border: none;
+                font-size: 20px;
+                border-top-left-radius: {border_radius};
+                border-bottom-left-radius: {border_radius};
+                border-top-right-radius: 0px;
+                border-bottom-right-radius: 0px;
+            }}
+        """)
         self.left_arrow_button.clicked.connect(lambda: self.cycle_kit_side(-1))
-        self.left_arrow_button.enterEvent = lambda e: self.left_arrow_button.setStyleSheet(f"background-color: {hover_color}; font-size: 20px;")
-        self.left_arrow_button.leaveEvent = lambda e: self.left_arrow_button.setStyleSheet("background-color: transparent; font-size: 20px;")
 
-        self.right_arrow_button = QPushButton(">", self.left_button)
-        self.right_arrow_button.setGeometry(self.left_button.width()-arrow_width, arrow_y, arrow_width, arrow_height)
-        self.right_arrow_button.setStyleSheet("background-color: transparent; border: none; font-size: 20px;")
+        def left_enter(event):
+            self.left_arrow_button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {hover_color};
+                    border: none;
+                    font-size: 20px;
+                    border-top-left-radius: {border_radius};
+                    border-bottom-left-radius: {border_radius};
+                    border-top-right-radius: 0px;
+                    border-bottom-right-radius: 0px;
+                }}
+            """)
+        def left_leave(event):
+            self.left_arrow_button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {normal_color};
+                    border: none;
+                    font-size: 20px;
+                    border-top-left-radius: {border_radius};
+                    border-bottom-left-radius: {border_radius};
+                    border-top-right-radius: 0px;
+                    border-bottom-right-radius: 0px;
+                }}
+            """)
+        self.left_arrow_button.enterEvent = left_enter
+        self.left_arrow_button.leaveEvent = left_leave
+
+        # --- Flecha derecha ---
+        self.right_arrow_button = QPushButton(">", self.left_container)
+        self.right_arrow_button.setGeometry(self.left_container.width() - arrow_width, 2, arrow_width, self.left_container.height() - 4)
+        self.right_arrow_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {normal_color};
+                border: none;
+                font-size: 20px;
+                border-top-left-radius: 0px;
+                border-bottom-left-radius: 0px;
+                border-top-right-radius: {border_radius};
+                border-bottom-right-radius: {border_radius};
+            }}
+        """)
         self.right_arrow_button.clicked.connect(lambda: self.cycle_kit_side(1))
-        self.right_arrow_button.enterEvent = lambda e: self.right_arrow_button.setStyleSheet(f"background-color: {hover_color}; font-size: 20px;")
-        self.right_arrow_button.leaveEvent = lambda e: self.right_arrow_button.setStyleSheet("background-color: transparent; font-size: 20px;")
 
+        def right_enter(event):
+            self.right_arrow_button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {hover_color};
+                    border: none;
+                    font-size: 20px;
+                    border-top-left-radius: 0px;
+                    border-bottom-left-radius: 0px;
+                    border-top-right-radius: {border_radius};
+                    border-bottom-right-radius: {border_radius};
+                }}
+            """)
+        def right_leave(event):
+            self.right_arrow_button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {normal_color};
+                    border: none;
+                    font-size: 20px;
+                    border-top-left-radius: 0px;
+                    border-bottom-left-radius: 0px;
+                    border-top-right-radius: {border_radius};
+                    border-bottom-right-radius: {border_radius};
+                }}
+            """)
+        self.right_arrow_button.enterEvent = right_enter
+        self.right_arrow_button.leaveEvent = right_leave
+
+        self.left_arrow_button.raise_()
+        self.right_arrow_button.raise_()
+
+
+        # --- Frame central ---
         inner_x = arrow_width
-        inner_width = self.left_button.width() - 2 * arrow_width
+        inner_width = self.left_container.width() - 2 * arrow_width
         inner_y = 2
-        inner_height = self.left_button.height() - 4
+        inner_height = self.left_container.height() - 4
 
-        self.kit_frame = QFrame(self.left_button)
+        self.kit_frame = QFrame(self.left_container)
         self.kit_frame.setGeometry(inner_x, inner_y, inner_width, inner_height)
-        self.kit_frame.setStyleSheet(f"background-color: {normal_color}; border-radius: {border_radius};")
+        self.kit_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {normal_color};
+                border-radius: 0;
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }}
+        """)
+
+        def center_enter(event):
+            self.kit_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {hover_color};
+                    border-radius: 0;
+                    border-top-left-radius: 0;
+                    border-top-right-radius: 0;
+                    border-bottom-left-radius: 0;
+                    border-bottom-right-radius: 0;
+                }}
+            """)
+        def center_leave(event):
+            self.kit_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {normal_color};
+                    border-radius: 0;
+                    border-top-left-radius: 0;
+                    border-top-right-radius: 0;
+                    border-bottom-left-radius: 0;
+                    border-bottom-right-radius: 0;
+                }}
+            """)
+        self.kit_frame.enterEvent = center_enter
+        self.kit_frame.leaveEvent = center_leave
 
         current_text = self.kit_names[self.current_index]
-        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked(name)
-        self.kit_frame.enterEvent = lambda e: self.kit_frame.setStyleSheet(f"background-color: {hover_color}; border-radius: {border_radius};")
-        self.kit_frame.leaveEvent = lambda e: self.kit_frame.setStyleSheet(f"background-color: {normal_color}; border-radius: {border_radius};")
-
         self.kit_label = QLabel(current_text, self.kit_frame)
         self.kit_label.setAlignment(Qt.AlignCenter)
         self.kit_label.setGeometry(0, 0, inner_width, inner_height)
         self.kit_label.setStyleSheet("background-color: transparent;")
-        self.kit_label.show()
-        self.kit_frame.show()
 
+        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked(name)
 
     def cycle_kit_side(self, direction):
         old_frame = self.kit_frame
+        old_label = self.kit_label
         self.current_index = (self.current_index + direction) % len(self.kit_names)
         new_text = self.kit_names[self.current_index]
 
-        kit_bg_color = self.pushbutton_bg
-        kit_border_radius = self.pushbutton_border_radius
+        normal_color = self.pushbutton_bg
+        hover_color = self.pushbutton_hover_bg
 
-        new_frame = QFrame(self.left_button)
-        new_frame.setGeometry(40, 2, self.left_button.width()-80, self.left_button.height()-4)
-        new_frame.setStyleSheet(f"background-color: {kit_bg_color}; border-radius: {kit_border_radius};")
+        # --- Frame central nuevo ---
+        inner_x = self.left_arrow_button.width()
+        inner_width = self.left_container.width() - 2 * self.left_arrow_button.width()
+        inner_y = 2
+        inner_height = self.left_container.height() - 4
 
-        new_label = QLabel(new_text, new_frame)
-        new_label.setAlignment(Qt.AlignCenter)
-        new_label.setGeometry(0, 0, new_frame.width(), new_frame.height())
-        new_label.setStyleSheet("background-color: transparent;")
-        new_label.show()
+        new_frame = QFrame(self.left_container)
+        new_frame.setGeometry(inner_x, inner_y, inner_width, inner_height)
+        new_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {normal_color};
+                border-radius: 0;
+            }}
+        """)
         new_frame.show()
 
-        offset = self.left_button.width()-80
-        inside_offset = offset - 40
-        start_x = inside_offset if direction > 0 else -inside_offset
-        new_frame.move(start_x, 2)
+        # --- Label nuevo ---
+        new_label = QLabel(new_text, new_frame)
+        new_label.setAlignment(Qt.AlignCenter)
+        new_label.setGeometry(0, 0, inner_width, inner_height)
+        new_label.setStyleSheet("background-color: transparent;")
+        new_label.show()
 
+        # --- Hover frame central ---
+        def center_enter(event):
+            new_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {hover_color};
+                    border-radius: 0;
+                }}
+            """)
+        def center_leave(event):
+            new_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {normal_color};
+                    border-radius: 0;
+                }}
+            """)
+        new_frame.enterEvent = center_enter
+        new_frame.leaveEvent = center_leave
+        new_frame.mousePressEvent = lambda event, name=new_text: self.toolbutton_main_clicked(name)
+
+        # --- Posición inicial para animación ---
+        offset = self.left_arrow_button.width() - 10
+        start_x = inner_x + offset if direction > 0 else inner_x - offset
+        new_frame.move(start_x, inner_y)
+
+        # --- Animaciones ---
         anim_old = QPropertyAnimation(old_frame, b"pos", self)
-        anim_old.setDuration(250)
+        anim_old.setDuration(100)
         anim_old.setStartValue(old_frame.pos())
-        anim_old.setEndValue(QPoint(-inside_offset if direction > 0 else inside_offset, 2))
+        anim_old.setEndValue(QPoint(inner_x - offset if direction > 0 else inner_x + offset, inner_y))
 
         anim_new = QPropertyAnimation(new_frame, b"pos", self)
-        anim_new.setDuration(250)
+        anim_new.setDuration(100)
         anim_new.setStartValue(new_frame.pos())
-        anim_new.setEndValue(QPoint(40, 2))
+        anim_new.setEndValue(QPoint(inner_x, inner_y))
 
+        # --- Mantener flechas arriba ---
+        def keep_arrows_on_top():
+            self.left_arrow_button.raise_()
+            self.right_arrow_button.raise_()
+        anim_new.valueChanged.connect(keep_arrows_on_top)
+        anim_old.valueChanged.connect(keep_arrows_on_top)
+
+        # --- Mantener flechas arriba solo al final ---
         def on_finished():
             old_frame.deleteLater()
+            old_label.deleteLater()
             self.kit_frame = new_frame
             self.kit_label = new_label
-            # Asignar el clic usando el nombre correcto del kit
-            new_frame.mousePressEvent = lambda event, name=new_text: self.toolbutton_main_clicked(name)
+
+            # Flechas siempre arriba SOLO al final
+            self.left_arrow_button.raise_()
+            self.right_arrow_button.raise_()
+
+            if new_frame.underMouse():
+                center_enter(None)
+            else:
+                center_leave(None)
 
         anim_new.finished.connect(on_finished)
+
+
         anim_old.start()
         anim_new.start()
-        self.left_button.update()
+
+
+
+
 
 
     def toolbutton_main_clicked(self, kit_name):
