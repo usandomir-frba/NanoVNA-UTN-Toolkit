@@ -2580,28 +2580,31 @@ class NanoVNAGraphics(QMainWindow):
             ax.set_facecolor(f"{brackground_color_graphics}")
 
             if graph_type == "Smith Diagram":
-                # Create network object for Smith chart
+                # Use consolidated Smith chart functionality
+                from ..utils.smith_chart_utils import SmithChartConfig, SmithChartBuilder
                 
-                ntw = rf.Network(frequency=freqs, s=s_data[:, np.newaxis, np.newaxis], z0=50)
-                ntw.plot_s_smith(ax=ax, draw_labels=True)
-                ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], 
-                    loc='upper left', bbox_to_anchor=(-0.17,1.14))
-
-                for text in ax.texts:
-                    text.set_color(f"{axis_color}")
-
-                for patch in ax.patches:
-                    patch.set_edgecolor(f"{axis_color}")   
-                    patch.set_facecolor("none")    
+                # Create custom config to match original settings
+                config = SmithChartConfig()
+                config.background_color = brackground_color_graphics
+                config.axis_color = axis_color
+                config.text_color = axis_color
+                config.trace_color = tracecolor
+                config.linewidth = linewidth
                 
-                ax.hlines(0, -1, 1, color=f"{axis_color}", linewidth=1.1, zorder=10)
+                # Use builder to recreate Smith chart on existing axis
+                builder = SmithChartBuilder(config)
+                builder.ax = ax
+                builder.fig = fig
                 
-                # Update line properties
-                for idx, line in enumerate(ax.lines):
-                    xdata = line.get_xdata()
-                    if len(xdata) == len(freqs):
-                        line.set_color(tracecolor)
-                        line.set_linewidth(linewidth)
+                # Create network and draw Smith chart
+                network = builder.create_network_from_data(freqs, s_data)
+                builder.draw_base_smith_chart(network, draw_labels=True, show_legend=False)
+                
+                # Add legend
+                builder.add_legend([s_param], colors=[tracecolor])
+                
+                # Update data line styles
+                builder.update_data_line_styles(freqs, color=tracecolor, linewidth=linewidth)
                         
             elif graph_type == "Magnitude":
                 # Plot magnitude

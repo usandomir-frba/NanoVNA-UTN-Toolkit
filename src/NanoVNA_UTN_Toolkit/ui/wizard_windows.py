@@ -659,39 +659,25 @@ class CalibrationWizard(QMainWindow):
         
         left_layout.addStretch()
 
-        # Panel derecho: Smith chart con canvas de matplotlib
+        # Panel derecho: Smith chart con canvas de matplotlib usando utils consolidadas
         self.right_panel_widget = QWidget()
         right_layout = QVBoxLayout(self.right_panel_widget)
 
-        fig = Figure(figsize=(5, 4), facecolor='white')
-        canvas = FigureCanvas(fig)
-        ax = fig.add_subplot(111)
+        # Use consolidated Smith chart creation
+        from ..utils.smith_chart_utils import create_wizard_smith_chart
         
-        # Store reference to figure and canvas for later updates
+        fig, ax, canvas = create_wizard_smith_chart(
+            start_freq=self.get_sweep_start_frequency(),
+            stop_freq=self.get_sweep_stop_frequency(),
+            num_points=self.get_sweep_steps(),
+            container_layout=right_layout,
+            figsize=(8, 8)  # Significantly larger square aspect ratio for better visibility
+        )
+        
+        # Store references for later updates
         self.current_fig = fig
         self.current_canvas = canvas
         self.current_ax = ax
-
-        # Create a Network placeholder using user configuration
-        start_freq = self.get_sweep_start_frequency()
-        stop_freq = self.get_sweep_stop_frequency()
-        num_points = self.get_sweep_steps()
-        freqs = np.linspace(start_freq, stop_freq, num_points)
-        s = np.zeros((len(freqs), 1, 1), dtype=complex)
-        ntw = rf.Network(frequency=freqs, s=s, z0=50)
-
-                # Draw clean Smith chart with reference circles
-        ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
-
-        # Add blue line for data visualization
-        ax.plot(np.real(ntw.s[:,0,0]), np.imag(ntw.s[:,0,0]), color='blue', lw=2)
-        ax.legend([Line2D([0],[0], color='blue')], ["S11"], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-
-        # Remove Re/Im ticks
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-        right_layout.addWidget(canvas)
 
         # Layout horizontal
         panel_row = QHBoxLayout()
@@ -1061,92 +1047,42 @@ class CalibrationWizard(QMainWindow):
     
     def show_existing_measurements_on_chart(self):
         """Show all existing measurements on Smith chart to preserve state"""
+        from ..utils.smith_chart_utils import SmithChartManager
+        
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
             return
             
         try:
-            # First clear the axis
-            self.current_ax.clear()
-            
-            # Create an empty base Smith chart using user configuration
-            start_freq = self.get_sweep_start_frequency()
-            stop_freq = self.get_sweep_stop_frequency()
-            num_points = self.get_sweep_steps()
-            freqs_base = np.linspace(start_freq, stop_freq, num_points)
-            s_base = np.zeros((len(freqs_base), 1, 1), dtype=complex)
-            ntw_base = rf.Network(frequency=freqs_base, s=s_base, z0=50)
-            ntw_base.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
-            
-            # Colors for each standard
-            colors = {'open': 'red', 'short': 'green', 'match': 'blue'}
-            legend_lines = []
-            legend_labels = []
-            
-            # Check each standard and plot if it exists
+            # Collect all existing measurements
+            measurements = {}
             for standard_name in ['open', 'short', 'match']:
                 if self.osm_calibration.is_standard_measured(standard_name):
                     measurement = self.osm_calibration.get_measurement(standard_name)
                     if measurement:
-                        freqs, s11 = measurement
-                        
-                        # Create Network object for this standard
-                        ntw_std = rf.Network(frequency=freqs, s=s11[:, np.newaxis, np.newaxis], z0=50)
-                        
-                        # Plot only the data without reference lines
-                        self.current_ax.plot(np.real(s11), np.imag(s11), 'o-',
-                                           color=colors[standard_name],
-                                           markersize=3, linewidth=2,
-                                           label=f'{standard_name.upper()}')
-                        
-                        # Add to legend
-                        from matplotlib.lines import Line2D
-                        legend_lines.append(Line2D([0], [0], color=colors[standard_name]))
-                        legend_labels.append(f'{standard_name.upper()}')
+                        measurements[standard_name] = measurement
             
-            # Configure Smith chart colors
-            for text in self.current_ax.texts:
-                text.set_color('black')
-            
-            for patch in self.current_ax.patches:
-                patch.set_edgecolor('gray')   
-                patch.set_facecolor("none")    
-            
-            # Horizontal line at center
-            self.current_ax.hlines(0, -1, 1, color='gray', linewidth=1.1, zorder=10)
-            
-            # Update legend if there are measurements
-            if legend_lines:
-                self.current_ax.legend(legend_lines, legend_labels, 
-                                     loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-            
-            # Remove ticks
-            self.current_ax.set_xticks([])
-            self.current_ax.set_yticks([])
-            
-            # Redraw canvas
-            self.current_canvas.draw()
+            # Use consolidated Smith chart functionality
+            manager = SmithChartManager()
+            manager.show_multiple_measurements(
+                ax=self.current_ax,
+                measurements_dict=measurements,
+                canvas=self.current_canvas,
+                start_freq=self.get_sweep_start_frequency(),
+                stop_freq=self.get_sweep_stop_frequency(),
+                num_points=self.get_sweep_steps()
+            )
             
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error showing existing measurements: {e}")
     
     def show_current_step_measurement(self, step):
         """Show only the measurement for the current step on Smith chart."""
+        from ..utils.smith_chart_utils import SmithChartManager
+        
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
             return
             
         try:
-            # First clear the axis
-            self.current_ax.clear()
-            
-            # Create an empty base Smith chart using user configuration
-            start_freq = self.get_sweep_start_frequency()
-            stop_freq = self.get_sweep_stop_frequency()
-            num_points = self.get_sweep_steps()
-            freqs_base = np.linspace(start_freq, stop_freq, num_points)
-            s_base = np.zeros((len(freqs_base), 1, 1), dtype=complex)
-            ntw_base = rf.Network(frequency=freqs_base, s=s_base, z0=50)
-            ntw_base.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
-            
             # Determine which standard corresponds to current step
             step_name = None
             if step == 1:
@@ -1156,106 +1092,54 @@ class CalibrationWizard(QMainWindow):
             elif step == 3:
                 step_name = "match"
             
-            # Colors for each standard
-            colors = {'open': 'red', 'short': 'green', 'match': 'blue'}
-            
             # Show only the measurement for the current step if it exists
             if step_name and self.osm_calibration.is_standard_measured(step_name):
                 measurement = self.osm_calibration.get_measurement(step_name)
                 if measurement:
                     freqs, s11 = measurement
                     
-                    # Plot only the data for this step
-                    self.current_ax.plot(np.real(s11), np.imag(s11), 'o-',
-                                       color=colors[step_name],
-                                       markersize=3, linewidth=2,
-                                       label=f'{step_name.upper()}')
-                    
-                    # Add legend for this step only
-                    from matplotlib.lines import Line2D
-                    self.current_ax.legend([Line2D([0], [0], color=colors[step_name])], 
-                                         [f'{step_name.upper()}'], 
-                                         loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-            
-            # Configure Smith chart colors
-            for text in self.current_ax.texts:
-                text.set_color('black')
-            
-            for patch in self.current_ax.patches:
-                patch.set_edgecolor('gray')   
-                patch.set_facecolor("none")    
-            
-            # Horizontal line at center
-            self.current_ax.hlines(0, -1, 1, color='gray', linewidth=1.1, zorder=10)
-            
-            # Remove ticks
-            self.current_ax.set_xticks([])
-            self.current_ax.set_yticks([])
-            
-            # Redraw canvas
-            self.current_canvas.draw()
+                    # Use consolidated Smith chart functionality for single measurement
+                    manager = SmithChartManager()
+                    manager.update_wizard_measurement(
+                        ax=self.current_ax,
+                        freqs=freqs,
+                        s11_data=s11,
+                        standard_name=step_name,
+                        canvas=self.current_canvas
+                    )
+            else:
+                # Clear and show empty Smith chart if no measurement exists
+                self.current_ax.clear()
+                manager = SmithChartManager()
+                base_network = manager.builder.create_empty_network(
+                    self.get_sweep_start_frequency(),
+                    self.get_sweep_stop_frequency(),
+                    self.get_sweep_steps()
+                )
+                manager.builder.ax = self.current_ax
+                manager.builder.draw_base_smith_chart(base_network)
+                self.current_canvas.draw()
             
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error showing current step measurement: {e}")
     
     def update_smith_chart(self, freqs, s11, standard_name):
         """Update Smith chart with measured calibration data."""
-        try:
-            if not hasattr(self, 'current_ax') or not self.current_ax:
-                logging.warning("[CalibrationWizard] No Smith chart axis available")
-                return
-            
-            # Clear previous plot
-            self.current_ax.clear()
-            
-            # Create Network object for Smith chart (same as in graphics_window.py)
-            ntw = rf.Network(frequency=freqs, s=s11[:, np.newaxis, np.newaxis], z0=50)
-            
-            # Draw Smith chart with reference lines
-            ntw.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
-            
-            # Configure custom legend (same as in graphics_window.py)
-            from matplotlib.lines import Line2D
-            self.current_ax.legend([Line2D([0],[0], color='blue')], [f"S11 - {standard_name}"], 
-                                 loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-            
-            # Configure Smith chart colors
-            for text in self.current_ax.texts:
-                text.set_color('black')
-            
-            for patch in self.current_ax.patches:
-                patch.set_edgecolor('gray')   
-                patch.set_facecolor("none")    
-            
-            # Horizontal line at center (same as in graphics_window.py)
-            self.current_ax.hlines(0, -1, 1, color='gray', linewidth=1.1, zorder=10)
-            
-            # Update properties of data lines
-            for idx, line in enumerate(self.current_ax.lines):
-                # Apply blue style to measurement data lines
-                try:
-                    xdata = line.get_xdata()
-                    # If it's a line with significant data, apply style
-                    if hasattr(xdata, '__len__') and np.array(xdata).size > 10:
-                        line.set_color('blue')
-                        line.set_linewidth(2)
-                except:
-                    # Fallback: apply style to lines that can be modified
-                    if hasattr(line, 'set_color') and hasattr(line, 'set_linewidth'):
-                        line.set_color('blue')
-                        line.set_linewidth(2)
-            
-            # Remove ticks (same as in initialization)
-            self.current_ax.set_xticks([])
-            self.current_ax.set_yticks([])
-            
-            # Redraw canvas
-            self.current_canvas.draw()
-            
-            logging.info(f"[CalibrationWizard] Smith chart updated for {standard_name}")
-            
-        except Exception as e:
-            logging.error(f"[CalibrationWizard] Error updating Smith chart: {e}")
+        from ..utils.smith_chart_utils import SmithChartManager
+        
+        if not hasattr(self, 'current_ax') or not self.current_ax:
+            logging.warning("[CalibrationWizard] No Smith chart axis available")
+            return
+        
+        # Use consolidated Smith chart functionality
+        manager = SmithChartManager()
+        manager.update_wizard_measurement(
+            ax=self.current_ax,
+            freqs=freqs,
+            s11_data=s11,
+            standard_name=standard_name,
+            canvas=self.current_canvas
+        )
 
     def get_sweep_start_frequency(self):
         """Get start frequency in Hz from instance variable"""
