@@ -11,7 +11,8 @@ from PySide6.QtCore import Qt, QSettings
 from PySide6.QtCore import QSettings as QtSettings
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                                QLabel, QPushButton, QComboBox, QSpacerItem, 
-                               QSizePolicy, QProgressBar, QMessageBox, QInputDialog)
+                               QSizePolicy, QProgressBar, QMessageBox, QInputDialog,
+                               QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox)
 
 # Import NanoVNAGraphics for the final step
 try:
@@ -242,6 +243,11 @@ class CalibrationWizard(QMainWindow):
         # Step tracking
         self.current_step = 0
         self.selected_method = None
+        
+        # Sweep configuration (persistent across screens)
+        self.sweep_start_freq = 50000  # 50 kHz default
+        self.sweep_stop_freq = 1500000000  # 1.5 GHz default
+        self.sweep_steps = 101  # Default steps
 
         # Bottom button layout
         self.button_layout = QHBoxLayout()
@@ -359,11 +365,74 @@ class CalibrationWizard(QMainWindow):
 
         top_container.addWidget(label)
         top_container.addWidget(self.freq_dropdown)
+        
+        # Add sweep configuration section
+        sweep_group = QGroupBox("Sweep Configuration")
+        sweep_layout = QFormLayout()
+        
+        # Start frequency
+        start_freq_layout = QHBoxLayout()
+        self.start_freq_input = QDoubleSpinBox()
+        self.start_freq_input.setDecimals(6)
+        self.start_freq_input.setMinimum(0.001)
+        self.start_freq_input.setMaximum(100000)
+        self.start_freq_input.setValue(50)
+        start_freq_layout.addWidget(self.start_freq_input)
+        
+        self.start_freq_unit = QComboBox()
+        self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
+        self.start_freq_unit.setCurrentText("kHz")
+        start_freq_layout.addWidget(self.start_freq_unit)
+        
+        sweep_layout.addRow("Start Frequency:", start_freq_layout)
+        
+        # Stop frequency
+        stop_freq_layout = QHBoxLayout()
+        self.stop_freq_input = QDoubleSpinBox()
+        self.stop_freq_input.setDecimals(6)
+        self.stop_freq_input.setMinimum(0.001)
+        self.stop_freq_input.setMaximum(100000)
+        self.stop_freq_input.setValue(1.5)
+        stop_freq_layout.addWidget(self.stop_freq_input)
+        
+        self.stop_freq_unit = QComboBox()
+        self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
+        self.stop_freq_unit.setCurrentText("GHz")
+        stop_freq_layout.addWidget(self.stop_freq_unit)
+        
+        sweep_layout.addRow("Stop Frequency:", stop_freq_layout)
+        
+        # Number of steps
+        self.steps_input = QSpinBox()
+        self.steps_input.setMinimum(1)
+        self.steps_input.setMaximum(32000)  # Default maximum, will be updated based on device
+        self.steps_input.setValue(101)
+        sweep_layout.addRow("Number of Steps:", self.steps_input)
+        
+        sweep_group.setLayout(sweep_layout)
+        top_container.addWidget(sweep_group)
+        
+        # Connect widgets to update sweep configuration
+        self.start_freq_input.valueChanged.connect(self.update_sweep_config)
+        self.start_freq_unit.currentTextChanged.connect(self.update_sweep_config)
+        self.stop_freq_input.valueChanged.connect(self.update_sweep_config)
+        self.stop_freq_unit.currentTextChanged.connect(self.update_sweep_config)
+        self.steps_input.valueChanged.connect(self.update_sweep_config)
+        
+        # Update initial values
+        self.update_sweep_config()
 
         self.content_layout.addLayout(top_container)
 
-        # Hide back button
-        self.back_button.setVisible(False)
+        # Show back button and configure it to return to welcome screen
+        self.back_button.setVisible(True)
+        self.back_button.setText("◀◀")
+        try:
+            self.back_button.clicked.disconnect()
+        except Exception:
+            pass
+        self.back_button.clicked.connect(self.return_to_welcome)
+        
         self.current_step = 0
 
 
@@ -376,6 +445,34 @@ class CalibrationWizard(QMainWindow):
         else:
             self.selected_method = self.freq_dropdown.itemText(index)
             self.next_button.setEnabled(True)
+            # Update device limits when method is selected
+            self.update_device_limits()
+
+    def update_sweep_config(self):
+        """Update sweep configuration from UI widgets to instance variables"""
+        try:
+            # Calculate start frequency in Hz
+            start_value = self.start_freq_input.value()
+            start_unit = self.start_freq_unit.currentText()
+            multipliers = {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}
+            self.sweep_start_freq = int(start_value * multipliers[start_unit])
+            
+            # Calculate stop frequency in Hz
+            stop_value = self.stop_freq_input.value()
+            stop_unit = self.stop_freq_unit.currentText()
+            self.sweep_stop_freq = int(stop_value * multipliers[stop_unit])
+            
+            # Get number of steps
+            self.sweep_steps = self.steps_input.value()
+            
+            logging.info(f"[CalibrationWizard] Sweep config updated: {self.sweep_start_freq/1e6:.3f} - {self.sweep_stop_freq/1e6:.3f} MHz, {self.sweep_steps} points")
+            
+        except Exception as e:
+            logging.error(f"[CalibrationWizard] Error updating sweep config: {e}")
+            # Use default values on error
+            self.sweep_start_freq = 50000  # 50 kHz
+            self.sweep_stop_freq = 1500000000  # 1.5 GHz
+            self.sweep_steps = 101
 
     # --- Step definitions (each step is unique) ---------------------------------
     def step_OSM_OPEN(self):
@@ -575,8 +672,11 @@ class CalibrationWizard(QMainWindow):
         self.current_canvas = canvas
         self.current_ax = ax
 
-        # Create a Network placeholder
-        freqs = np.linspace(1e6, 1e9, 101)
+        # Create a Network placeholder using user configuration
+        start_freq = self.get_sweep_start_frequency()
+        stop_freq = self.get_sweep_stop_frequency()
+        num_points = self.get_sweep_steps()
+        freqs = np.linspace(start_freq, stop_freq, num_points)
         s = np.zeros((len(freqs), 1, 1), dtype=complex)
         ntw = rf.Network(frequency=freqs, s=s, z0=50)
 
@@ -605,6 +705,14 @@ class CalibrationWizard(QMainWindow):
 
         self.current_step = step
         self.back_button.setVisible(step > 0)
+        
+        # Configure back button to use previous_step instead of return_to_welcome
+        if step > 0:
+            try:
+                self.back_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.back_button.clicked.connect(self.previous_step)
 
         try:
             self.next_button.clicked.disconnect(self.next_step)
@@ -670,65 +778,23 @@ class CalibrationWizard(QMainWindow):
         device_available = self.vna_device and hasattr(self.vna_device, 'connected')
         
         if not device_available:
-            # Simulate measurement when no device is available
-            logging.info("[CalibrationWizard] No device available, simulating measurement...")
+            # No device available - show error instead of simulating
+            error_msg = "No VNA device detected. Please connect a NanoVNA device before attempting calibration measurements."
+            logging.error(f"[CalibrationWizard] {error_msg}")
             
-            try:
-                # Update status
-                self.status_label.setText(f"Simulating {standard_name} measurement...")
-                self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: orange;")
-                QApplication.processEvents()
-                
-                # Generate simulated data
-                freqs = np.linspace(50e3, 6e9, 101)  # 50 kHz to 6 GHz, 101 points
-                
-                # Generate characteristic responses for each standard
-                if standard_name == "OPEN":
-                    # Open circuit: high reflection, phase changes with frequency
-                    s11 = 0.95 * np.exp(1j * np.linspace(0, 4*np.pi, len(freqs)))
-                elif standard_name == "SHORT":
-                    # Short circuit: high reflection, opposite phase to open
-                    s11 = -0.95 * np.exp(1j * np.linspace(0, -4*np.pi, len(freqs)))
-                elif standard_name == "MATCH":
-                    # Matched load: low reflection
-                    s11 = 0.05 * np.exp(1j * np.linspace(0, np.pi, len(freqs)))
-                else:
-                    # Default response
-                    s11 = 0.1 * np.exp(1j * np.linspace(0, 2*np.pi, len(freqs)))
-                
-                # Save simulated data in calibration structure
-                if self.osm_calibration:
-                    if standard_name == "OPEN":
-                        self.osm_calibration.set_measurement("open", freqs, s11)
-                    elif standard_name == "SHORT":
-                        self.osm_calibration.set_measurement("short", freqs, s11)
-                    elif standard_name == "MATCH":
-                        self.osm_calibration.set_measurement("match", freqs, s11)
-                    
-                    # Show completion status
-                    status = self.osm_calibration.get_completion_status()
-                    logging.info(f"[CalibrationWizard] Calibration status after simulation: {status}")
-                    
-                    # Update the status display immediately after measurement
-                    self.update_calibration_status_display()
-                
-                # Update Smith chart with simulated data
-                self.update_smith_chart(freqs, s11, standard_name)
-                
-                # Update status
-                self.status_label.setText(f"{standard_name} simulated successfully!")
-                self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
-                
-                logging.info(f"[CalibrationWizard] Simulated measurement for {standard_name} completed successfully")
-                return
-                
-            except Exception as e:
-                error_msg = f"Error during simulation: {str(e)}"
-                logging.error(f"[CalibrationWizard] {error_msg}")
-                QMessageBox.critical(self, "Simulation Error", error_msg)
-                self.status_label.setText("Simulation failed!")
-                self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: red;")
-                return
+            # Update status to show error
+            self.status_label.setText("No VNA device connected!")
+            self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: red;")
+            
+            # Show error dialog
+            QMessageBox.critical(self, "VNA Device Required", 
+                               f"{error_msg}\n\n"
+                               "Calibration requires a connected NanoVNA device to perform real measurements.\n"
+                               "Please:\n"
+                               "1. Connect your NanoVNA device\n"
+                               "2. Ensure drivers are installed\n"
+                               "3. Check the connection and try again")
+            return
         
         
         # Real device measurement
@@ -749,21 +815,23 @@ class CalibrationWizard(QMainWindow):
             self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: orange;")
             QApplication.processEvents()
             
-            # Get full frequency range from device
+            # Get sweep configuration from user settings
+            start_freq = self.get_sweep_start_frequency()
+            stop_freq = self.get_sweep_stop_frequency()
+            num_points = self.get_sweep_steps()
+            
+            # Validate and constrain values against device limits if available
             if hasattr(self.vna_device, 'sweep_max_freq_hz'):
-                stop_freq = self.vna_device.sweep_max_freq_hz
-            else:
-                stop_freq = 6000000000  # 6 GHz default
+                if stop_freq > self.vna_device.sweep_max_freq_hz:
+                    stop_freq = self.vna_device.sweep_max_freq_hz
+                    logging.warning(f"[CalibrationWizard] Stop frequency limited to device max: {stop_freq/1e6:.3f} MHz")
             
-            start_freq = 50000  # 50 kHz
-            
-            # Use maximum number of available points
             if hasattr(self.vna_device, 'sweep_points_max'):
-                num_points = self.vna_device.sweep_points_max
-            else:
-                num_points = 101  # Default
+                if num_points > self.vna_device.sweep_points_max:
+                    num_points = self.vna_device.sweep_points_max
+                    logging.warning(f"[CalibrationWizard] Number of points limited to device max: {num_points}")
             
-            logging.info(f"[CalibrationWizard] Sweep config: {start_freq/1e6:.3f} - {stop_freq/1e6:.3f} MHz, {num_points} points")
+            logging.info(f"[CalibrationWizard] User Sweep config: {start_freq/1e6:.3f} - {stop_freq/1e6:.3f} MHz, {num_points} points")
             
             # Configure sweep
             self.vna_device.datapoints = num_points
@@ -933,6 +1001,35 @@ class CalibrationWizard(QMainWindow):
                 f"Failed to open graphics window: {str(e)}"
             )
     
+    def return_to_welcome(self):
+        """Return to the welcome window"""
+        try:
+            logging.info("Returning to welcome window from calibration wizard")
+            
+            # Import welcome window
+            from NanoVNA_UTN_Toolkit.ui.welcome_windows import NanoVNAWelcome
+            
+            # Create welcome window with VNA device if available
+            if self.vna_device:
+                welcome_window = NanoVNAWelcome(vna_device=self.vna_device)
+            else:
+                welcome_window = NanoVNAWelcome()
+            
+            # Show welcome window
+            welcome_window.show()
+            logging.info("Welcome window opened successfully")
+            
+            # Close wizard
+            self.close()
+            
+        except Exception as e:
+            logging.error(f"Error returning to welcome window: {e}")
+            QMessageBox.critical(
+                self, 
+                "Error", 
+                f"Failed to return to welcome window: {str(e)}"
+            )
+    
     def _save_calibration_config(self):
         """Save calibration configuration to config file"""
         try:
@@ -971,8 +1068,11 @@ class CalibrationWizard(QMainWindow):
             # First clear the axis
             self.current_ax.clear()
             
-            # Create an empty base Smith chart
-            freqs_base = np.linspace(1e6, 1e9, 101)
+            # Create an empty base Smith chart using user configuration
+            start_freq = self.get_sweep_start_frequency()
+            stop_freq = self.get_sweep_stop_frequency()
+            num_points = self.get_sweep_steps()
+            freqs_base = np.linspace(start_freq, stop_freq, num_points)
             s_base = np.zeros((len(freqs_base), 1, 1), dtype=complex)
             ntw_base = rf.Network(frequency=freqs_base, s=s_base, z0=50)
             ntw_base.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
@@ -1038,8 +1138,11 @@ class CalibrationWizard(QMainWindow):
             # First clear the axis
             self.current_ax.clear()
             
-            # Create an empty base Smith chart
-            freqs_base = np.linspace(1e6, 1e9, 101)
+            # Create an empty base Smith chart using user configuration
+            start_freq = self.get_sweep_start_frequency()
+            stop_freq = self.get_sweep_stop_frequency()
+            num_points = self.get_sweep_steps()
+            freqs_base = np.linspace(start_freq, stop_freq, num_points)
             s_base = np.zeros((len(freqs_base), 1, 1), dtype=complex)
             ntw_base = rf.Network(frequency=freqs_base, s=s_base, z0=50)
             ntw_base.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
@@ -1154,6 +1257,38 @@ class CalibrationWizard(QMainWindow):
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error updating Smith chart: {e}")
 
+    def get_sweep_start_frequency(self):
+        """Get start frequency in Hz from instance variable"""
+        return self.sweep_start_freq
+    
+    def get_sweep_stop_frequency(self):
+        """Get stop frequency in Hz from instance variable"""
+        return self.sweep_stop_freq
+    
+    def get_sweep_steps(self):
+        """Get number of sweep steps from instance variable"""
+        return self.sweep_steps
+    
+    def update_device_limits(self):
+        """Update step limits based on connected device"""
+        try:
+            if hasattr(self, 'hardware') and self.hardware and hasattr(self.hardware, 'getDevice'):
+                device = self.hardware.getDevice()
+                if hasattr(device, 'valid_datapoints') and device.valid_datapoints:
+                    max_points = max(device.valid_datapoints)
+                    self.steps_input.setMaximum(max_points)
+                    self.steps_input.setToolTip(f"Maximum points for this device: {max_points}")
+                else:
+                    # Default VNA limits
+                    self.steps_input.setMaximum(32000)
+                    self.steps_input.setToolTip("Default maximum: 32000 points")
+            else:
+                self.steps_input.setMaximum(32000)
+                self.steps_input.setToolTip("Default maximum: 32000 points")
+        except Exception as e:
+            # Fallback to default
+            self.steps_input.setMaximum(32000)
+            self.steps_input.setToolTip("Default maximum: 32000 points")
 
 
 if __name__ == "__main__":
