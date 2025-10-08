@@ -4,10 +4,14 @@ import os
 from shiboken6 import isValid
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QComboBox
+    QLabel, QPushButton, QComboBox, QMessageBox
 )
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QSettings
+from PySide6.QtCore import QSettings as QtSettings
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+                               QLabel, QPushButton, QComboBox, QSpacerItem, 
+                               QSizePolicy, QProgressBar, QMessageBox, QInputDialog)
 
 # Import NanoVNAGraphics for the final step
 try:
@@ -15,6 +19,13 @@ try:
 except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None  # Safe fallback
+
+# Import calibration data storage
+try:
+    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager
+except ImportError as e:
+    logging.error("Failed to import OSMCalibrationManager: %s", e)
+    OSMCalibrationManager = None
 
 import numpy as np
 import skrf as rf
@@ -29,7 +40,7 @@ class CalibrationWizard(QMainWindow):
         ui_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
 
-        settings = QSettings(ruta_ini, QSettings.IniFormat)
+        settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
 
         # QWidget
         background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
@@ -201,6 +212,24 @@ class CalibrationWizard(QMainWindow):
         self.setWindowIcon(QIcon(icon_path))
 
         self.vna_device = vna_device
+        
+        # Initialize OSM calibration storage with new manager
+        if OSMCalibrationManager:
+            self.osm_calibration = OSMCalibrationManager()
+            if vna_device and hasattr(vna_device, 'name'):
+                self.osm_calibration.device_name = vna_device.name
+            logging.info("[CalibrationWizard] OSM calibration manager initialized")
+        else:
+            self.osm_calibration = None
+            logging.warning("[CalibrationWizard] OSMCalibrationManager not available")
+        
+        # Store measured data state for UI consistency
+        self.measured_data = {
+            'open': None,
+            'short': None, 
+            'match': None
+        }
+        
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -446,10 +475,70 @@ class CalibrationWizard(QMainWindow):
         self.left_panel_widget = QWidget()
         left_layout = QVBoxLayout(self.left_panel_widget)
         left_layout.setAlignment(Qt.AlignTop)
-        info_label = QLabel(f"Method: {self.selected_method}\nStep: {step}")
+        info_label = QLabel(f"Method: {self.selected_method}\nStep {step}/{len(steps)}")
         info_label.setAlignment(Qt.AlignCenter)
         info_label.setStyleSheet("font-size: 18px; font-weight: bold; padding: 8px;")
         left_layout.addWidget(info_label)
+        
+        # Determinar qué estándar se está midiendo para OSM
+        step_name = "UNKNOWN"
+        if self.selected_method == "OSM (Open - Short - Match)":
+            if step == 1:
+                step_name = "OPEN"
+            elif step == 2:
+                step_name = "SHORT"
+            elif step == 3:
+                step_name = "MATCH"
+        
+        # Check if this standard has already been measured
+        is_measured = False
+        if self.osm_calibration:
+            is_measured = self.osm_calibration.is_standard_measured(step_name.lower())
+        
+        # Instrucciones del paso actual
+        if is_measured:
+            instruction_text = f"{step_name} standard already measured ✓"
+            instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
+        else:
+            instruction_text = f"Connect {step_name} standard and press Measure"
+            instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
+            
+        instruction_label = QLabel(instruction_text)
+        instruction_label.setAlignment(Qt.AlignCenter)
+        instruction_label.setStyleSheet(instruction_style)
+        instruction_label.setWordWrap(True)
+        left_layout.addWidget(instruction_label)
+        
+        # Botón para realizar la medición
+        measure_button = QPushButton("Re-measure" if is_measured else "Measure")
+        measure_button.setStyleSheet("font-size: 16px; padding: 10px; font-weight: bold;")
+        measure_button.clicked.connect(lambda: self.perform_calibration_measurement(step, step_name))
+        left_layout.addWidget(measure_button)
+        
+        # Status label para mostrar el estado de la medición
+        if is_measured:
+            status_text = f"{step_name} measurement complete"
+            status_style = "font-size: 12px; padding: 4px; color: lightgreen;"
+        else:
+            status_text = "Ready to measure"
+            status_style = "font-size: 12px; padding: 4px;"
+            
+        self.status_label = QLabel(status_text)
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet(status_style)
+        left_layout.addWidget(self.status_label)
+        
+        # Verificar si todas las mediciones están completas para mostrar botón de guardar
+        if self.osm_calibration and self.selected_method == "OSM (Open - Short - Match)":
+            status = self.osm_calibration.get_completion_status()
+            all_complete = all(status.values())
+            if all_complete:
+                save_button = QPushButton("Save Calibration")
+                save_button.setStyleSheet("font-size: 14px; padding: 8px; background-color: green; color: white; font-weight: bold;")
+                save_button.clicked.connect(self.save_calibration_dialog)
+                left_layout.addWidget(save_button)
+        
+        left_layout.addStretch()
 
         # Panel derecho: Smith chart con canvas de matplotlib
         self.right_panel_widget = QWidget()
@@ -458,6 +547,11 @@ class CalibrationWizard(QMainWindow):
         fig = Figure(figsize=(5, 4), facecolor='white')
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(111)
+        
+        # Guardamos referencia a la figura y el canvas para actualizar después
+        self.current_fig = fig
+        self.current_canvas = canvas
+        self.current_ax = ax
 
         # Creamos un Network placeholder
         freqs = np.linspace(1e6, 1e9, 101)
@@ -468,7 +562,7 @@ class CalibrationWizard(QMainWindow):
         ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
 
         # Agregamos tu línea azul
-        ax.plot(ntw.s[:,0,0].real, ntw.s[:,0,0].imag, color='blue', lw=2)
+        ax.plot(np.real(ntw.s[:,0,0]), np.imag(ntw.s[:,0,0]), color='blue', lw=2)
         ax.legend([Line2D([0],[0], color='blue')], ["S11"], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
         # Sacamos los ticks de Re/Im
@@ -549,12 +643,13 @@ class CalibrationWizard(QMainWindow):
 
         # --- Guardar configuración de calibración ---
         try:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            config_dir = os.path.join(base_dir, "Calibration_Config")
+            # Use new calibration structure
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_dir = os.path.join(base_dir, "calibration", "config")
             os.makedirs(config_dir, exist_ok=True)
 
             config_path = os.path.join(config_dir, "calibration_config.ini")
-            settings = QSettings(config_path, QSettings.IniFormat)
+            settings = QSettings(config_path, QSettings.Format.IniFormat)
 
             settings.setValue("Calibration/Method", self.selected_method)
 
@@ -579,6 +674,273 @@ class CalibrationWizard(QMainWindow):
 
         except Exception as e:
             logging.error(f"Failed to save calibration config: {e}")
+
+    def perform_calibration_measurement(self, step, standard_name):
+        """Perform sweep measurement for calibration standard."""
+        logging.info(f"[CalibrationWizard] Starting measurement for {standard_name}")
+        
+        # Verificar que hay dispositivo conectado
+        if not self.vna_device:
+            QMessageBox.warning(self, "No Device", "No VNA device connected. Cannot perform calibration measurement.")
+            logging.warning("[CalibrationWizard] No VNA device available")
+            return
+        
+        # Verificar conexión del dispositivo
+        if not self.vna_device.connected():
+            logging.warning("[CalibrationWizard] Device not connected, attempting to connect...")
+            try:
+                self.vna_device.connect()
+                if not self.vna_device.connected():
+                    QMessageBox.warning(self, "Connection Failed", "Could not connect to VNA device.")
+                    return
+            except Exception as e:
+                QMessageBox.critical(self, "Connection Error", f"Failed to connect: {str(e)}")
+                return
+        
+        try:
+            # Actualizar status
+            self.status_label.setText(f"Measuring {standard_name}...")
+            self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: orange;")
+            QApplication.processEvents()
+            
+            # Obtener rango completo de frecuencias del dispositivo
+            if hasattr(self.vna_device, 'sweep_max_freq_hz'):
+                stop_freq = self.vna_device.sweep_max_freq_hz
+            else:
+                stop_freq = 6000000000  # 6 GHz por defecto
+            
+            start_freq = 50000  # 50 kHz
+            
+            # Usar máximo número de puntos disponibles
+            if hasattr(self.vna_device, 'sweep_points_max'):
+                num_points = self.vna_device.sweep_points_max
+            else:
+                num_points = 101  # Por defecto
+            
+            logging.info(f"[CalibrationWizard] Sweep config: {start_freq/1e6:.3f} - {stop_freq/1e6:.3f} MHz, {num_points} points")
+            
+            # Configurar sweep
+            self.vna_device.datapoints = num_points
+            self.vna_device.setSweep(start_freq, stop_freq)
+            
+            # Realizar mediciones
+            logging.info(f"[CalibrationWizard] Reading frequencies...")
+            freqs_data = self.vna_device.read_frequencies()
+            freqs = np.array(freqs_data)
+            
+            logging.info(f"[CalibrationWizard] Reading S11 data...")
+            s11_data = self.vna_device.readValues("data 0")
+            s11 = np.array(s11_data)
+            
+            logging.info(f"[CalibrationWizard] Got {len(freqs)} points")
+            
+            # Guardar datos en la estructura de calibración
+            if self.osm_calibration:
+                if standard_name == "OPEN":
+                    self.osm_calibration.set_measurement("open", freqs, s11)
+                elif standard_name == "SHORT":
+                    self.osm_calibration.set_measurement("short", freqs, s11)
+                elif standard_name == "MATCH":
+                    self.osm_calibration.set_measurement("match", freqs, s11)
+                
+                # Mostrar estado de completitud
+                status = self.osm_calibration.get_completion_status()
+                logging.info(f"[CalibrationWizard] Calibration status: {status}")
+                
+                # Actualizar el estado de la UI después de la medición
+                self.status_label.setText(f"{standard_name} measurement complete")
+                self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+            
+            # Actualizar gráfico Smith con los datos medidos
+            self.update_smith_chart(freqs, s11, standard_name)
+            
+            # Actualizar status
+            self.status_label.setText(f"{standard_name} measured successfully!")
+            self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+            
+            logging.info(f"[CalibrationWizard] Measurement for {standard_name} completed successfully")
+            
+        except Exception as e:
+            error_msg = f"Error during measurement: {str(e)}"
+            logging.error(f"[CalibrationWizard] {error_msg}")
+            QMessageBox.critical(self, "Measurement Error", error_msg)
+            self.status_label.setText("Measurement failed!")
+            self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: red;")
+    
+    def save_calibration_dialog(self):
+        """Muestra un diálogo para guardar la calibración completa"""
+        if not self.osm_calibration:
+            return
+            
+        # Dialog para introducir el nombre de la calibración
+        from PySide6.QtWidgets import QInputDialog
+        
+        name, ok = QInputDialog.getText(
+            self, 
+            'Save Calibration', 
+            'Enter calibration name:',
+            text=f'OSM_Calibration_{self.get_current_timestamp()}'
+        )
+        
+        if ok and name:
+            try:
+                # Guardar la calibración
+                success = self.osm_calibration.save_calibration_file(name)
+                if success:
+                    
+                    # Actualizar la label en graphics_window si está disponible
+                    if hasattr(self, 'parent') and hasattr(self.parent(), 'update_calibration_label_from_method'):
+                        self.parent().update_calibration_label_from_method("OSM", name)
+                    
+                    # Mostrar mensaje de éxito
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self, 
+                        "Success", 
+                        f"Calibration '{name}' saved successfully!\n\nFiles saved in:\n- Touchstone format\n- .cal format"
+                    )
+                    
+                    # Cerrar el wizard y volver al main window
+                    self.close()
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.warning(self, "Error", "Failed to save calibration")
+                    
+            except Exception as e:
+                logging.error(f"[CalibrationWizard] Error saving calibration: {e}")
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
+    
+    def get_current_timestamp(self):
+        """Genera un timestamp para nombres de archivo"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    def show_existing_measurements_on_chart(self):
+        """Muestra todas las mediciones existentes en el Smith chart para preservar el estado"""
+        if not self.osm_calibration or not hasattr(self, 'current_ax'):
+            return
+            
+        try:
+            # Primero limpiar el eje
+            self.current_ax.clear()
+            
+            # Crear un Smith chart base vacío
+            freqs_base = np.linspace(1e6, 1e9, 101)
+            s_base = np.zeros((len(freqs_base), 1, 1), dtype=complex)
+            ntw_base = rf.Network(frequency=freqs_base, s=s_base, z0=50)
+            ntw_base.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
+            
+            # Colores para cada estándar
+            colors = {'open': 'red', 'short': 'green', 'match': 'blue'}
+            legend_lines = []
+            legend_labels = []
+            
+            # Verificar cada estándar y plotear si existe
+            for standard_name in ['open', 'short', 'match']:
+                if self.osm_calibration.is_standard_measured(standard_name):
+                    measurement = self.osm_calibration.get_measurement(standard_name)
+                    if measurement:
+                        freqs, s11 = measurement
+                        
+                        # Crear Network object para este estándar
+                        ntw_std = rf.Network(frequency=freqs, s=s11[:, np.newaxis, np.newaxis], z0=50)
+                        
+                        # Plotear solo los datos sin las líneas de referencia
+                        self.current_ax.plot(np.real(s11), np.imag(s11), 'o-',
+                                           color=colors[standard_name],
+                                           markersize=3, linewidth=2,
+                                           label=f'{standard_name.upper()}')
+                        
+                        # Agregar a la leyenda
+                        from matplotlib.lines import Line2D
+                        legend_lines.append(Line2D([0], [0], color=colors[standard_name]))
+                        legend_labels.append(f'{standard_name.upper()}')
+            
+            # Configurar colores del Smith chart
+            for text in self.current_ax.texts:
+                text.set_color('black')
+            
+            for patch in self.current_ax.patches:
+                patch.set_edgecolor('gray')   
+                patch.set_facecolor("none")    
+            
+            # Línea horizontal en el centro
+            self.current_ax.hlines(0, -1, 1, color='gray', linewidth=1.1, zorder=10)
+            
+            # Actualizar leyenda si hay mediciones
+            if legend_lines:
+                self.current_ax.legend(legend_lines, legend_labels, 
+                                     loc='upper left', bbox_to_anchor=(-0.17, 1.14))
+            
+            # Quitar ticks
+            self.current_ax.set_xticks([])
+            self.current_ax.set_yticks([])
+            
+            # Redibujar canvas
+            self.current_canvas.draw()
+            
+        except Exception as e:
+            logging.error(f"[CalibrationWizard] Error showing existing measurements: {e}")
+    
+    def update_smith_chart(self, freqs, s11, standard_name):
+        """Update Smith chart with measured calibration data."""
+        try:
+            if not hasattr(self, 'current_ax') or not self.current_ax:
+                logging.warning("[CalibrationWizard] No Smith chart axis available")
+                return
+            
+            # Limpiar el gráfico anterior
+            self.current_ax.clear()
+            
+            # Crear Network object para Smith chart (igual que en graphics_window.py)
+            ntw = rf.Network(frequency=freqs, s=s11[:, np.newaxis, np.newaxis], z0=50)
+            
+            # Dibujar Smith chart con las líneas de referencia
+            ntw.plot_s_smith(ax=self.current_ax, draw_labels=True, show_legend=False)
+            
+            # Configurar la leyenda personalizada (igual que en graphics_window.py)
+            from matplotlib.lines import Line2D
+            self.current_ax.legend([Line2D([0],[0], color='blue')], [f"S11 - {standard_name}"], 
+                                 loc='upper left', bbox_to_anchor=(-0.17, 1.14))
+            
+            # Configurar colores del Smith chart
+            for text in self.current_ax.texts:
+                text.set_color('black')
+            
+            for patch in self.current_ax.patches:
+                patch.set_edgecolor('gray')   
+                patch.set_facecolor("none")    
+            
+            # Línea horizontal en el centro (igual que en graphics_window.py)
+            self.current_ax.hlines(0, -1, 1, color='gray', linewidth=1.1, zorder=10)
+            
+            # Actualizar propiedades de las líneas de datos
+            for idx, line in enumerate(self.current_ax.lines):
+                # Aplicar estilo azul a las líneas de datos de medición
+                try:
+                    xdata = line.get_xdata()
+                    # Si es una línea con datos significativos, aplicar estilo
+                    if hasattr(xdata, '__len__') and np.array(xdata).size > 10:
+                        line.set_color('blue')
+                        line.set_linewidth(2)
+                except:
+                    # Fallback: aplicar estilo a líneas que se pueden modificar
+                    if hasattr(line, 'set_color') and hasattr(line, 'set_linewidth'):
+                        line.set_color('blue')
+                        line.set_linewidth(2)
+            
+            # Quitar ticks (igual que en la inicialización)
+            self.current_ax.set_xticks([])
+            self.current_ax.set_yticks([])
+            
+            # Redibujar canvas
+            self.current_canvas.draw()
+            
+            logging.info(f"[CalibrationWizard] Smith chart updated for {standard_name}")
+            
+        except Exception as e:
+            logging.error(f"[CalibrationWizard] Error updating Smith chart: {e}")
 
 
 

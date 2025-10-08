@@ -49,7 +49,7 @@ class NanoVNAGraphics(QMainWindow):
         ui_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
 
-        settings = QSettings(ruta_ini, QSettings.IniFormat)
+        settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
 
         # QWidget
         background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
@@ -251,7 +251,7 @@ class NanoVNAGraphics(QMainWindow):
             ui_dir = os.path.dirname(os.path.dirname(__file__))  
             ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
 
-            settings = QSettings(ruta_ini, QSettings.IniFormat)
+            settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
 
             if self.is_dark_mode:
                 light_dark_mode.setText("Light Mode 🔆")
@@ -783,21 +783,27 @@ class NanoVNAGraphics(QMainWindow):
         self.latex_exporter = LatexExporter(parent_widget=self)
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
 
-    def update_calibration_label_from_method(self, method=None):
+    def update_calibration_label_from_method(self, method=None, calibration_name=None):
         """
         Actualiza el QLabel de calibración leyendo el INI o usando un método dado.
         """
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
-        settings = QSettings(config_path, QSettings.IniFormat)
+        # Nueva ruta de configuración
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        
+        settings = QSettings(config_path, QSettings.Format.IniFormat)
         settings.sync()
 
         kits_ok = settings.value("Calibration/Kits", False, type=bool)
         kit_name = settings.value("Calibration/Name", None)
         calibration_method = method or settings.value("Calibration/Method", "---")
 
-        matched_method = None
-        if kits_ok and kit_name:
+        # Si se proporciona un nombre de calibración específico, usarlo
+        if calibration_name:
+            text = f"Calibration: {calibration_name} ({calibration_method})"
+        elif kits_ok and kit_name:
+            # Buscar método específico del kit
+            matched_method = None
             i = 1
             while True:
                 section = f"Kit_{i}"
@@ -810,7 +816,6 @@ class NanoVNAGraphics(QMainWindow):
                     break
                 i += 1
 
-        if kits_ok and kit_name:
             if matched_method:
                 text = f"Calibration Kit: {kit_name}  |  Method: {matched_method}"
             else:
@@ -819,13 +824,48 @@ class NanoVNAGraphics(QMainWindow):
             text = f"Calibration Method selected: {calibration_method}"
 
         self.calibration_label.setText(text)
+    
+    def load_latest_osm_calibration(self):
+        """
+        Carga automáticamente la calibración OSM más reciente si existe.
+        """
+        try:
+            # Buscar archivos .cal en el directorio config
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_dir = os.path.join(base_dir, "calibration", "config")
+            
+            if not os.path.exists(config_dir):
+                return
+            
+            # Buscar archivos .cal
+            cal_files = []
+            for file in os.listdir(config_dir):
+                if file.endswith('.cal') and 'OSM' in file:
+                    file_path = os.path.join(config_dir, file)
+                    cal_files.append((file_path, os.path.getmtime(file_path), file))
+            
+            if cal_files:
+                # Ordenar por fecha de modificación (más reciente primero)
+                cal_files.sort(key=lambda x: x[1], reverse=True)
+                latest_file = cal_files[0]
+                
+                # Extraer nombre de calibración del archivo
+                cal_name = os.path.splitext(latest_file[2])[0]
+                
+                # Actualizar la label
+                self.update_calibration_label_from_method("OSM", cal_name)
+                
+                logging.info(f"[GraphicsWindow] Loaded latest OSM calibration: {cal_name}")
+                
+        except Exception as e:
+            logging.error(f"[GraphicsWindow] Error loading latest calibration: {e}")
 
     def _load_graph_configuration(self):
         """Load graph configuration from settings file."""
         actual_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
 
-        settings = QSettings(ruta_ini, QSettings.IniFormat)
+        settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
 
         return {
             'graph_type_tab1': settings.value("Tab1/GraphType1", "Smith Diagram"),
@@ -1360,7 +1400,7 @@ class NanoVNAGraphics(QMainWindow):
                                     # Get current graph type and S parameter for left panel
                                     actual_dir = os.path.dirname(os.path.dirname(__file__))  
                                     ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
-                                    settings = QSettings(ruta_ini, QSettings.IniFormat)
+                                    settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
                                     graph_type_left = settings.value("Tab1/GraphType1", "Smith Diagram")
                                     s_param_left = settings.value("Tab1/SParameter", "S11")
                                     
@@ -1474,7 +1514,7 @@ class NanoVNAGraphics(QMainWindow):
                                     # Get current graph type for right panel
                                     actual_dir = os.path.dirname(os.path.dirname(__file__))  
                                     ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
-                                    settings = QSettings(ruta_ini, QSettings.IniFormat)
+                                    settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
                                     graph_type_right = settings.value("Tab2/GraphType2", "Magnitude")
                                     s_param_right = settings.value("Tab2/SParameter", "S11")
                                     
@@ -1711,9 +1751,10 @@ class NanoVNAGraphics(QMainWindow):
         import logging
 
         # --- Read current calibration method ---
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
-        settings_calibration = QSettings(config_path, QSettings.IniFormat)
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
         calibration_method = settings_calibration.value("Calibration/Method", "---")
 
         if calibration_method == "---" or not calibration_method:
@@ -2434,7 +2475,7 @@ class NanoVNAGraphics(QMainWindow):
             # Get current graph settings
             actual_dir = os.path.dirname(os.path.dirname(__file__))  
             ruta_ini = os.path.join(actual_dir, "ui","graphics_windows", "ini", "config.ini")
-            settings = QSettings(ruta_ini, QSettings.IniFormat)
+            settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
 
             graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")
             s_param_tab1    = settings.value("Tab1/SParameter", "S11")
