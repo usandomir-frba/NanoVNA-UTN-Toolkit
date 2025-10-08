@@ -261,17 +261,17 @@ class LatexExporter:
             # Note: This assumes a specific directory structure relative to UI
             # In a real application, you might want to make this configurable
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Go up to src level
-            ui_dir = os.path.join(base_dir, "ui")
-            config_path = os.path.join(ui_dir, "Calibration_Config", "calibration_config.ini")
+            # Use new calibration structure
+            config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
             
-            settings = QSettings(config_path, QSettings.IniFormat)
+            settings = QSettings(config_path, QSettings.Format.IniFormat)
             calibration_method = settings.value("Calibration/Method", "---")
             calibrated_parameter = settings.value("Calibration/Parameter", "---")
 
             # Handle measurement numbering
             measurement_number = 1
-            tracking_file = os.path.join(ui_dir, "Calibration_Config", "measurement_numbers.ini")
-            tracking_settings = QSettings(tracking_file, QSettings.IniFormat)
+            tracking_file = os.path.join(base_dir, "calibration", "config", "measurement_numbers.ini")
+            tracking_settings = QSettings(tracking_file, QSettings.Format.IniFormat)
             
             if tracking_settings.contains(measurement_name):
                 measurement_number = int(tracking_settings.value(measurement_name))

@@ -260,10 +260,10 @@ class NanoVNAWelcome(QMainWindow):
         """)
 
         # --- Load calibration kits ---
-        settings_calibration = QSettings(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "Calibration_Config", "calibration_config.ini"),
-            QSettings.IniFormat
-        )
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.IniFormat)
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
         self.kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
 
@@ -542,8 +542,9 @@ class NanoVNAWelcome(QMainWindow):
         print(f"Clickeaste en el kit central gay: {kit_name}")
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
         settings_calibration.setValue("Calibration/Kits", True)
@@ -560,8 +561,9 @@ class NanoVNAWelcome(QMainWindow):
 
     def open_calibration_wizard(self):
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
         settings_calibration.setValue("Calibration/Kits", False)
@@ -577,8 +579,9 @@ class NanoVNAWelcome(QMainWindow):
 
     def graphics_clicked(self):
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
         settings_calibration.setValue("Calibration/Kits", False)

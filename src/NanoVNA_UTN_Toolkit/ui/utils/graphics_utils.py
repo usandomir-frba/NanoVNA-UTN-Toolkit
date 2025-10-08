@@ -87,37 +87,31 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
 
     # --- Figura ---
     if graph_type == "Smith Diagram":
-
-        fig, ax = plt.subplots(figsize=(10,10))  
-        fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-
-        fig.patch.set_facecolor(f"{brackground_color_graphics}")
-        ax.set_facecolor(f"{brackground_color_graphics}")
-
-        canvas = FigureCanvas(fig)
-        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        left_layout.addWidget(canvas)
-
-        ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
-        ntw.plot_s_smith(ax=ax, draw_labels=True)
-        ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], loc='upper left', bbox_to_anchor=(-0.17,1.14))
-
-        for text in ax.texts:
-            text.set_color(f"{axis_color}")
-
-        for patch in ax.patches:
-            patch.set_edgecolor(f"{axis_color}") 
-            patch.set_facecolor("none")    
+        # Use consolidated Smith chart functionality
+        from ...utils.smith_chart_utils import SmithChartConfig, SmithChartManager
         
-        ax.hlines(0, -1, 1, color=f"{axis_color}", linewidth=1.1, zorder=10)
-
-        for idx, line in enumerate(ax.lines):
-            if len(line.get_xdata()) == len(freqs):
-                line.set_color(tracecolor)
-                line.set_linewidth(linewidth)
-                break
-            
-        cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
+        # Create custom config to match original settings
+        config = SmithChartConfig()
+        config.background_color = brackground_color_graphics
+        config.axis_color = axis_color
+        config.text_color = axis_color
+        config.trace_color = tracecolor
+        config.marker_color = markercolor
+        config.linewidth = linewidth
+        config.markersize = markersize
+        config.marker_visible = marker_visible
+        
+        # Create Smith chart with custom configuration
+        manager = SmithChartManager(config)
+        fig, ax, canvas, cursor_graph = manager.create_graphics_panel_smith_chart(
+            s_data=S_data,
+            freqs=freqs,
+            s_param=s_param,
+            figsize=(10, 10),
+            container_layout=left_layout,
+            trace_color=tracecolor,
+            marker_color=markercolor
+        )
 
     elif graph_type == "Magnitude":
 
@@ -470,36 +464,31 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
 
     # --- Figura ---
     if graph_type == "Smith Diagram":
-        fig, ax = plt.subplots(figsize=(5,5))  
-        fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-
-        fig.patch.set_facecolor(f"{brackground_color_graphics}")
-        ax.set_facecolor(f"{brackground_color_graphics}")
-
-        canvas = FigureCanvas(fig)
-        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        right_layout.addWidget(canvas)
-
-        ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
-        ntw.plot_s_smith(ax=ax, draw_labels=True)
-        ax.legend([Line2D([0],[0], color=tracecolor)], [s_param], loc='upper left', bbox_to_anchor=(-0.17,1.14))
-
-        for text in ax.texts:
-            text.set_color(f"{axis_color}")
-
-        for patch in ax.patches:
-            patch.set_edgecolor(f"{axis_color}")   
-            patch.set_facecolor("none")    
+        # Use consolidated Smith chart functionality
+        from ...utils.smith_chart_utils import SmithChartConfig, SmithChartManager
         
-        ax.hlines(0, -1, 1, color=f"{axis_color}", linewidth=1.1, zorder=10)
-
-        for idx, line in enumerate(ax.lines):
-            if len(line.get_xdata()) == len(freqs):
-                line.set_color(tracecolor)
-                line.set_linewidth(linewidth)
-                break
-            
-        cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
+        # Create custom config to match original settings
+        config = SmithChartConfig()
+        config.background_color = brackground_color_graphics
+        config.axis_color = axis_color
+        config.text_color = axis_color
+        config.trace_color = tracecolor
+        config.marker_color = markercolor
+        config.linewidth = linewidth
+        config.markersize = markersize
+        config.marker_visible = marker_visible
+        
+        # Create Smith chart with custom configuration
+        manager = SmithChartManager(config)
+        fig, ax, canvas, cursor_graph = manager.create_graphics_panel_smith_chart(
+            s_data=S_data,
+            freqs=freqs,
+            s_param=s_param,
+            figsize=(5, 5),
+            container_layout=right_layout,
+            trace_color=tracecolor,
+            marker_color=markercolor
+        )
 
     elif graph_type == "Magnitude":
         fig, ax = plt.subplots(figsize=(4,3))
