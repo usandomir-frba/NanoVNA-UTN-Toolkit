@@ -6,18 +6,14 @@ import sys
 import logging
 import numpy as np
 import skrf as rf
-import tempfile
-import shutil
-from matplotlib.lines import Line2D
-
 
 from pathlib import Path
 from PySide6.QtWidgets import QFileDialog, QMessageBox
-from pylatex import Document, Section, Subsection, Command, Figure, NewPage
-from pylatex.utils import NoEscape
 
-from pathlib import Path
-from PySide6.QtWidgets import QFileDialog, QMessageBox
+# Import exporters
+from ..exporters.latex_exporter import LatexExporter
+from ..exporters.touchstone_exporter import TouchstoneExporter
+
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Suppress verbose matplotlib logging
@@ -782,6 +778,10 @@ class NanoVNAGraphics(QMainWindow):
         
         # Clear all marker information fields until first sweep is completed
         self._clear_all_marker_fields()
+        
+        # Initialize exporters
+        self.latex_exporter = LatexExporter(parent_widget=self)
+        self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
 
     def update_calibration_label_from_method(self, method=None):
         """
@@ -2639,307 +2639,39 @@ class NanoVNAGraphics(QMainWindow):
 
     def export_latex_pdf(self):
         """
-        Export a PDF using LaTeX with a title page and structured sections:
-        - Cover page with project name, title, date
-        - S11 section: Magnitude, Phase, Smith
-        - S21 section: Magnitude, Phase
+        Export a PDF using LaTeX with a title page and structured sections.
+        
+        This method has been refactored to use the LatexExporter module.
         """
-        if self.s11 is None or self.s21 is None or self.freqs is None:
-            QMessageBox.warning(self, "Missing Data", "S11, S21 or frequencies are not available.")
-            return
-
-        filename, _ = QFileDialog.getSaveFileName(self, "Export LaTeX PDF", "", "PDF Files (*.pdf)")
-        if not filename:
-            return
-
-        file_path = Path(filename).with_suffix('')
-        pdf_path = str(file_path) + ".pdf"
-
-        try:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                image_files = {}
-
-                # --- Smith Diagram ---
-                fig, ax = plt.subplots(figsize=(10, 10))
-                fig.patch.set_facecolor("white")
-                ax.set_facecolor("white")
-                ntw = rf.Network(frequency=self.freqs, s=self.s11[:, np.newaxis, np.newaxis], z0=50)
-                ntw.plot_s_smith(ax=ax, draw_labels=True)
-                ax.legend([Line2D([0], [0], color='blue')], ['S11'], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-                smith_path = os.path.join(tmpdirname, "smith.png")
-                fig.savefig(smith_path, dpi=300)
-                plt.close(fig)
-                image_files['smith'] = smith_path
-
-                # --- Magnitude S11 ---
-                fig, ax = plt.subplots(figsize=(6, 4))
-                fig.patch.set_facecolor("white")
-                ax.set_facecolor("white")
-                ax.plot(self.freqs * 1e-6, 20 * np.log10(np.abs(self.s11)), color='blue')
-                ax.set_xlabel("Frequency [MHz]")
-                ax.set_ylabel("|S11|")
-                ax.set_title("Magnitude S11")
-                ax.grid(True, linestyle='--', alpha=0.5)
-                mag_s11_path = os.path.join(tmpdirname, "magnitude_s11.png")
-                fig.savefig(mag_s11_path, dpi=300)
-                plt.close(fig)
-                image_files['mag_s11'] = mag_s11_path
-
-                # --- Phase S11 ---
-                fig, ax = plt.subplots(figsize=(6, 4))
-                fig.patch.set_facecolor("white")
-                ax.set_facecolor("white")
-                ax.plot(self.freqs * 1e-6, np.angle(self.s11, deg=True), color='blue')
-                ax.set_xlabel("Frequency [MHz]")
-                ax.set_ylabel("Phase S11 [deg]")
-                ax.set_title("Phase S11")
-                ax.grid(True, linestyle='--', alpha=0.5)
-                phase_s11_path = os.path.join(tmpdirname, "phase_s11.png")
-                fig.savefig(phase_s11_path, dpi=300)
-                plt.close(fig)
-                image_files['phase_s11'] = phase_s11_path
-
-                # --- Magnitude S21 ---
-                fig, ax = plt.subplots(figsize=(6, 4))
-                fig.patch.set_facecolor("white")
-                ax.set_facecolor("white")
-                ax.plot(self.freqs * 1e-6, 20 * np.log10(np.abs(self.s21)), color='red')
-                ax.set_xlabel("Frequency [MHz]")
-                ax.set_ylabel("|S21|")
-                ax.set_title("Magnitude S21")
-                ax.grid(True, linestyle='--', alpha=0.5)
-                mag_s21_path = os.path.join(tmpdirname, "magnitude_s21.png")
-                fig.savefig(mag_s21_path, dpi=300)
-                plt.close(fig)
-                image_files['mag_s21'] = mag_s21_path
-
-                # --- Phase S21 ---
-                fig, ax = plt.subplots(figsize=(6, 4))
-                fig.patch.set_facecolor("white")
-                ax.set_facecolor("white")
-                ax.plot(self.freqs * 1e-6, np.angle(self.s21, deg=True), color='red')
-                ax.set_xlabel("Frequency [MHz]")
-                ax.set_ylabel("Phase S21 [deg]")
-                ax.set_title("Phase S21")
-                ax.grid(True, linestyle='--', alpha=0.5)
-                phase_s21_path = os.path.join(tmpdirname, "phase_s21.png")
-                fig.savefig(phase_s21_path, dpi=300)
-                plt.close(fig)
-                image_files['phase_s21'] = phase_s21_path
-
-                # --- LaTeX document ---
-                doc = Document(
-                    documentclass='article',
-                    document_options='12pt',
-                    geometry_options={'paper': 'a4paper', 'margin': '2cm'}
-                )
-                doc.preamble.append(Command('usepackage', 'graphicx'))
-
-                from datetime import datetime
-                current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                # --- Leer método de calibración y parámetro desde archivo ini ---
-                base_dir = os.path.dirname(os.path.abspath(__file__))
-                config_path = os.path.join(base_dir, "Calibration_Config", "calibration_config.ini")
-                settings = QSettings(config_path, QSettings.IniFormat)
-                calibration_method = settings.value("Calibration/Method", "---")
-                calibrated_parameter = settings.value("Calibration/Parameter", "---")
-
-                # --- Determinar nombre y número de medición ---
-                measurement_name = Path(filename).stem
-                measurement_number = 1
-                tracking_file = os.path.join(base_dir, "Calibration_Config", "measurement_numbers.ini")
-                tracking_settings = QSettings(tracking_file, QSettings.IniFormat)
-                if tracking_settings.contains(measurement_name):
-                    measurement_number = int(tracking_settings.value(measurement_name))
-                else:
-                    all_numbers = [int(tracking_settings.value(k)) for k in tracking_settings.allKeys()]
-                    if all_numbers:
-                        measurement_number = max(all_numbers) + 1
-                    tracking_settings.setValue(measurement_name, measurement_number)
-                    tracking_settings.sync()
-
-                # --- Cover page ---
-                doc.append(NoEscape(r'\begin{titlepage}'))
-                doc.append(NoEscape(r'\begin{center}'))
-
-                doc.append(NoEscape(r'\vspace*{2cm}'))
-                doc.append(NoEscape(r'\Huge \textbf{NanoVNA Report} \\[1.2cm]'))
-                doc.append(NoEscape(r'\LARGE NanoVNA UTN Toolkit \\[0.8cm]'))
-                doc.append(NoEscape(r'\large ' + current_datetime))
-
-                doc.append(NoEscape(r'\vspace{3cm}'))
-                doc.append(NoEscape(r'\begin{flushleft}'))
-                doc.append(NoEscape(r'\Large \textbf{Measurement Details:} \\[0.5cm]'))
-                doc.append(NoEscape(r'\normalsize'))
-                doc.append(NoEscape(r'\begin{itemize}'))
-                doc.append(NoEscape(rf'\item \textbf{{Measurement Name:}} {measurement_name}'))
-                doc.append(NoEscape(rf'\item \textbf{{Measurement Number:}} {measurement_number}'))
-                doc.append(NoEscape(rf'\item \textbf{{Calibration Method:}} {calibration_method}'))
-                doc.append(NoEscape(rf'\item \textbf{{Calibrated Parameter:}} {calibrated_parameter}'))
-                doc.append(NoEscape(rf'\item \textbf{{Date and Time:}} {current_datetime}'))
-                doc.append(NoEscape(r'\end{itemize}'))
-                doc.append(NoEscape(r'\end{flushleft}'))
-                doc.append(NoEscape(r'\end{center}'))
-                doc.append(NoEscape(r'\end{titlepage}'))
-
-                # --- S11 Section ---
-                s11_images = {
-                    "Magnitude": "mag_s11",
-                    "Phase": "phase_s11",
-                    "Smith Diagram": "smith"
-                }
-                with doc.create(Section("S11")):
-                    for subname, key in s11_images.items():
-                        with doc.create(Subsection(subname)):
-                            doc.append(NoEscape(r'\begin{center}'))
-                            doc.append(NoEscape(r'\includegraphics[width=0.8\linewidth]{' +
-                                                image_files[key].replace("\\", "/") + '}'))
-                            doc.append(NoEscape(r'\end{center}'))
-
-                # --- S21 Section ---
-                s21_images = {
-                    "Magnitude": "mag_s21",
-                    "Phase": "phase_s21"
-                }
-                with doc.create(Section("S21")):
-                    for subname, key in s21_images.items():
-                        with doc.create(Subsection(subname)):
-                            doc.append(NoEscape(r'\begin{center}'))
-                            doc.append(NoEscape(r'\includegraphics[width=0.8\linewidth]{' +
-                                                image_files[key].replace("\\", "/") + '}'))
-                            doc.append(NoEscape(r'\end{center}'))
-
-                # --- Generate PDF ---
-                doc.generate_pdf(str(file_path), compiler="pdflatex", clean_tex=False)
-
-            QMessageBox.information(self, "Success", f"LaTeX PDF exported successfully to:\n{pdf_path}")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error generating LaTeX PDF", f"{e}")
+        device_name = None
+        if self.vna_device:
+            device_name = getattr(self.vna_device, 'name', type(self.vna_device).__name__)
+        
+        return self.latex_exporter.export_to_pdf(
+            freqs=self.freqs,
+            s11_data=self.s11,
+            s21_data=self.s21,
+            measurement_name=device_name
+        )
 
 
 
     def export_touchstone_data(self):
-        """Export sweep data to Touchstone format."""
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
-        
-        logging.info("[graphics_window.export_touchstone_data] Starting Touchstone export")
-        
-        # Check if we have sweep data available
-        if not hasattr(self, 'freqs') or self.freqs is None:
-            error_msg = "No sweep data available for export.\nPlease run a sweep first."
-            QMessageBox.warning(self, "No Data", error_msg)
-            logging.warning("[graphics_window.export_touchstone_data] No frequency data available")
-            return
-        
-        if not hasattr(self, 's11') or self.s11 is None:
-            error_msg = "No S11 data available for export.\nPlease run a sweep first."
-            QMessageBox.warning(self, "No Data", error_msg)
-            logging.warning("[graphics_window.export_touchstone_data] No S11 data available")
-            return
-        
-        if not hasattr(self, 's21') or self.s21 is None:
-            error_msg = "No S21 data available for export.\nPlease run a sweep first."
-            QMessageBox.warning(self, "No Data", error_msg)
-            logging.warning("[graphics_window.export_touchstone_data] No S21 data available")
-            return
-        
-        # Check data consistency
-        if len(self.freqs) != len(self.s11) or len(self.freqs) != len(self.s21):
-            error_msg = f"Data length mismatch detected.\nFreqs: {len(self.freqs)}, S11: {len(self.s11)}, S21: {len(self.s21)}"
-            QMessageBox.critical(self, "Data Error", error_msg)
-            logging.error(f"[graphics_window.export_touchstone_data] {error_msg}")
-            return
-        
-        # Get save file path from user
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Export Touchstone Data",
-            "",
-            "Touchstone S2P Files (*.s2p);;All Files (*)"
-        )
-        
-        if not file_path:
-            logging.info("[graphics_window.export_touchstone_data] Export cancelled by user")
-            return
-        
-        # Ensure file has .s2p extension
-        if not file_path.lower().endswith('.s2p'):
-            file_path += '.s2p'
-        
-        try:
-            # Create Touchstone content manually since the existing class doesn't support 2-parameter format
-            self._export_touchstone_s2p(file_path)
-            
-            # Success message
-            num_points = len(self.freqs)
-            freq_range = f"{self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz"
-            success_msg = f"Touchstone data exported successfully!\n\nFile: {file_path}\nPoints: {num_points}\nFrequency range: {freq_range}"
-            QMessageBox.information(self, "Export Successful", success_msg)
-            logging.info(f"[graphics_window.export_touchstone_data] Successfully exported {num_points} points to {file_path}")
-            
-        except Exception as e:
-            error_msg = f"Error exporting Touchstone data:\n{str(e)}"
-            QMessageBox.critical(self, "Export Error", error_msg)
-            logging.error(f"[graphics_window.export_touchstone_data] Export error: {e}")
-            logging.error(f"[graphics_window.export_touchstone_data] Exception details: {type(e).__name__}")
-
-    def _export_touchstone_s2p(self, file_path: str):
-        """Export data to Touchstone S2P format with S11 and S21 parameters.
-        
-        Args:
-            file_path: Path where to save the S2P file
         """
-        import os
-        from datetime import datetime
+        Export sweep data to Touchstone format.
         
-        logging.info(f"[graphics_window._export_touchstone_s2p] Writing S2P file: {file_path}")
-        
-        # Get device information if available
-        device_name = "Unknown"
+        This method has been refactored to use the TouchstoneExporter module.
+        """
+        device_name = None
         if self.vna_device:
             device_name = getattr(self.vna_device, 'name', type(self.vna_device).__name__)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
-            # Write header comments
-            f.write(f"! Touchstone file exported from NanoVNA UTN Toolkit\n")
-            f.write(f"! Device: {device_name}\n")
-            f.write(f"! Export date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"! Frequency range: {self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz\n")
-            f.write(f"! Number of points: {len(self.freqs)}\n")
-            f.write(f"!\n")
-            
-            # Write option line (frequency in Hz, S-parameters, Real/Imaginary format, 50 ohm reference)
-            f.write("# HZ S RI R 50\n")
-            
-            # Write data points
-            for i in range(len(self.freqs)):
-                freq_hz = int(self.freqs[i])
-                
-                # S11 data (reflection coefficient port 1)
-                s11 = self.s11[i]
-                s11_real = float(s11.real)
-                s11_imag = float(s11.imag)
-                
-                # S21 data (transmission coefficient port 2 to port 1)
-                s21 = self.s21[i]
-                s21_real = float(s21.real)
-                s21_imag = float(s21.imag)
-                
-                # For a 2-port S2P file, we need S11, S21, S12, S22
-                # Since VNA typically only measures S11 and S21, we'll set S12=S21 and S22=0
-                # This is a reasonable assumption for most VNA measurements
-                s12_real = s21_real  # Assume reciprocal network (S12 = S21)
-                s12_imag = s21_imag
-                s22_real = 0.0       # Assume matched port 2 (no reflection)
-                s22_imag = 0.0
-                
-                # Write data line: freq S11_real S11_imag S21_real S21_imag S12_real S12_imag S22_real S22_imag
-                f.write(f"{freq_hz} {s11_real:.6e} {s11_imag:.6e} {s21_real:.6e} {s21_imag:.6e} "
-                       f"{s12_real:.6e} {s12_imag:.6e} {s22_real:.6e} {s22_imag:.6e}\n")
-        
-        logging.info(f"[graphics_window._export_touchstone_s2p] Successfully wrote {len(self.freqs)} data points")
+        return self.touchstone_exporter.export_to_s2p(
+            freqs=self.freqs,
+            s11_data=self.s11,
+            s21_data=self.s21,
+            device_name=device_name
+        )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

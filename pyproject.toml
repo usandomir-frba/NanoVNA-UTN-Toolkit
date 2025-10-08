@@ -36,6 +36,7 @@ dependencies = [
     "numpy>=1.26.4",
     "scipy>=1.13.0",
     "qtawesome>=1.2.0",
+    "pylatex>=1.4.0",
     "importlib-metadata; python_version<'3.8'"
 ]
 
