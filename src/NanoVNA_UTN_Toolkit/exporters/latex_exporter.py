@@ -69,7 +69,7 @@ class LatexExporter:
         try:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 image_files = self._generate_plots(freqs, s11_data, s21_data, tmpdirname)
-                self._create_latex_document(image_files, file_path, tmpdirname, measurement_name or file_path.name)
+                self._create_latex_document(image_files, file_path, tmpdirname, file_path.name)
 
             self._show_info("Success", f"LaTeX PDF exported successfully to:\\n{pdf_path}")
             return True
@@ -200,10 +200,10 @@ class LatexExporter:
         with doc.create(Section("S11")):
             for subname, key in s11_images.items():
                 with doc.create(Subsection(subname)):
-                    doc.append(NoEscape(r'\\begin{center}'))
-                    doc.append(NoEscape(r'\\includegraphics[width=0.8\\linewidth]{' +
-                                        image_files[key].replace("\\\\", "/") + '}'))
-                    doc.append(NoEscape(r'\\end{center}'))
+                    doc.append(NoEscape(r'\begin{center}'))
+                    doc.append(NoEscape(r'\includegraphics[width=0.8\linewidth]{' +
+                                        image_files[key].replace("\\", "/") + '}'))
+                    doc.append(NoEscape(r'\end{center}'))
 
         # S21 Section
         s21_images = {
@@ -213,10 +213,10 @@ class LatexExporter:
         with doc.create(Section("S21")):
             for subname, key in s21_images.items():
                 with doc.create(Subsection(subname)):
-                    doc.append(NoEscape(r'\\begin{center}'))
-                    doc.append(NoEscape(r'\\includegraphics[width=0.8\\linewidth]{' +
-                                        image_files[key].replace("\\\\", "/") + '}'))
-                    doc.append(NoEscape(r'\\end{center}'))
+                    doc.append(NoEscape(r'\begin{center}'))
+                    doc.append(NoEscape(r'\includegraphics[width=0.8\linewidth]{' +
+                                        image_files[key].replace("\\", "/") + '}'))
+                    doc.append(NoEscape(r'\end{center}'))
 
         # Generate PDF
         doc.generate_pdf(str(file_path), compiler="pdflatex", clean_tex=False)
@@ -224,29 +224,29 @@ class LatexExporter:
     def _create_cover_page(self, doc, current_datetime, measurement_name, measurement_number, 
                           calibration_method, calibrated_parameter):
         """Create the cover page for the PDF."""
-        doc.append(NoEscape(r'\\begin{titlepage}'))
-        doc.append(NoEscape(r'\\begin{center}'))
+        doc.append(NoEscape(r'\begin{titlepage}'))
+        doc.append(NoEscape(r'\begin{center}'))
 
-        doc.append(NoEscape(r'\\vspace*{2cm}'))
-        doc.append(NoEscape(r'\\Huge \\textbf{NanoVNA Report} \\\\[1.2cm]'))
-        doc.append(NoEscape(r'\\LARGE NanoVNA UTN Toolkit \\\\[0.8cm]'))
-        doc.append(NoEscape(r'\\large ' + current_datetime))
+        doc.append(NoEscape(r'\vspace*{2cm}'))
+        doc.append(NoEscape(r'\Huge \textbf{NanoVNA Report} \\[1.2cm]'))
+        doc.append(NoEscape(r'\LARGE NanoVNA UTN Toolkit \\[0.8cm]'))
+        doc.append(NoEscape(r'\large ' + current_datetime))
 
-        doc.append(NoEscape(r'\\vspace{3cm}'))
-        doc.append(NoEscape(r'\\begin{flushleft}'))
-        doc.append(NoEscape(r'\\Large \\textbf{Measurement Details:} \\\\[0.5cm]'))
-        doc.append(NoEscape(r'\\normalsize'))
-        doc.append(NoEscape(r'\\begin{itemize}'))
-        doc.append(NoEscape(rf'\\item \\textbf{{Measurement Name:}} {measurement_name}'))
-        doc.append(NoEscape(rf'\\item \\textbf{{Measurement Number:}} {measurement_number}'))
-        doc.append(NoEscape(rf'\\item \\textbf{{Calibration Method:}} {calibration_method}'))
-        doc.append(NoEscape(rf'\\item \\textbf{{Calibrated Parameter:}} {calibrated_parameter}'))
-        doc.append(NoEscape(rf'\\item \\textbf{{Date and Time:}} {current_datetime}'))
-        doc.append(NoEscape(r'\\end{itemize}'))
-        doc.append(NoEscape(r'\\end{flushleft}'))
-        doc.append(NoEscape(r'\\end{center}'))
-        doc.append(NoEscape(r'\\end{titlepage}'))
-    
+        doc.append(NoEscape(r'\vspace{3cm}'))
+        doc.append(NoEscape(r'\begin{flushleft}'))
+        doc.append(NoEscape(r'\Large \textbf{Measurement Details:} \\[0.5cm]'))
+        doc.append(NoEscape(r'\normalsize'))
+        doc.append(NoEscape(r'\begin{itemize}'))
+        doc.append(NoEscape(rf'\item \textbf{{Measurement Name:}} {measurement_name}'))
+        doc.append(NoEscape(rf'\item \textbf{{Measurement Number:}} {measurement_number}'))
+        doc.append(NoEscape(rf'\item \textbf{{Calibration Method:}} {calibration_method}'))
+        doc.append(NoEscape(rf'\item \textbf{{Calibrated Parameter:}} {calibrated_parameter}'))
+        doc.append(NoEscape(rf'\item \textbf{{Date and Time:}} {current_datetime}'))
+        doc.append(NoEscape(r'\end{itemize}'))
+        doc.append(NoEscape(r'\end{flushleft}'))
+        doc.append(NoEscape(r'\end{center}'))
+        doc.append(NoEscape(r'\end{titlepage}'))
+
     def _get_calibration_info(self, measurement_name):
         """
         Get calibration information from config files.
@@ -260,10 +260,11 @@ class LatexExporter:
         try:
             # Note: This assumes a specific directory structure relative to UI
             # In a real application, you might want to make this configurable
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Go up to src level
-            # Use new calibration structure
-            config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
-            
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_dir = os.path.join(base_dir, "calibration", "config")
+            os.makedirs(config_dir, exist_ok=True)
+
+            config_path = os.path.join(config_dir, "calibration_config.ini")
             settings = QSettings(config_path, QSettings.Format.IniFormat)
             calibration_method = settings.value("Calibration/Method", "---")
             calibrated_parameter = settings.value("Calibration/Parameter", "---")
