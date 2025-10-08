@@ -316,6 +316,11 @@ class NanoVNAGraphics(QMainWindow):
                 settings.setValue("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
                 settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
 
+                # --- QPushButton disabled ---
+                settings.setValue("Dark_Light/QPushButton_disabled/background-color", "#2a2a2a")
+                settings.setValue("Dark_Light/QPushButton_disabled/color", "#666666")
+                settings.setValue("Dark_Light/QPushButton_disabled/border", "1px solid #444444")
+
                 # --- QMenu ---
                 settings.setValue("Dark_Light/QMenu/background", "#7f7f7f")
                 settings.setValue("Dark_Light/QMenu/color", "white")
@@ -483,6 +488,11 @@ class NanoVNAGraphics(QMainWindow):
                 # --- QPushButton hover/pressed ---
                 settings.setValue("Dark_Light/QPushButton_hover/background-color", "#d0d0d0")
                 settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#c0c0c0")
+
+                # --- QPushButton disabled ---
+                settings.setValue("Dark_Light/QPushButton_disabled/background-color", "#f5f5f5")
+                settings.setValue("Dark_Light/QPushButton_disabled/color", "#a0a0a0")
+                settings.setValue("Dark_Light/QPushButton_disabled/border", "1px solid #d0d0d0")
 
                 # --- QMenu ---
                 settings.setValue("Dark_Light/QMenu/background", "#f0f0f0")

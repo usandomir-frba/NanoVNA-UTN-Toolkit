@@ -86,6 +86,9 @@ class NanoVNAStatusApp(QMainWindow):
         pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
         pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
         pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
+        pushbutton_disabled_bg = settings.value("Dark_Light/QPushButton_disabled/background-color", "#2a2a2a")
+        pushbutton_disabled_color = settings.value("Dark_Light/QPushButton_disabled/color", "#666666")
+        pushbutton_disabled_border = settings.value("Dark_Light/QPushButton_disabled/border", "1px solid #444444")
 
         # QMenu
         menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
@@ -162,6 +165,11 @@ class NanoVNAStatusApp(QMainWindow):
             }}
             QPushButton:pressed {{
                 background-color: {pushbutton_pressed_bg};
+            }}
+            QPushButton:disabled {{
+                background-color: {pushbutton_disabled_bg};
+                color: {pushbutton_disabled_color};
+                border: {pushbutton_disabled_border};
             }}
             QMenuBar {{
                 background-color: {menubar_bg};
@@ -367,12 +375,6 @@ class NanoVNAStatusApp(QMainWindow):
         self.stop_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.stop_btn)
 
-        self.detailed_info_btn = QPushButton("Get Detailed Info")
-        self.detailed_info_btn.clicked.connect(self.get_detailed_info)
-        self.detailed_info_btn.setEnabled(False)  # Initially disabled
-        self.detailed_info_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
-        button_layout.addWidget(self.detailed_info_btn)
-
         layout.addLayout(button_layout)
 
         self.smith_btn = QPushButton("Open Welcome Window")
@@ -570,56 +572,6 @@ class NanoVNAStatusApp(QMainWindow):
                 self.status_label.setStyleSheet("color: red; font-size: 16px; font-weight: bold; padding: 10px;")
                 self.clear_device_info()
                 self.disconnect_btn.setEnabled(False)
-                self.detailed_info_btn.setEnabled(False)
-    
-    def get_detailed_info(self):
-        """Get detailed device information (slower operations)."""
-        if not self.vna:
-            self.log_message("No device connected for detailed info")
-            return
-            
-        self.log_message("Retrieving detailed device information...")
-        self.detailed_info_btn.setEnabled(False)
-        
-        try:
-            from ..utils.device_parser import extract_extended_device_info
-            
-            # Get detailed info with slow operations enabled
-            detailed_info = extract_extended_device_info(self.vna, quick_mode=False)
-            
-            # Update UI with detailed information
-            if detailed_info['serial_number'] != 'Not available':
-                self.serial_value.setText(detailed_info['serial_number'])
-                self.log_message(f"Serial Number: {detailed_info['serial_number']}")
-            
-            if detailed_info['board_revision'] != 'Unknown':
-                # Update build time field with board revision info
-                current_build = self.build_time_value.text()
-                if current_build == 'Unknown':
-                    self.build_time_value.setText(f"Board Rev: {detailed_info['board_revision']}")
-                self.log_message(f"Board Revision: {detailed_info['board_revision']}")
-            
-            if detailed_info['features']:
-                # Update features display
-                important_features = []
-                for feature in detailed_info['features']:
-                    if any(keyword in feature.lower() for keyword in ['customizable', 'screenshot', 'sn', 'bandwidth', 'average', 'power']):
-                        important_features.append(feature)
-                
-                if important_features:
-                    features_text = "• " + "\n• ".join(important_features[:5])
-                    if len(detailed_info['features']) > 5:
-                        features_text += f"\n• ... and {len(detailed_info['features']) - 5} more"
-                    self.features_value.setText(features_text)
-                    
-                self.log_message(f"Device Features: {', '.join(detailed_info['features'][:3])}...")
-            
-            self.log_message("Detailed device information retrieved successfully")
-            
-        except Exception as e:
-            self.log_message(f"Error getting detailed info: {str(e)}")
-        finally:
-            self.detailed_info_btn.setEnabled(True)
     
     def on_device_found(self, vna, device_info):
         """Handle successful device detection."""
@@ -630,9 +582,8 @@ class NanoVNAStatusApp(QMainWindow):
         # Update device information display
         self.update_device_info(device_info)
         
-        # Enable disconnect button and detailed info button
+        # Enable disconnect button
         self.disconnect_btn.setEnabled(True)
-        self.detailed_info_btn.setEnabled(True)
         
         # Enhanced logging for device detection
         board = device_info.get('board', 'Unknown')
