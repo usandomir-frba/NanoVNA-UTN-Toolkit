@@ -35,11 +35,15 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
 class CalibrationWizard(QMainWindow):
-    def __init__(self, vna_device=None):
+    def __init__(self, vna_device=None, parent=None, caller="welcome"):
         super().__init__()
 
-        ui_dir = os.path.dirname(os.path.dirname(__file__))  
-        ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
+        logging.info(f"[CalibrationWizard] Initialized with caller: {caller}")
+
+        self.caller = caller
+
+        ui_dir = os.path.dirname(os.path.dirname(__file__))
+        ruta_ini = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
 
         settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
 
@@ -377,6 +381,7 @@ class CalibrationWizard(QMainWindow):
         self.start_freq_input.setMinimum(0.001)
         self.start_freq_input.setMaximum(100000)
         self.start_freq_input.setValue(50)
+        self.start_freq_input.setStyleSheet("background-color: white; color: black;")
         start_freq_layout.addWidget(self.start_freq_input)
         
         self.start_freq_unit = QComboBox()
@@ -393,6 +398,7 @@ class CalibrationWizard(QMainWindow):
         self.stop_freq_input.setMinimum(0.001)
         self.stop_freq_input.setMaximum(100000)
         self.stop_freq_input.setValue(1.5)
+        self.stop_freq_input.setStyleSheet("background-color: white; color: black;")
         stop_freq_layout.addWidget(self.stop_freq_input)
         
         self.stop_freq_unit = QComboBox()
@@ -431,10 +437,13 @@ class CalibrationWizard(QMainWindow):
             self.back_button.clicked.disconnect()
         except Exception:
             pass
-        self.back_button.clicked.connect(self.return_to_welcome)
+
+        if self.caller == "welcome":
+            self.back_button.clicked.connect(self.return_to_welcome)
+        elif self.caller == "graphics":
+            self.back_button.clicked.connect(self.return_to_graphics)
         
         self.current_step = 0
-
 
     def on_method_activated(self, index):
         """Called when user selects a method from the combo box."""
@@ -1014,6 +1023,35 @@ class CalibrationWizard(QMainWindow):
                 self, 
                 "Error", 
                 f"Failed to return to welcome window: {str(e)}"
+            )
+
+    def return_to_graphics(self):
+        """Return to the graphics window"""
+        try:
+            logging.info("Returning to graphics window from calibration wizard")
+            
+            # Import graphic window
+            from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+
+            # Create graphics window with VNA device if available
+            if self.vna_device:
+                graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
+            else:
+                graphics_window = NanoVNAGraphics()
+
+            # Show graphics window
+            graphics_window.show()
+            logging.info("Graphics window opened successfully")
+
+            # Close wizard
+            self.close()
+            
+        except Exception as e:
+            logging.error(f"Error returning to graphics window: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to return to graphics window: {str(e)}"
             )
     
     def _save_calibration_config(self):

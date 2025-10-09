@@ -1732,9 +1732,15 @@ class NanoVNAGraphics(QMainWindow):
 
     def open_calibration_wizard(self):
         from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
-        self.wizard_window = CalibrationWizard()
-        self.wizard_window.show()
+        logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
+        
+        if self.vna_device:
+            self.welcome_windows = CalibrationWizard(self.vna_device, caller="graphics")
+        else:
+            self.welcome_windows = CalibrationWizard(caller="graphics")
+        self.welcome_windows.show()
         self.close()
+
 
     # =================== SWEEP OPTIONS FUNCTION ==================
 

@@ -571,7 +571,7 @@ class NanoVNAWelcome(QMainWindow):
 
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
         if self.vna_device:
-            self.welcome_windows = CalibrationWizard(self.vna_device)
+            self.welcome_windows = CalibrationWizard(self.vna_device, caller="welcome")
         else:
             self.welcome_windows = CalibrationWizard()
         self.welcome_windows.show()
