@@ -1,4 +1,5 @@
 import sys
+import pandas as pd
 import logging
 import os
 from shiboken6 import isValid
@@ -761,8 +762,77 @@ class CalibrationWizard(QMainWindow):
             self.show_step_screen(self.current_step - 1)
 
     def finish_wizard(self):
-        """Finish wizard and open graphics window"""
+        """Finish calibration wizard, read S1P files, calculate errors, save each error as separate S1P, and open graphics window"""
         logging.info("Calibration wizard completed - opening graphics window")
+
+        # Determine base path (assuming this script is in ui/)
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        calibration_dir = os.path.join(base_dir, "Calibration", "osm_results")
+
+        # S1P files from the calibration wizard
+        open_file = os.path.join(calibration_dir, "open.s1p")
+        short_file = os.path.join(calibration_dir, "short.s1p")
+        match_file = os.path.join(calibration_dir, "match.s1p")
+
+        # Read S1P files using scikit-rf
+        open_s = rf.Network(open_file)
+        short_s = rf.Network(short_file)
+        match_s = rf.Network(match_file)
+
+        # Extract frequency and S11
+        freq = open_s.f  # Frequencies in Hz
+        s_open = open_s.s[:,0,0]   # S11 for open
+        s_short = short_s.s[:,0,0] # S11 for short
+        s_match = match_s.s[:,0,0] # S11 for match
+
+        # Initialize error arrays
+        n_points = len(freq)
+        error1 = np.zeros(n_points, dtype=complex)  # Directivity
+        error2 = np.zeros(n_points, dtype=complex)  # Reflection tracking
+        error3 = np.zeros(n_points, dtype=complex)  # Source match
+
+        # Calculate errors using real 3-term OSM formulas
+        for i in range(n_points):
+            # Directivity
+            error1[i] = s_match[i]  # e00
+
+            # Reflection tracking
+            error2[i] = (s_open[i] + s_short[i] - 2*error1[i]) / (s_open[i] - s_short[i])  # e11
+
+            # Source match
+            error3[i] = -2 * (s_open[i] - error1[i]) * (s_short[i] - error1[i]) / (s_open[i] - s_short[i])  # e10*e01
+
+        # --- Save each error as a separate S1P file ---
+        # Directivity error
+        directivity_network = rf.Network()
+        directivity_network.frequency = rf.Frequency.from_f(freq, unit='Hz')
+        directivity_network.s = error1.reshape((n_points,1,1))
+        directivity_file = os.path.join(calibration_dir, "directivity.s1p")
+        directivity_network.write_touchstone(directivity_file)
+        logging.info(f"Directivity error saved as S1P: {directivity_file}")
+
+        # Reflection tracking error
+        refl_tracking_network = rf.Network()
+        refl_tracking_network.frequency = rf.Frequency.from_f(freq, unit='Hz')
+        refl_tracking_network.s = error2.reshape((n_points,1,1))
+        refl_tracking_file = os.path.join(calibration_dir, "reflection_tracking.s1p")
+        refl_tracking_network.write_touchstone(refl_tracking_file)
+        logging.info(f"Reflection tracking error saved as S1P: {refl_tracking_file}")
+
+        # Source match error
+        source_match_network = rf.Network()
+        source_match_network.frequency = rf.Frequency.from_f(freq, unit='Hz')
+        source_match_network.s = error3.reshape((n_points,1,1))
+        source_match_file = os.path.join(calibration_dir, "source_match.s1p")
+        source_match_network.write_touchstone(source_match_file)
+        logging.info(f"Source match error saved as S1P: {source_match_file}")
+
+        # Store errors in the class instance for later use
+        self.error1 = error1
+        self.error2 = error2
+        self.error3 = error3
+
+        # Finally, open the graphics window
         self.open_graphics_window()
 
     def perform_calibration_measurement(self, step, standard_name):

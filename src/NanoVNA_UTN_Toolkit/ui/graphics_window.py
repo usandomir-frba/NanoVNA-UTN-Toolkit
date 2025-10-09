@@ -16,6 +16,8 @@ from ..exporters.touchstone_exporter import TouchstoneExporter
 
 from matplotlib.backends.backend_pdf import PdfPages
 
+from NanoVNA_UTN_Toolkit.ui.calibration.methods import Methods
+
 # Suppress verbose matplotlib logging
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
@@ -2244,7 +2246,17 @@ class NanoVNAGraphics(QMainWindow):
             # Read S11 data
             logging.info("[graphics_window.run_sweep] Reading S11 data...")
             s11_data = self.vna_device.readValues("data 0")
-            s11 = np.array(s11_data)
+            s11_med = np.array(s11_data)
+
+            # Determine the calibration directory
+            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+
+            # Create a Methods instance
+            methods = Methods(cal_dir)
+
+            # Calibrate the measured S11
+            s11 = methods.osm_calibrate_s11(s11_med)
+
             logging.info(f"[graphics_window.run_sweep] Got {len(s11)} S11 data points")
             self.sweep_progress_bar.setValue(80)
             QApplication.processEvents()
