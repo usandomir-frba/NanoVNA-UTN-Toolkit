@@ -25,9 +25,14 @@ except ImportError as e:
 # Import calibration data storage
 try:
     from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager
+    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import THRUCalibrationManager
 except ImportError as e:
     logging.error("Failed to import OSMCalibrationManager: %s", e)
+    logging.error("Failed to import THRUCalibrationManager: %s", e)
     OSMCalibrationManager = None
+    THRUCalibrationManager = None
+
+from NanoVNA_UTN_Toolkit.ui.calibration.errors import CalibrationErrors
 
 import numpy as np
 import skrf as rf
@@ -229,6 +234,15 @@ class CalibrationWizard(QMainWindow):
             self.osm_calibration = None
             logging.warning("[CalibrationWizard] OSMCalibrationManager not available")
         
+        if THRUCalibrationManager:
+            self.thru_calibration = THRUCalibrationManager()
+            if vna_device and hasattr(vna_device, 'name'):
+                self.thru_calibration.device_name = vna_device.name
+            logging.info("[CalibrationWizard] THRU calibration manager initialized")
+        else:
+            self.thru_calibration = None
+            logging.warning("[CalibrationWizard] THRUCalibrationManager not available")
+
         # Store measured data state for UI consistency
         self.measured_data = {
             'open': None,
@@ -604,12 +618,19 @@ class CalibrationWizard(QMainWindow):
                 step_name = "SHORT"
             elif step == 3:
                 step_name = "MATCH"
+
+        if self.selected_method == "Normalization":
+            if step == 1:
+                step_name = "THRU"
         
         # Check if this standard has already been measured
         is_measured = False
         if self.osm_calibration:
             is_measured = self.osm_calibration.is_standard_measured(step_name.lower())
-        
+
+        if self.thru_calibration:
+            is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
+
         # Instrucciones del paso actual
         if is_measured:
             instruction_text = f"{step_name} standard already measured ✓"
@@ -666,6 +687,30 @@ class CalibrationWizard(QMainWindow):
                 
                 # Store reference for later updates
                 self.calibration_status_widgets[standard] = label
+
+        # Measurement completion status
+        if self.thru_calibration and self.selected_method == "Normalization":
+            status = self.thru_calibration.get_completion_status()
+
+            status_label = QLabel("Calibration Status:")
+            status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
+            left_layout.addWidget(status_label)
+            
+            # Store references to status widgets for later updates
+            self.calibration_status_widgets = {}
+            
+            for standard, completed in status.items():
+                if standard == 'complete':
+                    continue
+                icon = "✓" if completed else "✗"
+                color = "green" if completed else "red"
+                status_text = 'Completed' if completed else 'Pending'
+                label = QLabel(f"{icon} {standard.upper()}: {status_text}")
+                label.setStyleSheet(f"font-size: 14px; color: {color}; margin-left: 10px;")
+                left_layout.addWidget(label)
+                
+                # Store reference for later updates
+                self.calibration_status_widgets[standard] = label
         
         left_layout.addStretch()
 
@@ -697,6 +742,9 @@ class CalibrationWizard(QMainWindow):
 
         # Show only the measurement for the current step if it exists
         if self.osm_calibration and self.selected_method == "OSM (Open - Short - Match)":
+            self.show_current_step_measurement(step)
+
+        if self.thru_calibration and self.selected_method == "Normalization":
             self.show_current_step_measurement(step)
 
         self.current_step = step
@@ -741,6 +789,29 @@ class CalibrationWizard(QMainWindow):
                 pass
             self.next_button.clicked.connect(self.next_step)
 
+        if step == len(steps):
+            # Always show save button in final step for Thru calibration
+            if self.thru_calibration and self.selected_method == "Normalization":
+                self.save_button.setVisible(True)
+            else:
+                self.save_button.setVisible(False)
+                
+            self.next_button.setText("Finish")
+            try:
+                self.next_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.next_button.clicked.connect(self.finish_wizard)
+        else:
+            self.save_button.setVisible(False)  # Hide save button in non-final steps
+            self.next_button.setText("▶▶")
+            try:
+                self.next_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.next_button.clicked.connect(self.next_step)
+
+
     # --- navigation handlers -------------------------------------------------
     def next_step(self):
         if self.current_step == 0:
@@ -762,78 +833,23 @@ class CalibrationWizard(QMainWindow):
             self.show_step_screen(self.current_step - 1)
 
     def finish_wizard(self):
-        """Finish calibration wizard, read S1P files, calculate errors, save each error as separate S1P, and open graphics window"""
-        logging.info("Calibration wizard completed - opening graphics window")
+        """Finish calibration wizard by calculating OSM errors and opening graphics window."""
+        logging.info("Calibration wizard completed - calculating OSM errors")
 
-        # Determine base path (assuming this script is in ui/)
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        calibration_dir = os.path.join(base_dir, "Calibration", "osm_results")
+        cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
 
-        # S1P files from the calibration wizard
-        open_file = os.path.join(calibration_dir, "open.s1p")
-        short_file = os.path.join(calibration_dir, "short.s1p")
-        match_file = os.path.join(calibration_dir, "match.s1p")
+        # Create calibration error handler and compute OSM errors
+        errors = CalibrationErrors(cal_dir)
+        errors.calculate_osm_errors()
 
-        # Read S1P files using scikit-rf
-        open_s = rf.Network(open_file)
-        short_s = rf.Network(short_file)
-        match_s = rf.Network(match_file)
+        # Store results for later use if needed
+        self.error1 = errors.error1
+        self.error2 = errors.error2
+        self.error3 = errors.error3
 
-        # Extract frequency and S11
-        freq = open_s.f  # Frequencies in Hz
-        s_open = open_s.s[:,0,0]   # S11 for open
-        s_short = short_s.s[:,0,0] # S11 for short
-        s_match = match_s.s[:,0,0] # S11 for match
-
-        # Initialize error arrays
-        n_points = len(freq)
-        error1 = np.zeros(n_points, dtype=complex)  # Directivity
-        error2 = np.zeros(n_points, dtype=complex)  # Reflection tracking
-        error3 = np.zeros(n_points, dtype=complex)  # Source match
-
-        # Calculate errors using real 3-term OSM formulas
-        for i in range(n_points):
-            # Directivity
-            error1[i] = s_match[i]  # e00
-
-            # Reflection tracking
-            error2[i] = (s_open[i] + s_short[i] - 2*error1[i]) / (s_open[i] - s_short[i])  # e11
-
-            # Source match
-            error3[i] = -2 * (s_open[i] - error1[i]) * (s_short[i] - error1[i]) / (s_open[i] - s_short[i])  # e10*e01
-
-        # --- Save each error as a separate S1P file ---
-        # Directivity error
-        directivity_network = rf.Network()
-        directivity_network.frequency = rf.Frequency.from_f(freq, unit='Hz')
-        directivity_network.s = error1.reshape((n_points,1,1))
-        directivity_file = os.path.join(calibration_dir, "directivity.s1p")
-        directivity_network.write_touchstone(directivity_file)
-        logging.info(f"Directivity error saved as S1P: {directivity_file}")
-
-        # Reflection tracking error
-        refl_tracking_network = rf.Network()
-        refl_tracking_network.frequency = rf.Frequency.from_f(freq, unit='Hz')
-        refl_tracking_network.s = error2.reshape((n_points,1,1))
-        refl_tracking_file = os.path.join(calibration_dir, "reflection_tracking.s1p")
-        refl_tracking_network.write_touchstone(refl_tracking_file)
-        logging.info(f"Reflection tracking error saved as S1P: {refl_tracking_file}")
-
-        # Source match error
-        source_match_network = rf.Network()
-        source_match_network.frequency = rf.Frequency.from_f(freq, unit='Hz')
-        source_match_network.s = error3.reshape((n_points,1,1))
-        source_match_file = os.path.join(calibration_dir, "source_match.s1p")
-        source_match_network.write_touchstone(source_match_file)
-        logging.info(f"Source match error saved as S1P: {source_match_file}")
-
-        # Store errors in the class instance for later use
-        self.error1 = error1
-        self.error2 = error2
-        self.error3 = error3
-
-        # Finally, open the graphics window
+        # Open graphics window
         self.open_graphics_window()
+
 
     def perform_calibration_measurement(self, step, standard_name):
         """Perform sweep measurement for calibration standard."""
@@ -912,35 +928,66 @@ class CalibrationWizard(QMainWindow):
             s11 = np.array(s11_data)
             
             logging.info(f"[CalibrationWizard] Got {len(freqs)} points")
-            
-            # Save data in calibration structure
-            if self.osm_calibration:
-                if standard_name == "OPEN":
-                    self.osm_calibration.set_measurement("open", freqs, s11)
-                elif standard_name == "SHORT":
-                    self.osm_calibration.set_measurement("short", freqs, s11)
-                elif standard_name == "MATCH":
-                    self.osm_calibration.set_measurement("match", freqs, s11)
+
+            if standard_name == "OPEN" or standard_name == "SHORT" or standard_name == "MATCH":
                 
-                # Show completion status
-                status = self.osm_calibration.get_completion_status()
-                logging.info(f"[CalibrationWizard] Calibration status: {status}")
+                # Save data in calibration structure
+                if self.osm_calibration:
+                    if standard_name == "OPEN":
+                        self.osm_calibration.set_measurement("open", freqs, s11)
+                    elif standard_name == "SHORT":
+                        self.osm_calibration.set_measurement("short", freqs, s11)
+                    elif standard_name == "MATCH":
+                        self.osm_calibration.set_measurement("match", freqs, s11)
+                    
+                    # Show completion status
+                    status = self.osm_calibration.get_completion_status()
+                    logging.info(f"[CalibrationWizard] Calibration status: {status}")
+                    
+                    # Update the status display immediately after measurement
+                    self.update_calibration_status_display()
+                    
+                    # Update UI state after measurement
+                    self.status_label.setText(f"{standard_name} measurement complete")
+                    self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
                 
-                # Update the status display immediately after measurement
-                self.update_calibration_status_display()
+                # Update Smith chart with measured data
+                self.update_smith_chart(freqs, s11, standard_name)
                 
-                # Update UI state after measurement
-                self.status_label.setText(f"{standard_name} measurement complete")
+                # Update status
+                self.status_label.setText(f"{standard_name} measured successfully!")
                 self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
-            
-            # Update Smith chart with measured data
-            self.update_smith_chart(freqs, s11, standard_name)
-            
-            # Update status
-            self.status_label.setText(f"{standard_name} measured successfully!")
-            self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
-            
-            logging.info(f"[CalibrationWizard] Measurement for {standard_name} completed successfully")
+                
+                logging.info(f"[CalibrationWizard] Measurement for {standard_name} completed successfully")
+
+            elif standard_name == "THRU":
+                s21_data = self.vna_device.readValues("data 1")
+                s21 = np.array(s21_data)
+
+                # Save data in calibration structure
+                if self.thru_calibration:
+                    if standard_name == "THRU":
+                        self.thru_calibration.set_measurement("thru", freqs, s21)
+                    
+                    # Show completion status
+                    status = self.thru_calibration.get_completion_status()
+                    logging.info(f"[CalibrationWizard] Calibration status: {status}")
+                    
+                    # Update the status display immediately after measurement
+                    self.update_calibration_status_display()
+                    
+                    # Update UI state after measurement
+                    self.status_label.setText(f"{standard_name} measurement complete")
+                    self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+
+                # Update Magnitude chart with measured data
+                self.update_magnitude_chart(freqs, s21, standard_name)
+                
+                # Update status
+                self.status_label.setText(f"{standard_name} measured successfully!")
+                self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+                
+                logging.info(f"[CalibrationWizard] Measurement for {standard_name} completed successfully")
             
         except Exception as e:
             error_msg = f"Error during measurement: {str(e)}"
@@ -953,9 +1000,15 @@ class CalibrationWizard(QMainWindow):
         """Shows a dialog to save the calibration without advancing to graphics window"""
         if not self.osm_calibration:
             return
+
+        if not self.thru_calibration:
+            return
             
         # Check which measurements are available
         status = self.osm_calibration.get_completion_status()
+        measured_standards = [std for std, completed in status.items() if completed and std != 'complete']
+
+        status = self.thru_calibration.get_completion_status()
         measured_standards = [std for std, completed in status.items() if completed and std != 'complete']
         
         if not measured_standards:
@@ -995,6 +1048,23 @@ class CalibrationWizard(QMainWindow):
                 else:
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.warning(self, "Error", "Failed to save calibration")
+
+                success = self.thru_calibration.save_calibration_file(name)
+                if success:
+                    # Show success message
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self, 
+                        "Success", 
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    
+                    # Stay in wizard - do not advance to graphics window
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                    
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.warning(self, "Error", "Failed to save calibration")
                     
             except Exception as e:
                 logging.error(f"[CalibrationWizard] Error saving calibration: {e}")
@@ -1012,6 +1082,19 @@ class CalibrationWizard(QMainWindow):
         if hasattr(self, 'calibration_status_widgets') and self.osm_calibration:
             status = self.osm_calibration.get_completion_status()
             
+            # Update each status widget
+            for standard, widget in self.calibration_status_widgets.items():
+                if standard in status:
+                    completed = status[standard]
+                    icon = "✓" if completed else "✗"
+                    color = "green" if completed else "red"
+                    status_text = 'Completed' if completed else 'Pending'
+                    widget.setText(f"{icon} {standard.upper()}: {status_text}")
+                    widget.setStyleSheet(f"font-size: 14px; color: {color}; margin-left: 10px;")
+
+        if hasattr(self, 'calibration_status_widgets') and self.thru_calibration:
+            status = self.thru_calibration.get_completion_status()
+
             # Update each status widget
             for standard, widget in self.calibration_status_widgets.items():
                 if standard in status:
@@ -1156,8 +1239,12 @@ class CalibrationWizard(QMainWindow):
     def show_existing_measurements_on_chart(self):
         """Show all existing measurements on Smith chart to preserve state"""
         from ..utils.smith_chart_utils import SmithChartManager
+        from ..utils.magnitude_chat_utils import MagnitudeChartManager
         
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
+            return
+
+        if not self.thru_calibration or not hasattr(self, 'current_ax'):
             return
             
         try:
@@ -1182,39 +1269,70 @@ class CalibrationWizard(QMainWindow):
             
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error showing existing measurements: {e}")
+
+        try:
+            # Collect all existing measurements
+            measurements = {}
+            for standard_name in ['thru']:
+                if self.thru_calibration.is_standard_measured(standard_name):
+                    measurement = self.thru_calibration.get_measurement(standard_name)
+                    if measurement:
+                        measurements[standard_name] = measurement
+
+            # Use consolidated Magnitude chart functionality
+            manager = MagnitudeChartManager()
+            manager.show_multiple_measurements(
+                ax=self.current_ax,
+                measurements_dict=measurements,
+                canvas=self.current_canvas,
+                start_freq=self.get_sweep_start_frequency(),
+                stop_freq=self.get_sweep_stop_frequency(),
+                num_points=self.get_sweep_steps()
+            )
+            
+        except Exception as e:
+            logging.error(f"[CalibrationWizard] Error showing existing measurements: {e}")
     
     def show_current_step_measurement(self, step):
         """Show only the measurement for the current step on Smith chart."""
         from ..utils.smith_chart_utils import SmithChartManager
+        from ..utils.magnitude_chat_utils import MagnitudeChartManager
         
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
+            return
+
+        if not self.thru_calibration or not hasattr(self, 'current_ax'):
             return
             
         try:
             # Determine which standard corresponds to current step
             step_name = None
-            if step == 1:
-                step_name = "open"
-            elif step == 2:
-                step_name = "short"
-            elif step == 3:
-                step_name = "match"
-            
+            if self.selected_method == "OSM (Open - Short - Match)":
+                if step == 1:
+                    step_name = "open"
+                elif step == 2:
+                    step_name = "short"
+                elif step == 3:
+                    step_name = "match"
+            elif self.selected_method == "Normalization":
+                if step == 1:
+                    step_name = "thru"
+
             # Show only the measurement for the current step if it exists
-            if step_name and self.osm_calibration.is_standard_measured(step_name):
-                measurement = self.osm_calibration.get_measurement(step_name)
-                if measurement:
-                    freqs, s11 = measurement
-                    
-                    # Use consolidated Smith chart functionality for single measurement
-                    manager = SmithChartManager()
-                    manager.update_wizard_measurement(
-                        ax=self.current_ax,
-                        freqs=freqs,
-                        s11_data=s11,
-                        standard_name=step_name,
-                        canvas=self.current_canvas
-                    )
+            if self.selected_method == "OSM (Open - Short - Match)" and step_name in ["open", "short", "match"]:
+                if self.osm_calibration and self.osm_calibration.is_standard_measured(step_name):
+                    measurement = self.osm_calibration.get_measurement(step_name)
+                    if measurement:
+                        freqs, s11 = measurement
+                        manager = SmithChartManager()
+                        manager.update_wizard_measurement(
+                            ax=self.current_ax,
+                            freqs=freqs,
+                            s11_data=s11,
+                            standard_name=step_name,
+                            canvas=self.current_canvas
+                        )
+                        return
             else:
                 # Clear and show empty Smith chart if no measurement exists
                 self.current_ax.clear()
@@ -1227,7 +1345,38 @@ class CalibrationWizard(QMainWindow):
                 manager.builder.ax = self.current_ax
                 manager.builder.draw_base_smith_chart(base_network)
                 self.current_canvas.draw()
-            
+
+            if self.selected_method == "Normalization" and step_name == "thru":
+                if self.thru_calibration.is_standard_measured(step_name):
+                    measurement = self.thru_calibration.get_measurement(step_name)
+                    if measurement:
+                        freqs, s11 = measurement
+
+                        # Use consolidated Magnitude plot functionality for single measurement
+                        manager = MagnitudeChartManager()  # New manager for magnitude
+                        manager.update_wizard_measurement(
+                            ax=self.current_ax,
+                            freqs=freqs,
+                            s_data=np.abs(s11),  # Use magnitude instead of complex S11
+                            standard_name=step_name,
+                            canvas=self.current_canvas
+                        )
+                else:
+                    # Clear and show empty magnitude plot if no measurement exists
+                    self.current_ax.clear()
+                    manager = MagnitudePlotManager()
+                    freqs_base = np.linspace(
+                        self.get_sweep_start_frequency(),
+                        self.get_sweep_stop_frequency(),
+                        self.get_sweep_steps()
+                    )
+                    # Create empty y-data for magnitude plot
+                    s_data_empty = np.zeros_like(freqs_base)
+                    
+                    manager.builder.ax = self.current_ax
+                    manager.builder.plot_base_magnitude(freqs_base, s_data_empty)  # Replace Smith chart base with magnitude
+                    self.current_canvas.draw()
+
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error showing current step measurement: {e}")
     
@@ -1247,6 +1396,25 @@ class CalibrationWizard(QMainWindow):
             s11_data=s11,
             standard_name=standard_name,
             canvas=self.current_canvas
+        )
+
+    def update_magnitude_chart(self, freqs, s21, standard_name):
+        """Update Magnitude chart with measured calibration data."""
+        from ..utils.magnitude_chat_utils import MagnitudeChartManager
+        
+        if not hasattr(self, 'current_ax') or not self.current_ax:
+            logging.warning("[CalibrationWizard] No Magnitude chart axis available")
+            return
+
+        # Use consolidated Magnitude chart functionality
+        manager = MagnitudeChartManager()
+        manager.update_wizard_measurement(
+            ax=self.current_ax,
+            freqs=freqs,
+            s21_data=s21,
+            standard_name=standard_name,
+            canvas=self.current_canvas,
+            in_dB=False  # Display in linear scale for calibration
         )
 
     def get_sweep_start_frequency(self):
