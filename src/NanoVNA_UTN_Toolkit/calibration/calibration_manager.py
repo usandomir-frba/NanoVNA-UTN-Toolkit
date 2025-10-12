@@ -351,16 +351,16 @@ class THRUCalibrationManager:
         logging.info(f"[THRUCalibrationManager] Initialized with base path: {base_path}")
 
     # ------------------- Measurement Handling -------------------
-    def set_measurement(self, standard_name: str, freqs: np.ndarray, s11: np.ndarray) -> bool:
+    def set_measurement(self, standard_name: str, freqs: np.ndarray, s21: np.ndarray) -> bool:
         """Store THRU measurement and save as Touchstone file."""
         try:
             self.measurements[standard_name]['freqs'] = np.array(freqs)
-            self.measurements[standard_name]['s11'] = np.array(s11)
+            self.measurements[standard_name]['s21'] = np.array(s21)
             self.measurements[standard_name]['measured'] = True
             self.is_complete = True
             self.calibration_date = datetime.now()
 
-            touchstone_path = os.path.join(self.thru_results_path, "thru.s1p")
+            touchstone_path = os.path.join(self.thru_results_path, "thru.s2p")
             self._save_as_touchstone(freqs, s21, touchstone_path)
 
             logging.info(f"[THRUCalibrationManager] THRU measurement saved")
@@ -371,14 +371,24 @@ class THRUCalibrationManager:
             return False
 
     def _save_as_touchstone(self, freqs: np.ndarray, s21: np.ndarray, filepath: str):
-        """Save THRU measurement as Touchstone .s1p file."""
+        """Save THRU measurement as Touchstone .s2p file (S21 explícito, S11/S12/S22 = 0)."""
         try:
-            s_data = s21.reshape(-1, 1, 1)
+            import numpy as np
+            import skrf as rf
+
+            # Crea matriz S de 2 puertos: S11, S12, S21, S22
+            s_data = np.zeros((len(freqs), 2, 2), dtype=complex)
+            s_data[:, 1, 0] = s21  # S21
+            # S11, S12, S22 quedan en 0
+
             network = rf.Network(frequency=freqs, s=s_data, z0=50)
+            # Forzar extensión .s2p
+            if not filepath.endswith('.s2p'):
+                filepath = os.path.splitext(filepath)[0] + '.s2p'
             network.write_touchstone(filepath)
-            logging.info(f"[THRUCalibrationManager] Touchstone file saved: {filepath}")
+            logging.info(f"[THRUCalibrationManager] Touchstone S2P file saved: {filepath}")
         except Exception as e:
-            logging.error(f"[THRUCalibrationManager] Error writing Touchstone file: {e}")
+            logging.error(f"[THRUCalibrationManager] Error writing Touchstone S2P file: {e}")
 
     def get_measurement(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """Return THRU measurement data if available."""
