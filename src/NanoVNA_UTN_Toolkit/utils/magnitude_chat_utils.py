@@ -21,8 +21,8 @@ class MagnitudeChartConfig:
     def __init__(self):
         # Colors
         self.background_color = "#3a3a3a"
-        self.axis_color = "gray"
-        self.text_color = "black"
+        self.axis_color = "white"
+        self.text_color = "white"
         self.trace_color = "blue"
         self.marker_color = "red"
         
@@ -118,6 +118,12 @@ class MagnitudeChartManager:
         fig, ax = self.builder.setup_figure(figsize=figsize)
         freqs = np.linspace(start_freq, stop_freq, num_points)
         ax.plot(freqs, np.zeros(num_points), color="gray", alpha=0.3)
+        ax.tick_params(axis="x", colors="white")
+        ax.tick_params(axis="y", colors="white")
+        ax.xaxis.label.set_color("white")
+        ax.yaxis.label.set_color("white")
+        ax.title.set_color("white")
+        
         canvas = self.builder.create_canvas()
         if container_layout:
             container_layout.addWidget(canvas)
@@ -126,24 +132,40 @@ class MagnitudeChartManager:
     def update_wizard_measurement(self, ax, freqs, s21_data, standard_name, canvas=None, color_map=None, in_dB=False):
         """Update wizard magnitude chart with new measurement."""
         if color_map is None:
-            color_map = {'thru': 'blue'}
-        
+            color_map = {'thru': 'blue', 'open': 'orange', 'short': 'red', 'load': 'green'}
+
         try:
             ax.clear()
+
+            # Reapply background and grid styling (se pierde con clear)
+            ax.set_facecolor(self.config.background_color)
+            ax.tick_params(axis='x', colors=self.config.axis_color)
+            ax.tick_params(axis='y', colors=self.config.axis_color)
+            ax.xaxis.label.set_color(self.config.text_color)
+            ax.yaxis.label.set_color(self.config.text_color)
+            ax.title.set_color(self.config.text_color)
+            ax.grid(True, linestyle="--", alpha=0.5)
+
             ax.set_title(f"{standard_name} – Magnitude vs Frequency")
             ax.set_xlabel("Frequency (Hz)")
             ax.set_ylabel("|S21| (times)" if not in_dB else "|S21| (dB)")
-            ax.grid(True, linestyle="--", alpha=0.5)
+
             color = color_map.get(standard_name.lower(), self.config.trace_color)
+
             magnitude = np.abs(s21_data)
-            if in_dB:
-                magnitude = 20 * np.log10(magnitude + 1e-12)
+            
+            magnitude = 20 * np.log10(magnitude)
+
             ax.plot(freqs, magnitude, '-', color=color, linewidth=self.config.linewidth)
+
             legend_line = Line2D([0], [0], color=color)
-            ax.legend([legend_line], [f"{standard_name}"], loc='upper right', frameon=True)
+            ax.legend([legend_line], [f"{standard_name.upper()}"], loc='upper right', frameon=True)
+
             if canvas:
                 canvas.draw()
+
             logging.info(f"[MagnitudeChartManager] Updated magnitude plot for {standard_name}")
+
         except Exception as e:
             logging.error(f"[MagnitudeChartManager] Error updating magnitude measurement: {e}")
 
@@ -202,7 +224,7 @@ def create_simple_magnitude_chart(freqs, s_data, figsize=(6, 4), s_param="S21", 
 def update_magnitude_chart_measurement(ax, freqs, s21_data, standard_name, canvas=None, in_dB=False):
     """Simple function to update magnitude chart with measurement."""
     manager = MagnitudeChartManager()
-    manager.update_wizard_measurement(ax, freqs, s_data, standard_name, canvas, in_dB=in_dB)
+    manager.update_wizard_measurement(ax, freqs, s21_data, standard_name, canvas, in_dB=in_dB)
 
 def create_wizard_magnitude_chart(start_freq, stop_freq, num_points, container_layout=None, figsize=(6, 4)):
     """Simple function to create wizard magnitude chart."""

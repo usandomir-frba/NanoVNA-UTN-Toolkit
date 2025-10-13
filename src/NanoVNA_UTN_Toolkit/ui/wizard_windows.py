@@ -740,19 +740,40 @@ class CalibrationWizard(QMainWindow):
 
         # Use consolidated Smith chart creation
         from ..utils.smith_chart_utils import create_wizard_smith_chart
-        
-        fig, ax, canvas = create_wizard_smith_chart(
-            start_freq=self.get_sweep_start_frequency(),
-            stop_freq=self.get_sweep_stop_frequency(),
-            num_points=self.get_sweep_steps(),
-            container_layout=right_layout,
-            figsize=(8, 8)  # Significantly larger square aspect ratio for better visibility
-        )
-        
-        # Store references for later updates
-        self.current_fig = fig
-        self.current_canvas = canvas
-        self.current_ax = ax
+        from ..utils.magnitude_chat_utils import create_wizard_magnitude_chart
+
+        if step_name == "OPEN" or "SHORT" or "MATCH":
+            fig, ax, canvas = create_wizard_smith_chart(
+                start_freq=self.get_sweep_start_frequency(),
+                stop_freq=self.get_sweep_stop_frequency(),
+                num_points=self.get_sweep_steps(),
+                container_layout=right_layout,
+                figsize=(8, 8)  # Significantly larger square aspect ratio for better visibility
+            )
+            # Store references for later updates
+            self.current_fig = fig
+            self.current_canvas = canvas
+            self.current_ax = ax
+
+        if step_name == "THRU":
+            while right_layout.count():
+                item = right_layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
+
+            fig_magnitude, ax_magnitude, canvas_magnitude = create_wizard_magnitude_chart(
+                start_freq=self.get_sweep_start_frequency(),
+                stop_freq=self.get_sweep_stop_frequency(),
+                num_points=self.get_sweep_steps(),
+                container_layout=right_layout,
+                figsize=(5, 5)  # Significantly larger square aspect ratio for better visibility
+            )
+
+            # Store references for later updates
+            self.current_fig_magnitude = fig_magnitude
+            self.current_canvas_magnitude = canvas_magnitude
+            self.current_ax_magnitude = ax_magnitude
 
         # Layout horizontal
         panel_row = QHBoxLayout()
@@ -1448,11 +1469,11 @@ class CalibrationWizard(QMainWindow):
         # Use consolidated Magnitude chart functionality
         manager = MagnitudeChartManager()
         manager.update_wizard_measurement(
-            ax=self.current_ax,
+            ax=self.current_ax_magnitude,
             freqs=freqs,
             s21_data=s21,
             standard_name=standard_name,
-            canvas=self.current_canvas,
+            canvas=self.current_canvas_magnitude,
             in_dB=False  # Display in linear scale for calibration
         )
 
