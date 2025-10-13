@@ -177,6 +177,68 @@ class CalibrationErrors:
 
         logging.info("[CalibrationErrors] 1-Port+N error calculation completed successfully")
 
+    def calculate_enhanced_response_errors(self, osm_dir, thru_dir):
+        """
+        Calculate errors for the Enhanced-Response calibration method (OSM + THRU + S11M).
+
+        This method:
+        - Calculates OSM errors as usual.
+        - Calculates transmission tracking (e10e32) and load match (e22) using THRU measurement and OSM errors.
+        - Saves all errors in the 'enhanced_response_errors' subfolder.
+        """
+        logging.info("[CalibrationErrors] Calculating Enhanced-Response errors (OSM + THRU + S11M)")
+
+        # --- OSM errors ---
+        prev_dir = self.calibration_dir
+        self.calibration_dir = osm_dir
+        
+        open_s, short_s, match_s = self._load_osm_files()
+        self.calibration_dir = prev_dir
+
+        freq = open_s.f
+        s_open = open_s.s[:, 0, 0]
+        s_short = short_s.s[:, 0, 0]
+        s_match = match_s.s[:, 0, 0]
+
+        n_points = len(freq)
+        e00 = np.zeros(n_points, dtype=complex)
+        e11 = np.zeros(n_points, dtype=complex)
+        e10e01 = np.zeros(n_points, dtype=complex)
+
+        for i in range(n_points):
+            e00[i] = s_match[i]
+            e11[i] = (s_open[i] + s_short[i] - 2 * e00[i]) / (s_open[i] - s_short[i])
+            e10e01[i] = -2 * (s_open[i] - e00[i]) * (s_short[i] - e00[i]) / (s_open[i] - s_short[i])
+        delta_e = e11 * e00 - e10e01
+
+        # --- THRU measurement ---
+        self.calibration_dir = thru_dir
+        thru_s = self._load_thru_file()
+        self.calibration_dir = prev_dir
+
+        thru_freq = thru_s.f
+        s11m = thru_s.s[:, 0, 0]  # S11 measured in THRU
+        s21m = thru_s.s[:, 1, 0]  # S21 measured in THRU
+
+        # --- Enhanced formulas ---
+        # e22 = (S11M - e00) / (S11M * e11 - delta_e)
+        e22 = (s11m - e00) / (s11m * e11 - delta_e)
+        # e10e32 = S21M * (1 - e11 * e22)
+        e10e32 = s21m * (1 - (e11 * e22))
+
+        # --- Save all errors in enhanced_response_errors subfolder ---
+        enhanced_dir = os.path.join(self.calibration_dir, "enhanced_response_errors")
+        os.makedirs(enhanced_dir, exist_ok=True)
+
+        # Save OSM errors
+        self._save_osm_error_file(freq, e00, "directivity.s1p", "Directivity (Enhanced-Response)")
+        self._save_osm_error_file(freq, e11, "reflection_tracking.s1p", "Reflection Tracking (Enhanced-Response)")
+        self._save_osm_error_file(freq, e10e01, "source_match.s1p", "Source Match (Enhanced-Response)")
+        # Save load match (e22)
+        self._save_enhanced_response_error_file(thru_freq, e10e32, e22, "transmission_tracking.s2p", "load_match.s2p", "Transmission Tracking (Enhanced-Response)", "Load Match (Enhanced-Response)")
+
+        logging.info("[CalibrationErrors] Enhanced-Response error calculation completed successfully")
+
     # ======================================================================
     #  Utility Methods
     # ======================================================================
@@ -236,4 +298,25 @@ class CalibrationErrors:
         filepath = os.path.join(self.error_dir, filename)
         network.write_touchstone(filepath)
         logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
+
+    def _save_enhanced_response_error_file(self, freq, e10e31, e22, transmission_tracking, load_match, label1, label2):
+
+        network = rf.Network()
+        network.frequency = rf.Frequency.from_f(freq, unit="Hz")
+        s_matrix = np.zeros((len(freq), 2, 2), dtype=complex)
+        s_matrix[:, 1, 0] = e10e31  # S21
+        network.s = s_matrix
+        filepath = os.path.join(self.error_dir, transmission_tracking)
+        network.write_touchstone(filepath)
+        logging.info(f"[CalibrationErrors] {label1} error saved: {filepath}")
+
+        network = rf.Network()
+        network.frequency = rf.Frequency.from_f(freq, unit="Hz")
+        s_matrix = np.zeros((len(freq), 2, 2), dtype=complex)
+        s_matrix[:, 1, 0] = e22  # S21
+        network.s = s_matrix
+        filepath = os.path.join(self.error_dir, load_match)
+        network.write_touchstone(filepath)
+        logging.info(f"[CalibrationErrors] {label2} error saved: {filepath}")
+
 

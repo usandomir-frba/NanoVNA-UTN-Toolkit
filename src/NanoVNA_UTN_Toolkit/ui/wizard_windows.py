@@ -632,6 +632,16 @@ class CalibrationWizard(QMainWindow):
                 step_name = "MATCH"
             elif step == 4:
                 step_name = "THRU"
+
+        if self.selected_method == "Enhanced-Response":
+            if step == 1:
+                step_name = "OPEN"
+            elif step == 2:
+                step_name = "SHORT"
+            elif step == 3:
+                step_name = "MATCH"
+            elif step == 4:
+                step_name = "THRU"
         
         # Check if this standard has already been measured
         is_measured = False
@@ -846,22 +856,31 @@ class CalibrationWizard(QMainWindow):
         """Finish calibration wizard by calculating OSM errors and opening graphics window."""
         logging.info("Calibration wizard completed - calculating OSM errors")
 
-        cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+        if self.selected_method == "OSM (Open - Short - Match)":
+            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
 
-        # Create calibration error handler and compute OSM errors
-        errors = CalibrationErrors(cal_dir, error_subfolder="osm_errors")
-        errors.calculate_osm_errors()
+            # Create calibration error handler and compute OSM errors
+            errors = CalibrationErrors(cal_dir, error_subfolder="osm_errors")
+            errors.calculate_osm_errors()
 
-        cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+        elif self.selected_method == "Normalization":
+            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
 
-        errors = CalibrationErrors(cal_dir, error_subfolder="normalization_errors")
-        errors.calculate_normalization_errors()
+            errors = CalibrationErrors(cal_dir, error_subfolder="normalization_errors")
+            errors.calculate_normalization_errors()
 
-        osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
-        thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+        elif self.selected_method == "1-Port+N":
+            osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+            thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
 
-        errors = CalibrationErrors(cal_dir, error_subfolder="1-Port+N_errors")
-        errors.calculate_1PortN_errors(osm_dir, thru_dir)
+            errors = CalibrationErrors(thru_dir, error_subfolder="1-Port+N_errors")
+            errors.calculate_1PortN_errors(osm_dir, thru_dir)
+        elif self.selected_method == "Enhanced-Response":
+            osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+            thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+
+            errors = CalibrationErrors(thru_dir, error_subfolder="enhanced_response_errors")
+            errors.calculate_enhanced_response_errors(osm_dir, thru_dir)
 
         # Store results for later use if needed
         self.directivity = errors.directivity

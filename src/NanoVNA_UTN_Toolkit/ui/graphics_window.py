@@ -2293,18 +2293,13 @@ class NanoVNAGraphics(QMainWindow):
                 methods = Methods(cal_dir)
             
                 s21 = methods.normalization_calibrate_s21(s21_med)
+
             elif calibration_method == "Enhanced-Response":
                 # Cal_Directory
                 osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
                 thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
 
-                s11, s21 = methods.one_port_n_calibrate(s11_med, s21_med, osm_dir, thru_dir)
-            elif calibration_method == "Enhanced-Response":
-                # Cal_Directory
-                osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
-                thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
-
-                s11, s21 = methods.one_port_n_calibrate(s11_med, s21_med, osm_dir, thru_dir)
+                s11, s21 = methods.enhanced_response_calibrate(s11_med, s21_med, osm_dir, thru_dir)
             else:
                 s11 = s11_med
                 s21 = s21_med
