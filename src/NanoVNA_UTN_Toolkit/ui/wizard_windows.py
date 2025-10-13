@@ -622,6 +622,16 @@ class CalibrationWizard(QMainWindow):
         if self.selected_method == "Normalization":
             if step == 1:
                 step_name = "THRU"
+
+        if self.selected_method == "1-Port+N":
+            if step == 1:
+                step_name = "OPEN"
+            elif step == 2:
+                step_name = "SHORT"
+            elif step == 3:
+                step_name = "MATCH"
+            elif step == 4:
+                step_name = "THRU"
         
         # Check if this standard has already been measured
         is_measured = False
@@ -847,11 +857,16 @@ class CalibrationWizard(QMainWindow):
         errors = CalibrationErrors(cal_dir, error_subfolder="normalization_errors")
         errors.calculate_normalization_errors()
 
+        osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+        thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+
+        errors = CalibrationErrors(cal_dir, error_subfolder="1-Port+N_errors")
+        errors.calculate_1PortN_errors(osm_dir, thru_dir)
+
         # Store results for later use if needed
         self.directivity = errors.directivity
         self.reflection_tracking = errors.reflection_tracking
         self.source_match = errors.source_match
-        self.transmission_tracking = errors.transmission_tracking
 
         # Open graphics window
         self.open_graphics_window()
