@@ -839,17 +839,22 @@ class CalibrationWizard(QMainWindow):
         cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
 
         # Create calibration error handler and compute OSM errors
-        errors = CalibrationErrors(cal_dir)
+        errors = CalibrationErrors(cal_dir, error_subfolder="osm_errors")
         errors.calculate_osm_errors()
 
+        cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+
+        errors = CalibrationErrors(cal_dir, error_subfolder="normalization_errors")
+        errors.calculate_normalization_errors()
+
         # Store results for later use if needed
-        self.error1 = errors.error1
-        self.error2 = errors.error2
-        self.error3 = errors.error3
+        self.directivity = errors.directivity
+        self.reflection_tracking = errors.reflection_tracking
+        self.source_match = errors.source_match
+        self.transmission_tracking = errors.transmission_tracking
 
         # Open graphics window
         self.open_graphics_window()
-
 
     def perform_calibration_measurement(self, step, standard_name):
         """Perform sweep measurement for calibration standard."""

@@ -2248,27 +2248,44 @@ class NanoVNAGraphics(QMainWindow):
             s11_data = self.vna_device.readValues("data 0")
             s11_med = np.array(s11_data)
 
-            # Determine the calibration directory
-            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
-
-            # Create a Methods instance
-            methods = Methods(cal_dir)
-
-            # Calibrate the measured S11
-            s11 = methods.osm_calibrate_s11(s11_med)
-
-            logging.info(f"[graphics_window.run_sweep] Got {len(s11)} S11 data points")
+            logging.info(f"[graphics_window.run_sweep] Got {len(s11_med)} S11 data points")
             self.sweep_progress_bar.setValue(80)
             QApplication.processEvents()
             
             # Read S21 data
             logging.info("[graphics_window.run_sweep] Reading S21 data...")
             s21_data = self.vna_device.readValues("data 1")
-            s21 = np.array(s21_data)
-            logging.info(f"[graphics_window.run_sweep] Got {len(s21)} S21 data points")
+            s21_med = np.array(s21_data)
+
+            logging.info(f"[graphics_window.run_sweep] Got {len(s21_med)} S21 data points")
             self.sweep_progress_bar.setValue(90)
             QApplication.processEvents()
-            
+
+            # Apply calibration if applicable
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+            settings = QSettings(config_path, QSettings.Format.IniFormat)
+            calibration_method = settings.value("Calibration/Method", "---")
+
+            logging.info(f"[graphics_window.run_sweep] calibration_method leído: '{calibration_method}'")
+
+            # Cal_Directory
+            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+            methods = Methods(cal_dir)
+
+            if calibration_method == "OSM (Open - Short - Match)":
+                s11 = methods.osm_calibrate_s11(s11_med)
+                s21 = s21_med  # S21 sin calibrar
+            elif calibration_method == "Normalization":
+                # Cal_Directory
+                cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+                methods = Methods(cal_dir)
+                s11 = s11_med  # S11 sin calibrar
+                s21 = methods.normalization_calibrate_s21(s21_med)
+            else:
+                s11 = s11_med
+                s21 = s21_med
+
             # Validate data consistency
             if len(freqs) != len(s11) or len(freqs) != len(s21):
                 error_msg = f"Data length mismatch: freqs={len(freqs)}, s11={len(s11)}, s21={len(s21)}"

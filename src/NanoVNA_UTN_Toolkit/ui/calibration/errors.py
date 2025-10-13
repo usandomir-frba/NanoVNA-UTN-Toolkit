@@ -6,22 +6,21 @@ import skrf as rf
 class CalibrationErrors:
     """General calibration error handler supporting different calibration methods."""
 
-    def __init__(self, calibration_dir):
+    def __init__(self, calibration_dir, error_subfolder="errors"):
         """
         Initialize the error calculator with the folder containing calibration S1P files.
-
-        Parameters
-        ----------
-        calibration_dir : str
-            Path to the folder containing the OSM calibration S1P files (open, short, match).
+        All error files will be saved in a subfolder (default: 'errors').
         """
         self.calibration_dir = calibration_dir
+        self.error_dir = os.path.join(calibration_dir, error_subfolder)
+        os.makedirs(self.error_dir, exist_ok=True)
         logging.info(f"[CalibrationErrors] Initialized with calibration directory: {calibration_dir}")
+        logging.info(f"[CalibrationErrors] Error files will be saved in: {self.error_dir}")
 
         # Common error attributes
-        self.error1 = None  # Directivity
-        self.error2 = None  # Reflection tracking
-        self.error3 = None  # Source match
+        self.directivity = None
+        self.reflection_tracking = None
+        self.source_match = None
 
     # ======================================================================
     #  OSM Calibration Method
@@ -51,14 +50,14 @@ class CalibrationErrors:
             e10e01[i] = -2 * (s_open[i] - e00[i]) * (s_short[i] - e00[i]) / (s_open[i] - s_short[i])
 
         # Save results as Touchstone S1P files
-        self._save_error_file(freq, e00, "directivity.s1p", "Directivity")
-        self._save_error_file(freq, e11, "reflection_tracking.s1p", "Reflection tracking")
-        self._save_error_file(freq, e10e01, "source_match.s1p", "Source match")
+        self._save_osm_error_file(freq, e00, "directivity.s1p", "Directivity")
+        self._save_osm_error_file(freq, e11, "reflection_tracking.s1p", "Reflection tracking")
+        self._save_osm_error_file(freq, e10e01, "source_match.s1p", "Source match")
 
         # Store results for later access
-        self.error1 = e00
-        self.error2 = e11
-        self.error3 = e10e01
+        self.directivity = e00
+        self.reflection_tracking = e11
+        self.source_match = e10e01
 
         logging.info("[CalibrationErrors] OSM error calculation completed successfully")
 
@@ -72,15 +71,12 @@ class CalibrationErrors:
         """
         logging.info("[CalibrationErrors] Reading THRU calibration file")
 
-        # File path for THRU measurement
-        thru_file = os.path.join(self.calibration_dir, "thru.s1p")
+        # Load THRU calibration files
+        thru_s = self._load_thru_file()
 
-        # Load THRU Touchstone file
-        thru_network = rf.Network(thru_file)
-
-        # Extract frequency and measured S21
-        freq = thru_network.f
-        s21_measured = thru_network.s[:, 0, 0]  # S21 term from the THRU measurement
+         # Extract frequency and S21 parameters
+        freq = thru_s.f
+        s21_measured = thru_s.s[:, 1, 0]  # S21 term from the THRU measurement
 
         n_points = len(freq)
 
@@ -93,15 +89,14 @@ class CalibrationErrors:
         e10e32 = s21_measured
 
         # Save the normalization result as an S1P Touchstone file
-        self._save_error_file(freq, e10e32, "transmission_tracking.s1p", "Transmission tracking")
+        self._save_normalization_error_file(freq, e10e32, "transmission_tracking.s2p", "Transmission tracking")
 
         # Store result for later access
-        self.error1 = None
-        self.error2 = None
-        self.error3 = e10e32
+        self.directivity = None
+        self.reflection_tracking = None
+        self.transmission_tracking = e10e32
 
         logging.info("[CalibrationErrors] THRU (normalization) error calculation completed successfully")
-
 
     # ======================================================================
     #  Utility Methods
@@ -128,12 +123,38 @@ class CalibrationErrors:
 
         return open_s, short_s, match_s
 
-    def _save_error_file(self, freq, s_data, filename, label):
-        """Helper to export a computed error as an S1P Touchstone file."""
+    def _load_thru_file(self):
+        """Load the THRU S1P file used for normalization calibration."""
+        logging.info("[CalibrationErrors] Loading THRU calibration file...")
+
+        thru_file = os.path.join(self.calibration_dir, "thru.s2p")
+
+        if not os.path.exists(thru_file):
+            raise FileNotFoundError(f"[CalibrationErrors] Missing THRU calibration file: {thru_file}")
+
+        thru_network = rf.Network(thru_file)
+
+        logging.info("[CalibrationErrors] Successfully loaded THRU file")
+
+        return thru_network
+
+    def _save_osm_error_file(self, freq, s_data, filename, label):
+
         network = rf.Network()
         network.frequency = rf.Frequency.from_f(freq, unit="Hz")
         network.s = s_data.reshape((len(freq), 1, 1))
-
-        filepath = os.path.join(self.calibration_dir, filename)
+        filepath = os.path.join(self.error_dir, filename)
         network.write_touchstone(filepath)
         logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
+
+    def _save_normalization_error_file(self, freq, s_data, filename, label):
+
+        network = rf.Network()
+        network.frequency = rf.Frequency.from_f(freq, unit="Hz")
+        s_matrix = np.zeros((len(freq), 2, 2), dtype=complex)
+        s_matrix[:, 1, 0] = s_data  # S21
+        network.s = s_matrix
+        filepath = os.path.join(self.error_dir, filename)
+        network.write_touchstone(filepath)
+        logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
+

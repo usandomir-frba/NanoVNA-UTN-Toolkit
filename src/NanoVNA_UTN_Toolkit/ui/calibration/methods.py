@@ -35,19 +35,49 @@ class Methods:
         """
         logging.info("[Calibrator] Loading error terms from S1P files...")
 
-        # Construct full paths to error S1P files
-        error1_file = os.path.join(self.calibration_dir, "directivity.s1p")  # Directivity
-        error2_file = os.path.join(self.calibration_dir, "reflection_tracking.s1p")  # Reflection tracking
-        error3_file = os.path.join(self.calibration_dir, "source_match.s1p")  # Source match (ignored for 2-term)
+        # Construct full paths to error S1P files with literal names
+        error_dir = os.path.join(self.calibration_dir, "osm_errors")
+        directivity_file = os.path.join(error_dir, "directivity.s1p")
+        reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
+        source_match_file = os.path.join(error_dir, "source_match.s1p")
 
         # Read S1P files using skrf
-        e00 = rf.Network(error1_file).s[:,0,0]  # Directivity
-        e11 = rf.Network(error2_file).s[:,0,0]  # Reflection tracking
-        e10e01 = rf.Network(error3_file).s[:,0,0]  # Source match
+        directivity = rf.Network(directivity_file).s[:,0,0]
+        reflection_tracking = rf.Network(reflection_tracking_file).s[:,0,0]
+        source_match = rf.Network(source_match_file).s[:,0,0]
 
         # Compute delta_e (for 2-term calibration, source match is ignored)
-        delta_e = e11 * e00 - e10e01
+        delta_e = reflection_tracking * directivity - source_match
 
         logging.info("[Calibrator] Calculating calibrated S11 using OSM formula...")
-        s11_cal = (s11_med - e00) / (s11_med * e11 - delta_e)
+        s11_cal = (s11_med - directivity) / (s11_med * reflection_tracking - delta_e)
         return s11_cal
+
+    def normalization_calibrate_s21(self, s21_med):
+        """
+        Calibrate measured S21 using normalization (THRU) error term.
+
+        Parameters
+        ----------
+        s21_med : np.array
+            Measured S21 from the VNA.
+
+        Returns
+        -------
+        s21_cal : np.array
+            Calibrated S21 array.
+        """
+        logging.info("[Calibrator] Loading transmission tracking error from S2P file...")
+
+        # Path to normalization error file
+        error_dir = os.path.join(self.calibration_dir, "normalization_errors")
+        transmission_tracking_file = os.path.join(error_dir, "transmission_tracking.s2p")
+
+        # Read S2P file using skrf and extract S21
+        transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
+
+        # Calibrate S21 by dividing by the error term
+        s21_cal = s21_med / transmission_tracking
+
+        logging.info("[Calibrator] Calculated calibrated S21 using normalization.")
+        return s21_cal
