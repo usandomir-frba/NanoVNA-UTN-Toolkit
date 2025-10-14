@@ -298,18 +298,6 @@ def get_current_calibration_info(kits_path: str = None) -> Optional[Dict[str, st
         logging.error(f"[get_current_calibration_info] Error: {e}")
         return None
 
-"""
-Enhanced calibration manager module for NanoVNA-UTN-Toolkit.
-Handles OSM calibrations with persistent state and Touchstone export.
-"""
-import numpy as np
-import logging
-import os
-import pickle
-from datetime import datetime
-from typing import Dict, Optional, Tuple, List
-import skrf as rf
-
 
 """
 Enhanced THRU calibration manager module for NanoVNA-UTN-Toolkit.

@@ -852,6 +852,50 @@ class CalibrationWizard(QMainWindow):
                 pass
             self.next_button.clicked.connect(self.next_step)
 
+        if step == len(steps):
+            # Always show save button in final step for Thru calibration
+            if self.thru_calibration and self.selected_method == "1-Port+N":
+                self.save_button.setVisible(True)
+            else:
+                self.save_button.setVisible(False)
+                
+            self.next_button.setText("Finish")
+            try:
+                self.next_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.next_button.clicked.connect(self.finish_wizard)
+        else:
+            self.save_button.setVisible(False)  # Hide save button in non-final steps
+            self.next_button.setText("▶▶")
+            try:
+                self.next_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.next_button.clicked.connect(self.next_step)
+
+        if step == len(steps):
+            # Always show save button in final step for Thru calibration
+            if self.thru_calibration and self.selected_method == "Enhanced-Response":
+                self.save_button.setVisible(True)
+            else:
+                self.save_button.setVisible(False)
+                
+            self.next_button.setText("Finish")
+            try:
+                self.next_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.next_button.clicked.connect(self.finish_wizard)
+        else:
+            self.save_button.setVisible(False)  # Hide save button in non-final steps
+            self.next_button.setText("▶▶")
+            try:
+                self.next_button.clicked.disconnect()
+            except Exception:
+                pass
+            self.next_button.clicked.connect(self.next_step)
+
 
     # --- navigation handlers -------------------------------------------------
     def next_step(self):
@@ -872,6 +916,8 @@ class CalibrationWizard(QMainWindow):
         if (
             (self.selected_method == "Normalization" and self.current_step == 1)
             or (self.selected_method == "OSM (Open - Short - Match)" and self.current_step == 3)
+            or (self.selected_method == "1-Port+N" and self.current_step == 4)
+            or (self.selected_method == "Enhanced-Response" and self.current_step == 4)
         ):
             self.save_button.setVisible(True)
         else:
@@ -1102,12 +1148,21 @@ class CalibrationWizard(QMainWindow):
             
         # Dialog to enter calibration name
         from PySide6.QtWidgets import QInputDialog
-        
+
+        if self.selected_method == "OSM (Open - Short - Match)":
+            prefix = "OSM"
+        elif self.selected_method == "Normalization":
+            prefix = "Normalization"
+        elif self.selected_method == "1-Port+N":
+            prefix = "1PortN"
+        elif self.selected_method == "Enhanced-Response":
+            prefix = "Enhanced Response"
+
         name, ok = QInputDialog.getText(
             self, 
             'Save Calibration', 
             f'Enter calibration name:\n\nMeasurements to save: {", ".join(measured_standards).upper()}',
-            text=f'OSM_Calibration_{self.get_current_timestamp()}'
+            text=f'{prefix}_Calibration_{self.get_current_timestamp()}'
         )
         
         if ok and name:
