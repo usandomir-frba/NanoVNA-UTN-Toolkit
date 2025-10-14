@@ -1079,13 +1079,15 @@ class CalibrationWizard(QMainWindow):
                 logging.info(f"[CalibrationWizard] Measurement for {standard_name} completed successfully")
 
             elif standard_name == "THRU":
+                s11_data = self.vna_device.readValues("data 0")
+                s11 = np.array(s11_data)
                 s21_data = self.vna_device.readValues("data 1")
                 s21 = np.array(s21_data)
 
                 # Save data in calibration structure
                 if self.thru_calibration:
                     if standard_name == "THRU":
-                        self.thru_calibration.set_measurement("thru", freqs, s21)
+                        self.thru_calibration.set_measurement("thru", freqs, s11, s21)
                     
                     # Show completion status
                     status = self.thru_calibration.get_completion_status()
@@ -1168,7 +1170,7 @@ class CalibrationWizard(QMainWindow):
         if ok and name:
             try:
                 # Save calibration (it will save only the available measurements)
-                success = self.osm_calibration.save_calibration_file(name)
+                success = self.osm_calibration.save_calibration_file(name, self.selected_method)
                 if success:
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox
@@ -1185,7 +1187,7 @@ class CalibrationWizard(QMainWindow):
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.warning(self, "Error", "Failed to save calibration")
 
-                success = self.thru_calibration.save_calibration_file(name)
+                success = self.thru_calibration.save_calibration_file(name, self.selected_method)
                 if success:
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox

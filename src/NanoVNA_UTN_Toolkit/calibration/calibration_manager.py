@@ -24,7 +24,7 @@ class OSMCalibrationManager:
         self.base_path = base_path
         self.osm_results_path = os.path.join(base_path, "osm_results")
         self.thru_results_path = os.path.join(base_path, "thru_results")
-        self.kits_path = os.path.join(base_path, "Kits")
+        self.kits_path = os.path.join(base_path, "kits")
         
         # Ensure directories exist
         os.makedirs(self.osm_results_path, exist_ok=True)
@@ -41,6 +41,18 @@ class OSMCalibrationManager:
         self.device_name = None
         self.calibration_date = None
         self.is_complete = False
+
+        # --- Calibration errors ---
+        self.e00 = None
+        self.e11 = None
+        self.delta_e = None
+
+        # --- Calculated errors to return ---
+        self.reflection_tracking = None      # Reflection tracking error
+        self.transmission_tracking = None    # Transmission tracking error (for Normalization / 1-Port+N)
+        self.e22 = None                       # Calculated error for Enhanced-Response
+        self.e10e32 = None                    # Another calculated error for Enhanced-Response
+
         
         logging.info(f"[OSMCalibrationManager] Initialized with base path: {base_path}")
         
@@ -124,50 +136,110 @@ class OSMCalibrationManager:
             'match': self.measurements['match']['measured'],
             'complete': self.is_complete
         }
-    
-    def save_calibration_file(self, filename: str) -> bool:
-        """Save complete calibration as .cal file compatible with NanoVNA-Saver format."""
+
+    def save_calibration_file(self, filename: str, selected_method: str) -> bool:
+        """
+        Save OSM calibration errors using _save_osm_error_file() instead of storing Open/Short/Match.
+        
+        Parameters
+        ----------
+        filename : str
+            Name of the calibration file to save.
+        selected_method : str
+            Calibration method selected (e.g., "OSM (Open - Short - Match)").
+        
+        Returns
+        -------
+        bool
+            True if save was successful, False otherwise.
+        """
         try:
+            # --- Ensure calibration is complete ---
             if not self.is_complete:
                 logging.warning("[OSMCalibrationManager] Cannot save incomplete calibration")
                 return False
-            
-            # Prepare path
-            if not filename.endswith('.cal'):
-                filename += '.cal'
-            cal_path = os.path.join(self.kits_path, filename)
-            
-            # Get frequency data (should be same for all standards)
-            freqs = self.measurements['open']['freqs']
-            
-            # Get S11 data for each standard
-            open_s11 = self.measurements['open']['s11']
-            short_s11 = self.measurements['short']['s11']
-            match_s11 = self.measurements['match']['s11']
-            
-            # Write .cal file in NanoVNA-Saver format
-            with open(cal_path, 'w') as f:
-                f.write("# Calibration data for NanoVNA-UTN-Toolkit\n")
-                f.write("# Generated on: {}\n".format(self.calibration_date.strftime("%Y-%m-%d %H:%M:%S")))
-                if self.device_name:
-                    f.write(f"# Device: {self.device_name}\n")
-                f.write("\n")
-                f.write("# Hz ShortR ShortI OpenR OpenI LoadR LoadI\n")
-                
-                for i in range(len(freqs)):
-                    freq = freqs[i]
-                    short_r, short_i = short_s11[i].real, short_s11[i].imag
-                    open_r, open_i = open_s11[i].real, open_s11[i].imag
-                    load_r, load_i = match_s11[i].real, match_s11[i].imag
-                    
-                    f.write(f"{freq} {short_r} {short_i} {open_r} {open_i} {load_r} {load_i}\n")
-            
-            logging.info(f"[OSMCalibrationManager] Calibration file saved: {cal_path}")
+
+            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+            self.calibration_dir = cal_dir
+            os.makedirs(self.calibration_dir, exist_ok=True)
+
+            # --- Compute 3-term OSM error model ---
+            open_file = os.path.join(self.calibration_dir, "open.s1p")
+            short_file = os.path.join(self.calibration_dir, "short.s1p")
+            match_file = os.path.join(self.calibration_dir, "match.s1p")
+
+            for f in [open_file, short_file, match_file]:
+                if not os.path.exists(f):
+                    raise FileNotFoundError(f"[OSMCalibrationManager] Missing calibration file: {f}")
+
+            open_s = rf.Network(open_file)
+            short_s = rf.Network(short_file)
+            match_s = rf.Network(match_file)
+
+            s_open = open_s.s[:, 0, 0]
+            s_short = short_s.s[:, 0, 0]
+            s_match = match_s.s[:, 0, 0]
+            n_points = len(s_open)
+
+            e00 = np.zeros(n_points, dtype=complex)      # Directivity error
+            e11 = np.zeros(n_points, dtype=complex)      # Source match error
+            e10e01 = np.zeros(n_points, dtype=complex)   # Reflection tracking error
+
+            for i in range(n_points):
+                e00[i] = s_match[i]
+                e11[i] = (s_open[i] + s_short[i] - 2 * e00[i]) / (s_open[i] - s_short[i])
+                e10e01[i] = -2 * (s_open[i] - e00[i]) * (s_short[i] - e00[i]) / (s_open[i] - s_short[i])
+
+            # --- Store errors in self ---
+            self.e00 = e00
+            self.e11 = e11
+            self.e10e01 = e10e01
+
+            # --- Save each error separately using _save_osm_error_file() ---
+            freqs = open_s.f
+            kit_name = filename
+            self._save_osm_error_file(freqs, e00, "directivity.s1p", "Directivity", kit_name)
+            self._save_osm_error_file(freqs, e11, "reflection_tracking.s1p", "Reflection tracking", kit_name)
+            self._save_osm_error_file(freqs, e10e01, "source_match.s1p", "Source match", kit_name)
+
+
+            logging.info(f"[OSMCalibrationManager] OSM calibration errors saved: {self.error_dir}")
             return True
-            
+
         except Exception as e:
-            logging.error(f"[OSMCalibrationManager] Error saving calibration file: {e}")
+            logging.error(f"[OSMCalibrationManager] Error saving OSM calibration: {e}")
             return False
+
+
+    def _save_osm_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
+        """
+        Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>.
+        Assumes self.kits_path already exists.
+        """
+
+        # Construir la ruta completa
+        save_dir = self.kits_path
+        if kit_subfolder:
+            save_dir = os.path.join(self.kits_path, kit_subfolder)
+
+        # Crear carpeta completa
+        os.makedirs(save_dir, exist_ok=True)
+        logging.info(f"[DEBUG] Created folder: {save_dir}")
+        print(f"[DEBUG] Created folder: {save_dir}")
+
+        # Ruta completa al archivo
+        filepath = os.path.join(save_dir, filename)
+
+        # Guardado usando scikit-rf
+        network = rf.Network()
+        network.frequency = rf.Frequency.from_f(freq, unit="Hz")
+        network.s = s_data.reshape((len(freq), 1, 1))
+        network.write_touchstone(filepath)
+
+        logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
+        print(f"[DEBUG] Saved {label} in: {filepath}")
+
+
     
     def load_calibration_file(self, filename: str) -> bool:
         """Load calibration from .cal file."""
@@ -341,7 +413,7 @@ class THRUCalibrationManager:
         logging.info(f"[THRUCalibrationManager] Initialized with base path: {base_path}")
 
     # ------------------- Measurement Handling -------------------
-    def set_measurement(self, standard_name: str, freqs: np.ndarray, s21: np.ndarray) -> bool:
+    def set_measurement(self, standard_name: str, freqs: np.ndarray, s11: np.ndarray, s21: np.ndarray) -> bool:
         """Store THRU measurement and save as Touchstone file."""
         try:
             self.measurements[standard_name]['freqs'] = np.array(freqs)
@@ -351,7 +423,7 @@ class THRUCalibrationManager:
             self.calibration_date = datetime.now()
 
             touchstone_path = os.path.join(self.thru_results_path, "thru.s2p")
-            self._save_as_touchstone(freqs, s21, touchstone_path)
+            self._save_as_touchstone(freqs, s11, s21, touchstone_path)
 
             logging.info(f"[THRUCalibrationManager] THRU measurement saved")
             logging.info(f"[THRUCalibrationManager] Touchstone saved: {touchstone_path}")
@@ -360,7 +432,7 @@ class THRUCalibrationManager:
             logging.error(f"[THRUCalibrationManager] Error saving THRU measurement: {e}")
             return False
 
-    def _save_as_touchstone(self, freqs: np.ndarray, s21: np.ndarray, filepath: str):
+    def _save_as_touchstone(self, freqs: np.ndarray, s11: np.ndarray, s21: np.ndarray, filepath: str):
         """Save THRU measurement as Touchstone .s2p file (S21 explícito, S11/S12/S22 = 0)."""
         try:
             import numpy as np
@@ -368,6 +440,7 @@ class THRUCalibrationManager:
 
             # Crea matriz S de 2 puertos: S11, S12, S21, S22
             s_data = np.zeros((len(freqs), 2, 2), dtype=complex)
+            s_data[:, 0, 0] = s11  # S11
             s_data[:, 1, 0] = s21  # S21
             # S11, S12, S22 quedan en 0
 
@@ -402,34 +475,95 @@ class THRUCalibrationManager:
         """Return completion status like OSM interface expects."""
         return {'thru': self.measurements['thru']['measured'], 'complete': self.is_complete}
 
-    def save_calibration_file(self, filename: str) -> bool:
-        """Save THRU calibration as .cal file compatible with NanoVNA-Saver format."""
+    def save_calibration_file(self, filename: str, selected_method: str):
+        """
+        Save calibration file and compute errors depending on the selected method.
+
+        Returns
+        -------
+        dict
+            Calculated errors:
+            - 'reflection_tracking': always returned (based on s11)
+            - 'transmission_tracking': returned for Normalization / 1-Port+N
+            - 'e22', 'e10e32': returned for Enhanced-Response
+        """
         try:
             if not self.is_complete:
-                logging.warning("[THRUCalibrationManager] Cannot save incomplete calibration")
-                return False
+                logging.warning("[CalibrationManager] Cannot save incomplete calibration")
+                return False, {}
 
             if not filename.endswith('.cal'):
                 filename += '.cal'
             cal_path = os.path.join(self.kits_path, filename)
 
-            freqs = self.measurements['thru']['freqs']
-            s21 = self.measurements['thru']['s21']
+            errors = {}
 
-            with open(cal_path, 'w') as f:
-                f.write("# THRU Calibration Data for NanoVNA-UTN-Toolkit\n")
-                f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                if self.device_name:
-                    f.write(f"# Device: {self.device_name}\n")
-                f.write("\n# Hz S21R S21I\n")
-                for i in range(len(freqs)):
-                    f.write(f"{freqs[i]} {s21[i].real} {s21[i].imag}\n")
+            if selected_method == "Normalization":
+                # Transmission tracking error
+                s21 = self.measurements['thru']['s21']
+                errors['transmission_tracking'] = s21
 
-            logging.info(f"[THRUCalibrationManager] Calibration file saved: {cal_path}")
-            return True
+                # Save to file
+                with open(cal_path, 'w') as f:
+                    f.write("# Calibration Data (Normalization / 1-Port+N) for NanoVNA-UTN-Toolkit\n")
+                    f.write(f"# Method: {selected_method}\n")
+                    f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    if self.device_name:
+                        f.write(f"# Device: {self.device_name}\n")
+                    f.write("\n# Hz S21R S21I\n")
+                    freqs = self.measurements['thru']['freqs']
+                    for i in range(len(freqs)):
+                        f.write(f"{freqs[i]} {s21[i].real} {s21[i].imag}\n")
+
+            elif selected_method == "1-Port+N":
+                # Transmission tracking error
+                s21 = self.measurements['thru']['s21']
+                errors['transmission_tracking'] = s21
+
+                # Save to file
+                with open(cal_path, 'w') as f:
+                    f.write("# Calibration Data (Normalization / 1-Port+N) for NanoVNA-UTN-Toolkit\n")
+                    f.write(f"# Method: {selected_method}\n")
+                    f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    if self.device_name:
+                        f.write(f"# Device: {self.device_name}\n")
+                    f.write("\n# Hz S21R S21I\n")
+                    freqs = self.measurements['thru']['freqs']
+                    for i in range(len(freqs)):
+                        f.write(f"{freqs[i]} {s21[i].real} {s21[i].imag}\n")
+
+            elif selected_method == "Enhanced-Response":
+                # Load stored values
+                s11m = self.s11m
+                s21m = self.s21m
+                e00 = self.e00
+                e11 = self.e11
+                delta_e = self.delta_e
+
+                # Compute enhanced-response errors
+                e22 = (s11m - e00) / (s11m * e11 - delta_e)
+                e10e32 = s21m * (1 - (e11 * e22))
+                errors['e22'] = e22
+                errors['e10e32'] = e10e32
+
+                # Save to file
+                with open(cal_path, 'w') as f:
+                    f.write("# Calibration Data (Enhanced-Response) for NanoVNA-UTN-Toolkit\n")
+                    f.write(f"# Method: {selected_method}\n")
+                    f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    if self.device_name:
+                        f.write(f"# Device: {self.device_name}\n")
+                    f.write("\n# e22 e10e32\n")
+                    for i in range(len(e22)):
+                        f.write(f"{e22[i]} {e10e32[i]}\n")
+
+            logging.info(f"[CalibrationManager] Calibration file saved: {cal_path}")
+            return True, errors
+
         except Exception as e:
-            logging.error(f"[THRUCalibrationManager] Error saving calibration file: {e}")
-            return False
+            logging.error(f"[CalibrationManager] Error saving calibration file: {e}")
+            return False, {}
+
 
     def load_calibration_file(self, filename: str) -> bool:
         """Load THRU calibration data from .cal file."""
