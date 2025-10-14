@@ -1187,7 +1187,7 @@ class CalibrationWizard(QMainWindow):
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.warning(self, "Error", "Failed to save calibration")
 
-                success = self.thru_calibration.save_calibration_file(name, self.selected_method)
+                success = self.thru_calibration.save_calibration_file(name, self.selected_method, osm_instance=self.osm_calibration)
                 if success:
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox

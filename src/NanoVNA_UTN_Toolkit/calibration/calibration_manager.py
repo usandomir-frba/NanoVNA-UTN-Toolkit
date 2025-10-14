@@ -47,6 +47,9 @@ class OSMCalibrationManager:
         self.e11 = None
         self.delta_e = None
 
+        self.s21m = None  # Measured S21 for THRU
+        self.s11m = None  # Measured S11 for THRU
+
         # --- Calculated errors to return ---
         self.reflection_tracking = None      # Reflection tracking error
         self.transmission_tracking = None    # Transmission tracking error (for Normalization / 1-Port+N)
@@ -194,6 +197,7 @@ class OSMCalibrationManager:
             self.e00 = e00
             self.e11 = e11
             self.e10e01 = e10e01
+            self.delta_e = e00 * e11 - e10e01
 
             # --- Save each error separately using _save_osm_error_file() ---
             freqs = open_s.f
@@ -202,7 +206,6 @@ class OSMCalibrationManager:
             self._save_osm_error_file(freqs, e11, "reflection_tracking.s1p", "Reflection tracking", kit_name)
             self._save_osm_error_file(freqs, e10e01, "source_match.s1p", "Source match", kit_name)
 
-
             logging.info(f"[OSMCalibrationManager] OSM calibration errors saved: {self.error_dir}")
             return True
 
@@ -210,27 +213,22 @@ class OSMCalibrationManager:
             logging.error(f"[OSMCalibrationManager] Error saving OSM calibration: {e}")
             return False
 
-
     def _save_osm_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
         """
         Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>.
         Assumes self.kits_path already exists.
         """
-
-        # Construir la ruta completa
+        
         save_dir = self.kits_path
         if kit_subfolder:
             save_dir = os.path.join(self.kits_path, kit_subfolder)
 
-        # Crear carpeta completa
         os.makedirs(save_dir, exist_ok=True)
         logging.info(f"[DEBUG] Created folder: {save_dir}")
         print(f"[DEBUG] Created folder: {save_dir}")
 
-        # Ruta completa al archivo
         filepath = os.path.join(save_dir, filename)
 
-        # Guardado usando scikit-rf
         network = rf.Network()
         network.frequency = rf.Frequency.from_f(freq, unit="Hz")
         network.s = s_data.reshape((len(freq), 1, 1))
@@ -238,8 +236,6 @@ class OSMCalibrationManager:
 
         logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
         print(f"[DEBUG] Saved {label} in: {filepath}")
-
-
     
     def load_calibration_file(self, filename: str) -> bool:
         """Load calibration from .cal file."""
@@ -415,8 +411,12 @@ class THRUCalibrationManager:
     # ------------------- Measurement Handling -------------------
     def set_measurement(self, standard_name: str, freqs: np.ndarray, s11: np.ndarray, s21: np.ndarray) -> bool:
         """Store THRU measurement and save as Touchstone file."""
+        self.s11m = s11
+        self.s21m = s21
+
         try:
             self.measurements[standard_name]['freqs'] = np.array(freqs)
+            self.measurements[standard_name]['s11'] = np.array(s11)
             self.measurements[standard_name]['s21'] = np.array(s21)
             self.measurements[standard_name]['measured'] = True
             self.is_complete = True
@@ -475,7 +475,7 @@ class THRUCalibrationManager:
         """Return completion status like OSM interface expects."""
         return {'thru': self.measurements['thru']['measured'], 'complete': self.is_complete}
 
-    def save_calibration_file(self, filename: str, selected_method: str):
+    def save_calibration_file(self, filename: str, selected_method: str, osm_instance=None):
         """
         Save calibration file and compute errors depending on the selected method.
 
@@ -492,77 +492,97 @@ class THRUCalibrationManager:
                 logging.warning("[CalibrationManager] Cannot save incomplete calibration")
                 return False, {}
 
-            if not filename.endswith('.cal'):
-                filename += '.cal'
-            cal_path = os.path.join(self.kits_path, filename)
+            # --- Create kit subfolder ---
+            kit_subfolder = filename
+            kit_path = os.path.join(self.kits_path, kit_subfolder)
+            os.makedirs(kit_path, exist_ok=True)
+            logging.info(f"[CalibrationManager] Created calibration kit folder: {kit_path}")
 
             errors = {}
 
+            # === NORMALIZATION ===
             if selected_method == "Normalization":
-                # Transmission tracking error
                 s21 = self.measurements['thru']['s21']
+                freqs = self.measurements['thru']['freqs']
                 errors['transmission_tracking'] = s21
 
-                # Save to file
-                with open(cal_path, 'w') as f:
-                    f.write("# Calibration Data (Normalization / 1-Port+N) for NanoVNA-UTN-Toolkit\n")
-                    f.write(f"# Method: {selected_method}\n")
-                    f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    if self.device_name:
-                        f.write(f"# Device: {self.device_name}\n")
-                    f.write("\n# Hz S21R S21I\n")
-                    freqs = self.measurements['thru']['freqs']
-                    for i in range(len(freqs)):
-                        f.write(f"{freqs[i]} {s21[i].real} {s21[i].imag}\n")
+                self._save_osm_error_file(freqs, s21, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
+            # === 1-PORT+N ===
             elif selected_method == "1-Port+N":
-                # Transmission tracking error
                 s21 = self.measurements['thru']['s21']
+                freqs = self.measurements['thru']['freqs']
                 errors['transmission_tracking'] = s21
 
-                # Save to file
-                with open(cal_path, 'w') as f:
-                    f.write("# Calibration Data (Normalization / 1-Port+N) for NanoVNA-UTN-Toolkit\n")
-                    f.write(f"# Method: {selected_method}\n")
-                    f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    if self.device_name:
-                        f.write(f"# Device: {self.device_name}\n")
-                    f.write("\n# Hz S21R S21I\n")
-                    freqs = self.measurements['thru']['freqs']
-                    for i in range(len(freqs)):
-                        f.write(f"{freqs[i]} {s21[i].real} {s21[i].imag}\n")
+                self._save_osm_error_file(freqs, s21, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
+            # === ENHANCED-RESPONSE ===
             elif selected_method == "Enhanced-Response":
-                # Load stored values
-                s11m = self.s11m
-                s21m = self.s21m
-                e00 = self.e00
-                e11 = self.e11
-                delta_e = self.delta_e
+                s11m = self.measurements['thru']['s11']
+                s21m = self.measurements['thru']['s21']
+                e00 = osm_instance.e00
+                e11 = osm_instance.e11
+                delta_e = osm_instance.delta_e
 
-                # Compute enhanced-response errors
+                missing = []
+                if s11m is None:
+                    missing.append("s11m")
+                if s21m is None:
+                    missing.append("s21m")
+                if e00 is None:
+                    missing.append("e00")
+                if e11 is None:
+                    missing.append("e11")
+                if delta_e is None:
+                    missing.append("delta_e")
+
+                if missing:
+                    logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
+                    return False, {}
+
+
+                # e22 = (S11M - e00) / (S11M * e11 - delta_e)
                 e22 = (s11m - e00) / (s11m * e11 - delta_e)
+                # e10e32 = S21M * (1 - e11 * e22)
                 e10e32 = s21m * (1 - (e11 * e22))
-                errors['e22'] = e22
-                errors['e10e32'] = e10e32
 
-                # Save to file
-                with open(cal_path, 'w') as f:
-                    f.write("# Calibration Data (Enhanced-Response) for NanoVNA-UTN-Toolkit\n")
-                    f.write(f"# Method: {selected_method}\n")
-                    f.write(f"# Generated on: {self.calibration_date.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    if self.device_name:
-                        f.write(f"# Device: {self.device_name}\n")
-                    f.write("\n# e22 e10e32\n")
-                    for i in range(len(e22)):
-                        f.write(f"{e22[i]} {e10e32[i]}\n")
+                logging.info(f"[CalibrationManager] Calculated e22 and e10e32 for Enhanced-Response: e22={e22}, e10e32={e10e32}")
 
-            logging.info(f"[CalibrationManager] Calibration file saved: {cal_path}")
+                freqs = self.measurements['thru']['freqs']
+
+                self._save_osm_error_file(freqs, e10e32, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
+
+            logging.info(f"[CalibrationManager] Calibration kit saved in: {kit_path}")
             return True, errors
 
         except Exception as e:
-            logging.error(f"[CalibrationManager] Error saving calibration file: {e}")
+            logging.error(f"[CalibrationManager] Error saving calibration filea: {e}")
             return False, {}
+
+
+    def _save_osm_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
+        """
+        Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>.
+        Assumes self.kits_path already exists.
+        """
+        
+        save_dir = self.kits_path
+        if kit_subfolder:
+            save_dir = os.path.join(self.kits_path, kit_subfolder)
+
+        os.makedirs(save_dir, exist_ok=True)
+        logging.info(f"[DEBUG] Created folder: {save_dir}")
+        print(f"[DEBUG] Created folder: {save_dir}")
+
+        filepath = os.path.join(save_dir, filename)
+
+        network = rf.Network()
+        network.frequency = rf.Frequency.from_f(freq, unit="Hz")
+        network.s = s_data.reshape((len(freq), 1, 1))
+        network.write_touchstone(filepath)
+
+        logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
+        print(f"[DEBUG] Saved {label} in: {filepath}")
 
 
     def load_calibration_file(self, filename: str) -> bool:
