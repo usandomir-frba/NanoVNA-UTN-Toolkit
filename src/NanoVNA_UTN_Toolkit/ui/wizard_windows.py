@@ -855,6 +855,8 @@ class CalibrationWizard(QMainWindow):
 
     # --- navigation handlers -------------------------------------------------
     def next_step(self):
+        self.next_button.setEnabled(False)
+
         if self.current_step == 0:
             if not self.selected_method:
                 return
@@ -865,6 +867,16 @@ class CalibrationWizard(QMainWindow):
                 self.show_step_screen(self.current_step + 1)
             else:
                 self.show_step_screen(self.current_step + 1)
+
+        # --- Control de visibilidad del botón "Save Calibration" ---
+        if (
+            (self.selected_method == "Normalization" and self.current_step == 1)
+            or (self.selected_method == "OSM (Open - Short - Match)" and self.current_step == 3)
+        ):
+            self.save_button.setVisible(True)
+        else:
+            self.save_button.setVisible(False)
+
 
     def previous_step(self):
         if self.current_step <= 1:
@@ -1055,8 +1067,14 @@ class CalibrationWizard(QMainWindow):
             QMessageBox.critical(self, "Measurement Error", error_msg)
             self.status_label.setText("Measurement failed!")
             self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: red;")
+
+        # ✅ Enable Next button after successful measurement
+        self.next_button.setEnabled(True)
+        logging.info(f"[CalibrationWizard] Next step unlocked after {standard_name} measurement")
+
     
     def save_calibration_dialog(self):
+        from PySide6.QtWidgets import QMessageBox
         """Shows a dialog to save the calibration without advancing to graphics window"""
         if not self.osm_calibration:
             return
@@ -1065,11 +1083,14 @@ class CalibrationWizard(QMainWindow):
             return
             
         # Check which measurements are available
-        status = self.osm_calibration.get_completion_status()
-        measured_standards = [std for std, completed in status.items() if completed and std != 'complete']
+        osm_status = self.osm_calibration.get_completion_status()
+        thru_status = self.thru_calibration.get_completion_status()
 
-        status = self.thru_calibration.get_completion_status()
-        measured_standards = [std for std, completed in status.items() if completed and std != 'complete']
+        measured_standards = [
+            std for std, completed in osm_status.items() if completed and std != 'complete'
+        ] + [
+            std for std, completed in thru_status.items() if completed and std != 'complete'
+        ]
         
         if not measured_standards:
             QMessageBox.warning(

@@ -23,11 +23,13 @@ class OSMCalibrationManager:
         
         self.base_path = base_path
         self.osm_results_path = os.path.join(base_path, "osm_results")
-        self.config_path = os.path.join(base_path, "config")
+        self.thru_results_path = os.path.join(base_path, "thru_results")
+        self.kits_path = os.path.join(base_path, "Kits")
         
         # Ensure directories exist
         os.makedirs(self.osm_results_path, exist_ok=True)
-        os.makedirs(self.config_path, exist_ok=True)
+        os.makedirs(self.thru_results_path, exist_ok=True)
+        os.makedirs(self.kits_path, exist_ok=True)
         
         # Calibration data storage
         self.measurements = {
@@ -133,7 +135,7 @@ class OSMCalibrationManager:
             # Prepare path
             if not filename.endswith('.cal'):
                 filename += '.cal'
-            cal_path = os.path.join(self.config_path, filename)
+            cal_path = os.path.join(self.kits_path, filename)
             
             # Get frequency data (should be same for all standards)
             freqs = self.measurements['open']['freqs']
@@ -172,7 +174,7 @@ class OSMCalibrationManager:
         try:
             if not filename.endswith('.cal'):
                 filename += '.cal'
-            cal_path = os.path.join(self.config_path, filename)
+            cal_path = os.path.join(self.kits_path, filename)
             
             if not os.path.exists(cal_path):
                 logging.warning(f"[OSMCalibrationManager] Calibration file not found: {cal_path}")
@@ -231,7 +233,7 @@ class OSMCalibrationManager:
         """List all available .cal files."""
         try:
             cal_files = []
-            for file in os.listdir(self.config_path):
+            for file in os.listdir(self.kits_path):
                 if file.endswith('.cal'):
                     cal_files.append(file[:-4])  # Remove .cal extension
             return sorted(cal_files)
@@ -267,15 +269,15 @@ class OSMCalibrationManager:
         return s11_raw
 
 
-def get_current_calibration_info(config_path: str = None) -> Optional[Dict[str, str]]:
+def get_current_calibration_info(kits_path: str = None) -> Optional[Dict[str, str]]:
     """Get information about currently selected calibration."""
     try:
-        if config_path is None:
-            config_path = os.path.join(os.path.dirname(__file__), "config")
-        
+        if kits_path is None:
+            kits_path = os.path.join(os.path.dirname(__file__), "Kits")
+
         # Check for active calibration info
         from PySide6.QtCore import QSettings
-        config_file = os.path.join(config_path, "calibration_config.ini")
+        config_file = os.path.join(kits_path, "calibration_config.ini")
         
         if os.path.exists(config_file):
             settings = QSettings(config_file, QSettings.Format.IniFormat)
@@ -333,11 +335,11 @@ class THRUCalibrationManager:
 
         self.base_path = base_path
         self.thru_results_path = os.path.join(base_path, "thru_results")
-        self.config_path = os.path.join(base_path, "config")
+        self.kits_path = os.path.join(base_path, "Kits")
 
         # Ensure directories exist
         os.makedirs(self.thru_results_path, exist_ok=True)
-        os.makedirs(self.config_path, exist_ok=True)
+        os.makedirs(self.kits_path, exist_ok=True)
 
         # THRU measurement storage
         self.measurements = {
@@ -421,7 +423,7 @@ class THRUCalibrationManager:
 
             if not filename.endswith('.cal'):
                 filename += '.cal'
-            cal_path = os.path.join(self.config_path, filename)
+            cal_path = os.path.join(self.kits_path, filename)
 
             freqs = self.measurements['thru']['freqs']
             s21 = self.measurements['thru']['s21']
@@ -446,7 +448,7 @@ class THRUCalibrationManager:
         try:
             if not filename.endswith('.cal'):
                 filename += '.cal'
-            cal_path = os.path.join(self.config_path, filename)
+            cal_path = os.path.join(self.kits_path, filename)
 
             if not os.path.exists(cal_path):
                 logging.warning(f"[THRUCalibrationManager] File not found: {cal_path}")
@@ -483,7 +485,7 @@ class THRUCalibrationManager:
         """List all available .cal files for THRU calibration."""
         try:
             cal_files = []
-            for file in os.listdir(self.config_path):
+            for file in os.listdir(self.kits_path):
                 if file.endswith('.cal'):
                     cal_files.append(file[:-4])
             return sorted(cal_files)
