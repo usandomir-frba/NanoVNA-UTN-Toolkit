@@ -429,8 +429,13 @@ class NanoVNAWelcome(QMainWindow):
         self.kit_frame.enterEvent = center_enter
         self.kit_frame.leaveEvent = center_leave
 
-        current_text = self.kit_names[self.current_index]
-        self.kit_label = QLabel(current_text, self.kit_frame)
+        if self.current_index == 0:
+            current_text = "------------------"
+            self.kit_label = QLabel(current_text, self.kit_frame)
+        else:
+            current_text = self.kit_names[self.current_index]
+            self.kit_label = QLabel(current_text, self.kit_frame)
+
         self.kit_label.setAlignment(Qt.AlignCenter)
         self.kit_label.setGeometry(0, 0, inner_width, inner_height)
         self.kit_label.setStyleSheet("background-color: transparent;")
@@ -532,11 +537,6 @@ class NanoVNAWelcome(QMainWindow):
 
         anim_old.start()
         anim_new.start()
-
-
-
-
-
 
     def toolbutton_main_clicked(self, kit_name):
         print(f"Clickeaste en el kit central gay: {kit_name}")

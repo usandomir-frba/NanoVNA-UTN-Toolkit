@@ -550,7 +550,7 @@ class THRUCalibrationManager:
 
                 freqs = self.measurements['thru']['freqs']
 
-                self._save_osm_error_file(freqs, e10e32, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
+                self._save_thru_error_file(freqs, e10e32, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
             logging.info(f"[CalibrationManager] Calibration kit saved in: {kit_path}")
             return True, errors
@@ -560,7 +560,7 @@ class THRUCalibrationManager:
             return False, {}
 
 
-    def _save_osm_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
+    def _save_thru_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
         """
         Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>.
         Assumes self.kits_path already exists.

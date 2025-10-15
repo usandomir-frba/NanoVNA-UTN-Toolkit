@@ -1203,12 +1203,71 @@ class CalibrationWizard(QMainWindow):
                 else:
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.warning(self, "Error", "Failed to save calibration")
-                    
+
+                # --- Read current calibration method ---
+                # Use new calibration structure
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+                settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+
+                # --- If a kit was previously saved in this session, show its name ---
+                if getattr(self, 'last_saved_kit_id', None):
+                    last_id = self.last_saved_kit_id
+                    last_name = settings_calibration.value(f"Kit_{last_id}/kit_name", "")
+                    if last_name:
+                        name_input.setText(last_name)
+
+
+                if name is None:
+                    name = name_input.text().strip()
+                if not name:
+                    name_input.setPlaceholderText("Please enter a valid name...")
+                    return
+
+                # --- Check if name already exists in any Kit ---
+                existing_groups = settings_calibration.childGroups()
+                for g in existing_groups:
+                    if g.startswith("Kit_"):
+                        existing_name = settings_calibration.value(f"{g}/kit_name", "")
+                        if existing_name == name:
+                            # Show warning message box if name exists
+                            QMessageBox.warning(dialog, "Duplicate Name",
+                                                f"The kit name '{name}' already exists.\nPlease choose another name.",
+                                                QMessageBox.Ok)
+                            return
+
+                # --- Determine ID: use last saved if exists ---
+                if getattr(self, 'last_saved_kit_id', None):
+                    next_id = self.last_saved_kit_id
+                else:
+                    # First save -> calculate next available ID
+                    kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
+                    next_id = max(kit_ids, default=0) + 1
+                    self.last_saved_kit_id = next_id  # store ID for overwriting next time
+
+                calibration_entry_name = f"Kit_{next_id}"
+                full_calibration_name = f"{name}_{next_id}"
+
+                # --- Save data ---
+                settings_calibration.beginGroup(calibration_entry_name)
+                settings_calibration.setValue("kit_name", name)
+                settings_calibration.setValue("method", self.selected_method)
+                settings_calibration.setValue("id", next_id)
+                settings_calibration.endGroup()
+
+                # --- Update active calibration reference ---
+                settings_calibration.beginGroup("Calibration")
+                settings_calibration.setValue("Name", full_calibration_name)
+                settings_calibration.endGroup()
+                settings_calibration.sync()
+
+                logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
+
             except Exception as e:
                 logging.error(f"[CalibrationWizard] Error saving calibration: {e}")
                 from PySide6.QtWidgets import QMessageBox
                 QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
-    
+
     def get_current_timestamp(self):
         """Generate timestamp for filenames"""
         from datetime import datetime
