@@ -1217,7 +1217,6 @@ class CalibrationWizard(QMainWindow):
                     if last_name:
                         name_input.setText(last_name)
 
-
                 if name is None:
                     name = name_input.text().strip()
                 if not name:
