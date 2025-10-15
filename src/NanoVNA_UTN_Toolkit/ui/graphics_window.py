@@ -17,7 +17,7 @@ from ..exporters.touchstone_exporter import TouchstoneExporter
 from matplotlib.backends.backend_pdf import PdfPages
 
 from NanoVNA_UTN_Toolkit.ui.calibration.methods import Methods
-#from NanoVNA_UTN_Toolkit.ui.calibration.kits import Kits
+from NanoVNA_UTN_Toolkit.ui.calibration.kits import KitsCalibrator
 
 # Suppress verbose matplotlib logging
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
@@ -2267,6 +2267,7 @@ class NanoVNAGraphics(QMainWindow):
             config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
             settings = QSettings(config_path, QSettings.Format.IniFormat)
             calibration_method = settings.value("Calibration/Method", "---")
+            kit_name = settings.value("Calibration/Name", "---")
 
             logging.info(f"[graphics_window.run_sweep] calibration_method leído: '{calibration_method}'")
 
@@ -2276,7 +2277,7 @@ class NanoVNAGraphics(QMainWindow):
 
             kits_ok = settings.value("Calibration/Kits", False, type=bool)
 
-            if not kits_ok:
+            if kits_ok == False:
 
                 if calibration_method == "OSM (Open - Short - Match)":
                     s11 = methods.osm_calibrate_s11(s11_med)
@@ -2308,10 +2309,10 @@ class NanoVNAGraphics(QMainWindow):
                 else:
                     s11 = s11_med
                     s21 = s21_med
-
-           # else:
-                #kits_calibrator = KitsCalibrator(cal_dir)
-                #kits_calibrator.kits_selected()
+            elif kits_ok == True:
+                selected_kit_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "kits")
+                kits_calibrator = KitsCalibrator(selected_kit_dir)
+                s11, s21 = kits_calibrator.kits_selected(calibration_method, kit_name, s11_med, s21_med)
 
             # Validate data consistency
             if len(freqs) != len(s11) or len(freqs) != len(s21):

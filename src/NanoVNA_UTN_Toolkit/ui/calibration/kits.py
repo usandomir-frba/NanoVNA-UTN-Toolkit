@@ -19,7 +19,7 @@ class KitsCalibrator:
         self.calibration_dir = calibration_dir
         logging.info(f"[Calibrator] Initialized with calibration directory: {calibration_dir}")
 
-    def osm_calibrate_s11(self, s11_med):
+    def osm_calibrate_s11(self, s11_med, selected_kit):
         """
         Calibrate measured S11 using OSM error terms.
 
@@ -36,7 +36,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Loading error terms from S1P files...")
 
         # Construct full paths to error S1P files with literal names
-        error_dir = os.path.join(self.calibration_dir, "osm_errors")
+        error_dir = os.path.join(self.calibration_dir, selected_kit)
         directivity_file = os.path.join(error_dir, "directivity.s1p")
         reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir, "source_match.s1p")
@@ -53,7 +53,7 @@ class KitsCalibrator:
         s11_cal = (s11_med - directivity) / (s11_med * reflection_tracking - delta_e)
         return s11_cal
 
-    def normalization_calibrate_s21(self, s21_med):
+    def normalization_calibrate_s21(self, s21_med, selected_kit):
         """
         Calibrate measured S21 using normalization (THRU) error term.
 
@@ -70,7 +70,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Loading transmission tracking error from S2P file...")
 
         # Path to normalization error file
-        error_dir = os.path.join(self.calibration_dir, "normalization_errors")
+        error_dir = os.path.join(self.calibration_dir, selected_kit)
         transmission_tracking_file = os.path.join(error_dir, "transmission_tracking.s2p")
 
         # Read S2P file using skrf and extract S21
@@ -82,7 +82,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Calculated calibrated S21 using normalization.")
         return s21_cal
 
-    def one_port_n_calibrate(self, s11_med, s21_med, osm_dir, thru_dir):
+    def one_port_n_calibrate(self, s11_med, s21_med, selected_kit):
         """
         Calibrate S11 and S21 using the 1-Port+N method.
         S11 is calibrated using OSM error terms from osm_dir.
@@ -109,7 +109,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Calibrating S11 and S21 using 1-Port+N method...")
 
         # Calibrate S11 using OSM errors from osm_dir
-        error_dir_osm = os.path.join(osm_dir, "osm_errors")
+        error_dir_osm = os.path.join(self.calibration_dir, selected_kit)
         directivity_file = os.path.join(error_dir_osm, "directivity.s1p")
         reflection_tracking_file = os.path.join(error_dir_osm, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir_osm, "source_match.s1p")
@@ -122,7 +122,7 @@ class KitsCalibrator:
         s11_cal = (s11_med - directivity) / (s11_med * reflection_tracking - delta_e)
 
         # Calibrate S21 using normalization error from thru_dir
-        error_dir_norm = os.path.join(thru_dir, "1-Port-N_errors")
+        error_dir_norm = os.path.join(self.calibration_dir, selected_kit)
         transmission_tracking_file = os.path.join(error_dir_norm, "transmission_tracking.s2p")
         transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
 
@@ -130,7 +130,7 @@ class KitsCalibrator:
 
         return s11_cal, s21_cal
 
-    def enhanced_response_calibrate(self, s11_med, s21_med, osm_dir, thru_dir):
+    def enhanced_response_calibrate(self, s11_med, s21_med, selected_kit):
         """
         Calibrate S11 and S21 using the 1-Port+N method.
         S11 is calibrated using OSM error terms from osm_dir.
@@ -157,7 +157,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Calibrating S11 and S21 using 1-Port+N method...")
 
         # Calibrate S11 using OSM errors from osm_dir
-        error_dir_osm = os.path.join(osm_dir, "osm_errors")
+        error_dir_osm = os.path.join(self.calibration_dir, selected_kit)
         directivity_file = os.path.join(error_dir_osm, "directivity.s1p")
         reflection_tracking_file = os.path.join(error_dir_osm, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir_osm, "source_match.s1p")
@@ -170,23 +170,39 @@ class KitsCalibrator:
         s11_cal = (s11_med - directivity) / (s11_med * reflection_tracking - delta_e)
 
         # Calibrate S21 using normalization error from thru_dir
-        error_dir_norm = os.path.join(thru_dir, "enhanced_response_errors")
+        error_dir_norm = os.path.join(self.calibration_dir, selected_kit)
         transmission_tracking_file = os.path.join(error_dir_norm, "transmission_tracking.s2p")
         transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
-
-        load_match_file = os.path.join(error_dir_norm, "load_match.s2p")
-        load_match = rf.Network(load_match_file).s[:,0,0]
 
         s21_cal = (s21_med / transmission_tracking) * (reflection_tracking/(source_match*s11_med - delta_e))
 
         return s11_cal, s21_cal
 
-    def kits_selected(self, selected_method):
-        # Apply calibration if applicable
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
-        settings = QSettings(config_path, QSettings.Format.IniFormat)
-        settings.sync()
+    def kits_selected(self, selected_method, selected_kit, s11_med, s21_med):
+        """
+        Determine the calibration method based on user selection.
 
-        kit_name = settings.value("Calibration/Name", None)
+        Parameters
+        ----------
+        selected_method : str
+            The selected calibration method.
+
+        Returns
+        -------
+        method : str    
+            The determined calibration method.
+        """
+        
+        if selected_method == "OSM (Open - Short - Match)":
+            s11 = self.osm_calibrate_s11(s11_med, selected_kit)
+            s21 = s21_med
+        elif selected_method == "Normalization":
+            s11 = s11_med
+            s21 = self.normalization_calibrate_s21(s21_med, selected_kit)
+        elif selected_method == "1-Port+N":
+            s11, s21 = self.one_port_n_calibrate(s11_med, s21_med, selected_kit)
+        elif selected_method == "Enhanced-Response":
+            s11, s21 = self.enhanced_response_calibrate(s11_med, s21_med, selected_kit)
+
+        return s11, s21
 

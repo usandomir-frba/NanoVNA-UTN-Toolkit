@@ -506,7 +506,10 @@ class THRUCalibrationManager:
                 freqs = self.measurements['thru']['freqs']
                 errors['transmission_tracking'] = s21
 
-                self._save_osm_error_file(freqs, s21, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
+                s = np.zeros((len(freqs), 2, 2), dtype=complex)
+                s[:, 1, 0] = s21
+
+                self._save_thru_error_file(freqs, s, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
             # === 1-PORT+N ===
             elif selected_method == "1-Port+N":
@@ -514,12 +517,16 @@ class THRUCalibrationManager:
                 freqs = self.measurements['thru']['freqs']
                 errors['transmission_tracking'] = s21
 
-                self._save_osm_error_file(freqs, s21, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
+                s = np.zeros((len(freqs), 2, 2), dtype=complex)
+                s[:, 1, 0] = s21
+
+                self._save_thru_error_file(freqs, s, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
             # === ENHANCED-RESPONSE ===
             elif selected_method == "Enhanced-Response":
                 s11m = self.measurements['thru']['s11']
                 s21m = self.measurements['thru']['s21']
+                freqs = self.measurements['thru']['freqs']
                 e00 = osm_instance.e00
                 e11 = osm_instance.e11
                 delta_e = osm_instance.delta_e
@@ -540,17 +547,19 @@ class THRUCalibrationManager:
                     logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
                     return False, {}
 
-
                 # e22 = (S11M - e00) / (S11M * e11 - delta_e)
                 e22 = (s11m - e00) / (s11m * e11 - delta_e)
                 # e10e32 = S21M * (1 - e11 * e22)
                 e10e32 = s21m * (1 - (e11 * e22))
 
+                e = np.zeros((len(freqs), 2, 2), dtype=complex)
+                e[:, 1, 0] = e10e32
+
                 logging.info(f"[CalibrationManager] Calculated e22 and e10e32 for Enhanced-Response: e22={e22}, e10e32={e10e32}")
 
                 freqs = self.measurements['thru']['freqs']
 
-                self._save_thru_error_file(freqs, e10e32, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
+                self._save_thru_error_file(freqs, e, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
             logging.info(f"[CalibrationManager] Calibration kit saved in: {kit_path}")
             return True, errors
@@ -578,7 +587,7 @@ class THRUCalibrationManager:
 
         network = rf.Network()
         network.frequency = rf.Frequency.from_f(freq, unit="Hz")
-        network.s = s_data.reshape((len(freq), 1, 1))
+        network.s = s_data.reshape((len(freq), 2, 2))
         network.write_touchstone(filepath)
 
         logging.info(f"[CalibrationErrors] {label} error saved: {filepath}")
