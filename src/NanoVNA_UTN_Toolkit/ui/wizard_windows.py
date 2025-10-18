@@ -1184,7 +1184,7 @@ class CalibrationWizard(QMainWindow):
                     
                 else:
                     from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(self, "Error", "Failed to save calibration")
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration") hay un error aca y entra primero
 
                 success = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
                 if success:
@@ -1201,14 +1201,14 @@ class CalibrationWizard(QMainWindow):
                     
                 else:
                     from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(self, "Error", "Failed to save calibration")
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
 
                 # --- Read current calibration method ---
                 # Use new calibration structure
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
                 settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
-
+                """
                 # --- If a kit was previously saved in this session, show its name ---
                 if getattr(self, 'last_saved_kit_id', None):
                     last_id = self.last_saved_kit_id
@@ -1221,7 +1221,7 @@ class CalibrationWizard(QMainWindow):
                 if not name:
                     name_input.setPlaceholderText("Please enter a valid name...")
                     return
-
+                """
                 # --- Check if name already exists in any Kit ---
                 existing_groups = settings_calibration.childGroups()
                 for g in existing_groups:

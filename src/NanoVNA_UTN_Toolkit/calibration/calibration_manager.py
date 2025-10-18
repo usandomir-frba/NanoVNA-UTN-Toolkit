@@ -537,10 +537,16 @@ class THRUCalibrationManager:
                     freqs = self.measurements['thru']['freqs']
                     errors['transmission_tracking'] = s21
 
+                    s = np.zeros((len(freqs), 2, 2), dtype=complex)
+                    s[:, 1, 0] = s21
+
                 elif selected_method == "1-Port+N":
                     s21 = self.measurements['thru']['s21']
                     freqs = self.measurements['thru']['freqs']
                     errors['transmission_tracking'] = s21
+
+                    s = np.zeros((len(freqs), 2, 2), dtype=complex)
+                    s[:, 1, 0] = s21
 
                 elif selected_method == "Enhanced-Response":
                     s11m = self.measurements['thru']['s11']

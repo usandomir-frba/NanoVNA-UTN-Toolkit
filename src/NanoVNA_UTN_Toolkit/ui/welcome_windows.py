@@ -496,7 +496,7 @@ class NanoVNAWelcome(QMainWindow):
                     
                 else:
                     from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(self, "Error", "Failed to save calibration")
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
 
                 success = self.thru_calibration.save_calibration_file(name, selected_method, is_external_kit, files, osm_instance=self.osm_calibration)
                 if success:
@@ -513,7 +513,7 @@ class NanoVNAWelcome(QMainWindow):
                     
                 else:
                     from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(self, "Error", "Failed to save calibration")
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
 
                 # --- Read current calibration method ---
                 # Use new calibration structure
