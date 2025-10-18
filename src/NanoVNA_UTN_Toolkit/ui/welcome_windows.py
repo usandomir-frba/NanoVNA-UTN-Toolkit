@@ -442,7 +442,7 @@ class NanoVNAWelcome(QMainWindow):
             print(f)
         dialog.accept()
 
-        QTimer.singleShot(0, lambda: self.save_calibration_dialog(selected_method, files))
+        self.save_calibration_dialog(selected_method, files)
 
     def save_calibration_dialog(self, selected_method, files):
         from PySide6.QtWidgets import QMessageBox
@@ -452,6 +452,10 @@ class NanoVNAWelcome(QMainWindow):
 
         if not self.thru_calibration:
             return
+
+        # Check which measurements are available
+        osm_status = self.osm_calibration.is_complete_true()
+        thru_status = self.thru_calibration.is_complete_true()
              
         # Dialog to enter calibration name
         from PySide6.QtWidgets import QInputDialog
@@ -471,11 +475,12 @@ class NanoVNAWelcome(QMainWindow):
             f'Enter calibration name:',
             text=f'{prefix}_Calibration_{self.get_current_timestamp()}'
         )
+
+        is_external_kit = True
         
         if ok and name:
             try:
                 # Save calibration (it will save only the available measurements)
-                is_external_kit = True
                 success = self.osm_calibration.save_calibration_file(name, selected_method, is_external_kit, files)
                 if success:
                     # Show success message
@@ -493,9 +498,7 @@ class NanoVNAWelcome(QMainWindow):
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.warning(self, "Error", "Failed to save calibration")
 
-                is_external = True
-
-                success = self.thru_calibration.save_calibration_file(name, selected_method, is_external, files, osm_instance=self.osm_calibration)
+                success = self.thru_calibration.save_calibration_file(name, selected_method, is_external_kit, files, osm_instance=self.osm_calibration)
                 if success:
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox
@@ -558,7 +561,7 @@ class NanoVNAWelcome(QMainWindow):
                 # --- Save data ---
                 settings_calibration.beginGroup(calibration_entry_name)
                 settings_calibration.setValue("kit_name", name)
-                settings_calibration.setValue("method", self.selected_method)
+                settings_calibration.setValue("method", selected_method)
                 settings_calibration.setValue("id", next_id)
                 settings_calibration.endGroup()
 
@@ -571,7 +574,7 @@ class NanoVNAWelcome(QMainWindow):
                 logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
 
             except Exception as e:
-                logging.error(f"[CalibrationWizard] Error saving calibration: {e}")
+                logging.error(f"[CalibrationWelcome] Error saving calibration: {e}")
                 from PySide6.QtWidgets import QMessageBox
                 QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
 
