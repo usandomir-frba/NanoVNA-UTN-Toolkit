@@ -376,8 +376,7 @@ class CalibrationWizard(QMainWindow):
             "OSM (Open - Short - Match)",
             "Normalization",
             "1-Port+N",
-            "Enhanced-Response",
-            "1-Path 2-Port"
+            "Enhanced-Response"
         ]
         self.freq_dropdown.addItems(methods)
         self.freq_dropdown.activated.connect(self.on_method_activated)
@@ -1170,7 +1169,7 @@ class CalibrationWizard(QMainWindow):
         if ok and name:
             try:
                 # Save calibration (it will save only the available measurements)
-                success = self.osm_calibration.save_calibration_file(name, self.selected_method)
+                success = self.osm_calibration.save_calibration_file(name, self.selected_method, False)
                 if success:
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox
@@ -1187,7 +1186,7 @@ class CalibrationWizard(QMainWindow):
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.warning(self, "Error", "Failed to save calibration")
 
-                success = self.thru_calibration.save_calibration_file(name, self.selected_method, osm_instance=self.osm_calibration)
+                success = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
                 if success:
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox

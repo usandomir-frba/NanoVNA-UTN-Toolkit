@@ -140,7 +140,7 @@ class OSMCalibrationManager:
             'complete': self.is_complete
         }
 
-    def save_calibration_file(self, filename: str, selected_method: str) -> bool:
+    def save_calibration_file(self, filename: str, selected_method: str, is_external_kit: bool, files=None) -> bool:
         """
         Save OSM calibration errors using _save_osm_error_file() instead of storing Open/Short/Match.
         
@@ -156,6 +156,10 @@ class OSMCalibrationManager:
         bool
             True if save was successful, False otherwise.
         """
+
+        if files is None:
+            files = [] 
+
         try:
             # --- Ensure calibration is complete ---
             if not self.is_complete:
@@ -167,9 +171,15 @@ class OSMCalibrationManager:
             os.makedirs(self.calibration_dir, exist_ok=True)
 
             # --- Compute 3-term OSM error model ---
-            open_file = os.path.join(self.calibration_dir, "open.s1p")
-            short_file = os.path.join(self.calibration_dir, "short.s1p")
-            match_file = os.path.join(self.calibration_dir, "match.s1p")
+
+            if not is_external_kit:
+                open_file = os.path.join(self.calibration_dir, "open.s1p")
+                short_file = os.path.join(self.calibration_dir, "short.s1p")
+                match_file = os.path.join(self.calibration_dir, "match.s1p")
+            else:
+                open_file = files[0] if len(files) > 0 else None
+                short_file = files[1] if len(files) > 1 else None
+                match_file = files[2] if len(files) > 2 else None
 
             for f in [open_file, short_file, match_file]:
                 if not os.path.exists(f):
@@ -475,7 +485,7 @@ class THRUCalibrationManager:
         """Return completion status like OSM interface expects."""
         return {'thru': self.measurements['thru']['measured'], 'complete': self.is_complete}
 
-    def save_calibration_file(self, filename: str, selected_method: str, osm_instance=None):
+    def save_calibration_file(self, filename: str, selected_method: str, is_external_kit: bool, files=None, osm_instance=None):
         """
         Save calibration file and compute errors depending on the selected method.
 
@@ -487,6 +497,10 @@ class THRUCalibrationManager:
             - 'transmission_tracking': returned for Normalization / 1-Port+N
             - 'e22', 'e10e32': returned for Enhanced-Response
         """
+
+        if files is None:
+            files = []
+
         try:
             if not self.is_complete:
                 logging.warning("[CalibrationManager] Cannot save incomplete calibration")
@@ -500,53 +514,89 @@ class THRUCalibrationManager:
 
             errors = {}
 
+            if not is_external_kit:
+
+                if selected_method == "Normalization":
+                    s21 = self.measurements['thru']['s21']
+                    freqs = self.measurements['thru']['freqs']
+                    errors['transmission_tracking'] = s21
+
+                elif selected_method == "1-Port+N":
+                    s21 = self.measurements['thru']['s21']
+                    freqs = self.measurements['thru']['freqs']
+                    errors['transmission_tracking'] = s21
+
+                elif selected_method == "Enhanced-Response":
+                    s11m = self.measurements['thru']['s11']
+                    s21m = self.measurements['thru']['s21']
+                    freqs = self.measurements['thru']['freqs']
+                    e00 = osm_instance.e00
+                    e11 = osm_instance.e11
+                    delta_e = osm_instance.delta_e
+
+                    missing = []
+                    if s11m is None:
+                        missing.append("s11m")
+                    if s21m is None:
+                        missing.append("s21m")
+                    if e00 is None:
+                        missing.append("e00")
+                    if e11 is None:
+                        missing.append("e11")
+                    if delta_e is None:
+                        missing.append("delta_e")
+
+                    if missing:
+                        logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
+                        return False, {}
+            else:
+
+                if selected_method == "Normalization":
+                    s11, s21, freqs = read_thru_file(files[3])
+                    errors['transmission_tracking'] = s21
+
+                elif selected_method == "1-Port+N":
+                    s11, s21, freqs = read_thru_file(files[3])
+                    errors['transmission_tracking'] = s21
+
+                elif selected_method == "Enhanced-Response":
+                    s11m, s21m, freqs = read_thru_file(files[3])
+                    e00 = osm_instance.e00
+                    e11 = osm_instance.e11
+                    delta_e = osm_instance.delta_e
+
+                    missing = []
+                    if s11m is None:
+                        missing.append("s11m")
+                    if s21m is None:
+                        missing.append("s21m")
+                    if e00 is None:
+                        missing.append("e00")
+                    if e11 is None:
+                        missing.append("e11")
+                    if delta_e is None:
+                        missing.append("delta_e")
+
+                    if missing:
+                        logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
+                        return False, {}
+
+            s = np.zeros((len(freqs), 2, 2), dtype=complex)
+            s[:, 1, 0] = s21
+
             # === NORMALIZATION ===
             if selected_method == "Normalization":
-                s21 = self.measurements['thru']['s21']
-                freqs = self.measurements['thru']['freqs']
-                errors['transmission_tracking'] = s21
-
-                s = np.zeros((len(freqs), 2, 2), dtype=complex)
-                s[:, 1, 0] = s21
 
                 self._save_thru_error_file(freqs, s, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
             # === 1-PORT+N ===
             elif selected_method == "1-Port+N":
-                s21 = self.measurements['thru']['s21']
-                freqs = self.measurements['thru']['freqs']
-                errors['transmission_tracking'] = s21
-
-                s = np.zeros((len(freqs), 2, 2), dtype=complex)
-                s[:, 1, 0] = s21
-
+              
                 self._save_thru_error_file(freqs, s, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
             # === ENHANCED-RESPONSE ===
             elif selected_method == "Enhanced-Response":
-                s11m = self.measurements['thru']['s11']
-                s21m = self.measurements['thru']['s21']
-                freqs = self.measurements['thru']['freqs']
-                e00 = osm_instance.e00
-                e11 = osm_instance.e11
-                delta_e = osm_instance.delta_e
-
-                missing = []
-                if s11m is None:
-                    missing.append("s11m")
-                if s21m is None:
-                    missing.append("s21m")
-                if e00 is None:
-                    missing.append("e00")
-                if e11 is None:
-                    missing.append("e11")
-                if delta_e is None:
-                    missing.append("delta_e")
-
-                if missing:
-                    logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
-                    return False, {}
-
+                
                 # e22 = (S11M - e00) / (S11M * e11 - delta_e)
                 e22 = (s11m - e00) / (s11m * e11 - delta_e)
                 # e10e32 = S21M * (1 - e11 * e22)
@@ -567,6 +617,13 @@ class THRUCalibrationManager:
         except Exception as e:
             logging.error(f"[CalibrationManager] Error saving calibration filea: {e}")
             return False, {}
+
+    def read_thru_file(thru_file_path):
+        network = rf.Network(thru_file_path)
+        freqs = network.frequency.f  # Freqs
+        s11 = network.s[:, 0, 0]    # S11
+        s21 = network.s[:, 1, 0]    # S21
+        return s11, s21, freqs
 
 
     def _save_thru_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
