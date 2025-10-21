@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout,
     QMenu, QFileDialog, QMessageBox, QProgressBar
 )
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon, QPixmap, QColor
 from .export import ExportDialog
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -798,12 +798,13 @@ class NanoVNAGraphics(QMainWindow):
         settings.sync()
 
         kits_ok = settings.value("Calibration/Kits", False, type=bool)
+        no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
 
         calibration_method = method or settings.value("Calibration/Method", "---")
 
         if calibration_name:
             text = f"Calibration: {calibration_name} ({calibration_method})"
-        elif kits_ok and calibration_name:
+        elif kits_ok and calibration_name and no_calibration == False:
             matched_method = None
             i = 1
             while True:
@@ -821,6 +822,8 @@ class NanoVNAGraphics(QMainWindow):
                 text = f"Calibration Kit: {kit_name}  |  Method: {matched_method}"
             else:
                 text = f"Calibration Kit: {kit_name} (method not found)"
+        elif no_calibration == True:
+            text = f"No Calibration"
         else:
             text = f"Calibration Method selected: {calibration_method}"
 
@@ -2763,7 +2766,7 @@ class NanoVNAGraphics(QMainWindow):
             measurement_name=device_name
         )
 
-    def import_calibration(self):
+    def import_touchstone_data(self):
         from PySide6.QtWidgets import QFileDialog, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox
         import os
 
