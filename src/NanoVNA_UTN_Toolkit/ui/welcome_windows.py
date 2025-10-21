@@ -325,21 +325,20 @@ class NanoVNAWelcome(QMainWindow):
         # --- Get current calibration ---
         calibration_name = settings_calibration.value("Calibration/Name", "No Calibration")
 
-        # --- Obtener nombre base (sin sufijo) ---
         if "_" in calibration_name:
             calibration_name_split = calibration_name.rsplit("_", 1)[0]
         else:
             calibration_name_split = calibration_name
 
-        # === Buscar el kit correspondiente ===
-        self.current_index = 0
         matched_id = 0
+        self.current_index = -1  
 
         if calibration_name_split in self.kit_names:
-            self.current_index = self.kit_names.index(calibration_name_split)
-            matched_id = self.kit_ids[self.current_index]
+            idx = self.kit_names.index(calibration_name_split)
+            matched_id = self.kit_ids[idx]
 
-            # Guardar el ID del kit correspondiente en [Calibration]
+            self.current_index = matched_id - 1
+
             settings_calibration.setValue("Calibration/id", matched_id)
             print(f"Matched kit '{calibration_name_split}' -> ID {matched_id}")
         else:
@@ -749,7 +748,7 @@ class NanoVNAWelcome(QMainWindow):
         self.kit_frame.enterEvent = center_enter
         self.kit_frame.leaveEvent = center_leave
 
-        if self.current_index == 0:
+        if self.current_index == -1:
             current_text = "------------------"
             self.kit_label = QLabel(current_text, self.kit_frame)
         else:
@@ -760,7 +759,7 @@ class NanoVNAWelcome(QMainWindow):
         self.kit_label.setGeometry(0, 0, inner_width, inner_height)
         self.kit_label.setStyleSheet("background-color: transparent;")
 
-        self.kit_frame.mousePressEvent = lambda event, name=calibration_name: self.toolbutton_main_clicked(name)
+        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked(name)
 
     def cycle_kit_side(self, direction, calibration_name):
         old_frame = self.kit_frame
@@ -811,7 +810,7 @@ class NanoVNAWelcome(QMainWindow):
             """)
         new_frame.enterEvent = center_enter
         new_frame.leaveEvent = center_leave
-        new_frame.mousePressEvent = lambda event, name=calibration_name: self.toolbutton_main_clicked(name)
+        new_frame.mousePressEvent = lambda event, name=new_text: self.toolbutton_main_clicked(name)
 
         # --- Posición inicial para animación ---
         offset = self.left_arrow_button.width() - 10
@@ -866,9 +865,32 @@ class NanoVNAWelcome(QMainWindow):
         config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
+        # --- Get all kit names, IDs, and methods ---
+        kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
+        self.kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
+        self.kit_ids = [int(settings_calibration.value(f"{g}/id", 0)) for g in kit_groups]
+        self.kit_methods = [settings_calibration.value(f"{g}/method", "") for g in kit_groups]
+
+        # --- Find the matching kit ---
+        if kit_name in self.kit_names:
+            idx = self.kit_names.index(kit_name)
+            matched_id = self.kit_ids[idx]
+            matched_method = self.kit_methods[idx]
+
+            # --- Append ID to the kit_name ---
+            kit_name_with_id = f"{kit_name}_{matched_id}"
+
+            # --- Save updated values in [Calibration] ---
+            settings_calibration.setValue("Calibration/Name", kit_name_with_id)
+            settings_calibration.setValue("Calibration/id", matched_id)
+            settings_calibration.setValue("Calibration/Method", matched_method)
+
+            logging.info(f"Saved calibration: {kit_name_with_id} (ID {matched_id}, Method {matched_method})")
+        else:
+            logging.warning(f"No matching kit found for '{kit_name}'")
+
         settings_calibration.setValue("Calibration/Kits", True)
         settings_calibration.setValue("Calibration/NoCalibration", False)
-        settings_calibration.setValue("Calibration/name", kit_name)
         settings_calibration.sync()
 
         if self.vna_device:

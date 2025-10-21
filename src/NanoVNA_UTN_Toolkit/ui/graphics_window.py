@@ -798,15 +798,12 @@ class NanoVNAGraphics(QMainWindow):
         settings.sync()
 
         kits_ok = settings.value("Calibration/Kits", False, type=bool)
-        kit_name = settings.value("Calibration/Name", None)
-        if "_" in kit_name:
-            kit_name = kit_name.rsplit("_", 1)[0]
 
         calibration_method = method or settings.value("Calibration/Method", "---")
 
         if calibration_name:
             text = f"Calibration: {calibration_name} ({calibration_method})"
-        elif kits_ok and kit_name:
+        elif kits_ok and calibration_name:
             matched_method = None
             i = 1
             while True:
@@ -2278,12 +2275,12 @@ class NanoVNAGraphics(QMainWindow):
             kits_ok = settings.value("Calibration/Kits", False, type=bool)
             no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
 
-            """ if kits_ok == False and no_calibration == True:
+            if kits_ok == False and no_calibration == True:
                 s11 = s11_med
                 s21 = s21_med
-            """
-            if kits_ok == False:
 
+            elif kits_ok == False and no_calibration == False:
+                print(f"kit_name calibrador: {kit_name}")
                 if calibration_method == "OSM (Open - Short - Match)":
                     s11 = methods.osm_calibrate_s11(s11_med)
                     s21 = s21_med  # S21 sin calibrar
@@ -2314,7 +2311,7 @@ class NanoVNAGraphics(QMainWindow):
                 else:
                     s11 = s11_med
                     s21 = s21_med
-            elif kits_ok == True:
+            elif kits_ok == True and no_calibration == False:
                 selected_kit_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "kits")
                 kits_calibrator = KitsCalibrator(selected_kit_dir)
                 s11, s21 = kits_calibrator.kits_selected(calibration_method, kit_name, s11_med, s21_med)
