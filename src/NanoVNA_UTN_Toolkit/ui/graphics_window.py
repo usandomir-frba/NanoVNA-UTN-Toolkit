@@ -799,6 +799,8 @@ class NanoVNAGraphics(QMainWindow):
 
         kits_ok = settings.value("Calibration/Kits", False, type=bool)
         kit_name = settings.value("Calibration/Name", None)
+        if "_" in kit_name:
+            kit_name = kit_name.rsplit("_", 1)[0]
         calibration_method = method or settings.value("Calibration/Method", "---")
 
         # Si se proporciona un nombre de calibración específico, usarlo
@@ -2268,6 +2270,8 @@ class NanoVNAGraphics(QMainWindow):
             settings = QSettings(config_path, QSettings.Format.IniFormat)
             calibration_method = settings.value("Calibration/Method", "---")
             kit_name = settings.value("Calibration/Name", "---")
+            if "_" in kit_name:
+                kit_name = kit_name.rsplit("_", 1)[0]
 
             logging.info(f"[graphics_window.run_sweep] calibration_method leído: '{calibration_method}'")
 

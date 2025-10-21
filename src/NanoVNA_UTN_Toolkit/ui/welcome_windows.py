@@ -285,7 +285,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # === Calibration QToolButton ===
         self.left_button = QToolButton()
-        self.left_button.setFixedSize(300, 200)
+        self.left_button.setFixedSize(400, 200)
         self.left_button.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.left_button.setAutoRaise(False)
         self.left_button.setArrowType(Qt.NoArrow)
@@ -322,15 +322,17 @@ class NanoVNAWelcome(QMainWindow):
         # --- Get current calibration ---
         calibration_name = settings_calibration.value("Calibration/Name", "No Calibration")
         if "_" in calibration_name:
-            calibration_name = calibration_name.rsplit("_", 1)[0]
+            calibration_name_split = calibration_name.rsplit("_", 1)[0]
+
+        logging.info(f"[Calibration_Welcome_Window]: {calibration_name}")
 
         # === Initialize carousel index ===
         self.current_index = 0
-        if calibration_name in self.kit_names:
-            self.current_index = self.kit_names.index(calibration_name)
+        if calibration_name_split in self.kit_names:
+            self.current_index = self.kit_names.index(calibration_name_split)
 
         # --- Update button text with arrows inside ---
-        self.update_left_button_text()
+        self.update_left_button_text(calibration_name)
 
         # --- Add calibration button to layout ---
         main_layout.addWidget(self.left_button, alignment=Qt.AlignHCenter | Qt.AlignBottom)
@@ -583,7 +585,7 @@ class NanoVNAWelcome(QMainWindow):
         from datetime import datetime
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    def update_left_button_text(self):
+    def update_left_button_text(self, calibration_name):
         for child in self.left_button.findChildren(QWidget):
             child.deleteLater()
 
@@ -740,7 +742,7 @@ class NanoVNAWelcome(QMainWindow):
         self.kit_label.setGeometry(0, 0, inner_width, inner_height)
         self.kit_label.setStyleSheet("background-color: transparent;")
 
-        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked(name)
+        self.kit_frame.mousePressEvent = lambda event, name=calibration_name: self.toolbutton_main_clicked(name)
 
     def cycle_kit_side(self, direction):
         old_frame = self.kit_frame
@@ -857,7 +859,6 @@ class NanoVNAWelcome(QMainWindow):
             graphics_window = NanoVNAGraphics()
         graphics_window.show()
         self.close()
-
 
     def open_calibration_wizard(self):
 
