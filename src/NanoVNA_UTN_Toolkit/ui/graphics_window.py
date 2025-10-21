@@ -234,6 +234,9 @@ class NanoVNAGraphics(QMainWindow):
         save_as_action =  file_menu.addAction("Save As")
         save_as_action.triggered.connect(lambda: self.on_save_as())
 
+        import_touchstone_action = file_menu.addAction("Import Touchstone Data")
+        import_touchstone_action.triggered.connect(lambda: self.import_touchstone_data())
+
         export_pdf_action =  file_menu.addAction("Export Latex PDF")
         export_pdf_action.triggered.connect(lambda: self.export_latex_pdf())
 
@@ -787,10 +790,7 @@ class NanoVNAGraphics(QMainWindow):
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
 
     def update_calibration_label_from_method(self, method=None, calibration_name=None):
-        """
-        Actualiza el QLabel de calibración leyendo el INI o usando un método dado.
-        """
-        # Nueva ruta de configuración
+
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
         
@@ -801,13 +801,12 @@ class NanoVNAGraphics(QMainWindow):
         kit_name = settings.value("Calibration/Name", None)
         if "_" in kit_name:
             kit_name = kit_name.rsplit("_", 1)[0]
+
         calibration_method = method or settings.value("Calibration/Method", "---")
 
-        # Si se proporciona un nombre de calibración específico, usarlo
         if calibration_name:
             text = f"Calibration: {calibration_name} ({calibration_method})"
         elif kits_ok and kit_name:
-            # Buscar método específico del kit
             matched_method = None
             i = 1
             while True:
@@ -831,11 +830,8 @@ class NanoVNAGraphics(QMainWindow):
         self.calibration_label.setText(text)
     
     def load_latest_osm_calibration(self):
-        """
-        Carga automáticamente la calibración OSM más reciente si existe.
-        """
+        # OSM
         try:
-            # Buscar archivos .cal en el directorio config
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             config_dir = os.path.join(base_dir, "calibration", "config")
             
@@ -2280,7 +2276,12 @@ class NanoVNAGraphics(QMainWindow):
             methods = Methods(cal_dir)
 
             kits_ok = settings.value("Calibration/Kits", False, type=bool)
+            no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
 
+            """ if kits_ok == False and no_calibration == True:
+                s11 = s11_med
+                s21 = s21_med
+            """
             if kits_ok == False:
 
                 if calibration_method == "OSM (Open - Short - Match)":
@@ -2765,7 +2766,94 @@ class NanoVNAGraphics(QMainWindow):
             measurement_name=device_name
         )
 
+    def import_calibration(self):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox
+        import os
 
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Calibration Files",
+            "",
+            "Touchstone Files (*.s1p *.s2p);;All Files (*)"
+        )
+
+        if not files:
+            QMessageBox.warning(self, "No Files Selected", "Please select the 4 calibration files.")
+            return
+
+        required_names = ["open", "short", "load", "match", "thru"]
+        filenames = [os.path.basename(f).lower() for f in files]
+        found = {name: any(name in f for f in filenames) for name in required_names}
+        has_load_or_match = found["load"] or found["match"]
+
+        missing = []
+        if not found["open"]:
+            missing.append("open")
+        if not found["short"]:
+            missing.append("short")
+        if not has_load_or_match:
+            missing.append("load or match")
+        if not found["thru"]:
+            missing.append("thru")
+
+        if missing:
+            QMessageBox.warning(self, "Missing Files", f"The following calibration files are missing: {', '.join(missing)}")
+            return
+
+        if len(files) != 4:
+            QMessageBox.warning(self, "Invalid Selection", "You must select exactly 4 calibration files.")
+            return
+
+        QMessageBox.information(self, "Success", "All calibration files selected successfully!")
+        print("Selected calibration files:")
+        for f in files:
+            print(f)
+
+        # "Select Method"
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Method")
+
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)  
+
+        label = QLabel("Select Method", dialog)
+        main_layout.addWidget(label)
+
+        self.select_method = QComboBox()
+        self.select_method.setEditable(False)
+
+        # Placeholder
+        self.select_method.addItem("Select Method")
+        item = self.select_method.model().item(0)
+        item.setEnabled(False)
+        placeholder_color = QColor(120, 120, 120)
+        item.setForeground(placeholder_color)
+
+        methods = [
+            "OSM (Open - Short - Match)",
+            "Normalization",
+            "1-Port+N",
+            "Enhanced-Response"
+        ]
+        self.select_method.addItems(methods)
+
+        main_layout.addWidget(self.select_method)
+
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10) 
+
+        cancel_button = QPushButton("Cancel", dialog)
+        cancel_button.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_button)
+
+        calibrate_button = QPushButton("Calibrate", dialog)
+        calibrate_button.clicked.connect(lambda: self.start_calibration(files, self.select_method.currentText(), dialog))
+        button_layout.addWidget(calibrate_button)
+
+        main_layout.addLayout(button_layout)
+
+        dialog.exec()
 
     def export_touchstone_data(self):
         """

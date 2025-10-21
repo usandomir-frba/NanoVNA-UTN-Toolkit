@@ -317,20 +317,36 @@ class NanoVNAWelcome(QMainWindow):
         config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
+
+        # --- Get kit names and IDs ---
         self.kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
+        self.kit_ids = [int(settings_calibration.value(f"{g}/id", 0)) for g in kit_groups]
 
         # --- Get current calibration ---
         calibration_name = settings_calibration.value("Calibration/Name", "No Calibration")
+
+        # --- Obtener nombre base (sin sufijo) ---
         if "_" in calibration_name:
             calibration_name_split = calibration_name.rsplit("_", 1)[0]
+        else:
+            calibration_name_split = calibration_name
 
-        logging.info(f"[Calibration_Welcome_Window]: {calibration_name}")
-
-        # === Initialize carousel index ===
+        # === Buscar el kit correspondiente ===
         self.current_index = 0
+        matched_id = 0
+
         if calibration_name_split in self.kit_names:
             self.current_index = self.kit_names.index(calibration_name_split)
+            matched_id = self.kit_ids[self.current_index]
 
+            # Guardar el ID del kit correspondiente en [Calibration]
+            settings_calibration.setValue("Calibration/id", matched_id)
+            print(f"Matched kit '{calibration_name_split}' -> ID {matched_id}")
+        else:
+            print(f"No kit match found for '{calibration_name_split}'")
+
+        print(f"Selected kit index: {self.current_index}")
+        
         # --- Update button text with arrows inside ---
         self.update_left_button_text(calibration_name)
 
@@ -573,6 +589,9 @@ class NanoVNAWelcome(QMainWindow):
                 settings_calibration.endGroup()
                 settings_calibration.sync()
 
+                settings_calibration.setValue("Calibration/Kits", True)
+                settings_calibration.setValue("Calibration/NoCalibration", False)
+
                 logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
 
             except Exception as e:
@@ -611,7 +630,7 @@ class NanoVNAWelcome(QMainWindow):
                 border-bottom-right-radius: 0px;
             }}
         """)
-        self.left_arrow_button.clicked.connect(lambda: self.cycle_kit_side(-1))
+        self.left_arrow_button.clicked.connect(lambda: self.cycle_kit_side(-1, calibration_name))
 
         def left_enter(event):
             self.left_arrow_button.setStyleSheet(f"""
@@ -654,7 +673,7 @@ class NanoVNAWelcome(QMainWindow):
                 border-bottom-right-radius: {border_radius};
             }}
         """)
-        self.right_arrow_button.clicked.connect(lambda: self.cycle_kit_side(1))
+        self.right_arrow_button.clicked.connect(lambda: self.cycle_kit_side(1, calibration_name))
 
         def right_enter(event):
             self.right_arrow_button.setStyleSheet(f"""
@@ -685,7 +704,6 @@ class NanoVNAWelcome(QMainWindow):
 
         self.left_arrow_button.raise_()
         self.right_arrow_button.raise_()
-
 
         # --- Frame central ---
         inner_x = arrow_width
@@ -744,7 +762,7 @@ class NanoVNAWelcome(QMainWindow):
 
         self.kit_frame.mousePressEvent = lambda event, name=calibration_name: self.toolbutton_main_clicked(name)
 
-    def cycle_kit_side(self, direction):
+    def cycle_kit_side(self, direction, calibration_name):
         old_frame = self.kit_frame
         old_label = self.kit_label
         self.current_index = (self.current_index + direction) % len(self.kit_names)
@@ -793,7 +811,7 @@ class NanoVNAWelcome(QMainWindow):
             """)
         new_frame.enterEvent = center_enter
         new_frame.leaveEvent = center_leave
-        new_frame.mousePressEvent = lambda event, name=new_text: self.toolbutton_main_clicked(name)
+        new_frame.mousePressEvent = lambda event, name=calibration_name: self.toolbutton_main_clicked(name)
 
         # --- Posición inicial para animación ---
         offset = self.left_arrow_button.width() - 10
@@ -841,7 +859,6 @@ class NanoVNAWelcome(QMainWindow):
         anim_new.start()
 
     def toolbutton_main_clicked(self, kit_name):
-        print(f"Clickeaste en el kit central gay: {kit_name}")
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
 
         # Use new calibration structure
@@ -850,6 +867,7 @@ class NanoVNAWelcome(QMainWindow):
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
         settings_calibration.setValue("Calibration/Kits", True)
+        settings_calibration.setValue("Calibration/NoCalibration", False)
         settings_calibration.setValue("Calibration/name", kit_name)
         settings_calibration.sync()
 
@@ -868,6 +886,7 @@ class NanoVNAWelcome(QMainWindow):
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
         settings_calibration.setValue("Calibration/Kits", False)
+        settings_calibration.setValue("Calibration/NoCalibration", False)
         settings_calibration.sync()
 
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
@@ -886,8 +905,8 @@ class NanoVNAWelcome(QMainWindow):
         settings_calibration = QSettings(config_path, QSettings.IniFormat)
 
         settings_calibration.setValue("Calibration/Kits", False)
+        settings_calibration.setValue("Calibration/NoCalibration", True)
         settings_calibration.sync()
-
 
         if self.vna_device:
             graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
@@ -895,7 +914,6 @@ class NanoVNAWelcome(QMainWindow):
             graphics_window = NanoVNAGraphics()
         graphics_window.show()
         self.close()
-
 
 if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication
