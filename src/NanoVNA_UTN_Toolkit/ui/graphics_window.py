@@ -660,11 +660,15 @@ class NanoVNAGraphics(QMainWindow):
         sweep_run = sweep_menu.addAction("Run Sweep")
         sweep_run.triggered.connect(lambda: self.run_sweep())
 
-        sweep_load_calibration = calibration_menu.addAction("Save Calibration")
-        sweep_load_calibration.triggered.connect(lambda: self.open_save_calibration())
-
         calibrate_option = calibration_menu.addAction("Calibration Wizard")
         calibrate_option.triggered.connect(lambda: self.open_calibration_wizard())
+
+        select_calibration = calibration_menu.addAction("Select Calibration (Kit)")
+
+        sweep_load_calibration = calibration_menu.addAction("Save Calibration (Kit)")
+        sweep_load_calibration.triggered.connect(lambda: self.save_kit_dialog())
+
+        delete_calibration = calibration_menu.addAction("Delete Calibration (Kit)")
 
         # --- Icon ---
         icon_paths = [
@@ -1812,113 +1816,153 @@ class NanoVNAGraphics(QMainWindow):
 
     # =================== SWEEP OPTIONS FUNCTION ==================
 
-    def open_save_calibration(self):
-        """
-        Opens a dialog to name and save a new calibration kit.
-        The dialog closes on save. If reopened while the main window
-        is still open, it overwrites the last saved kit using the same ID.
-        Shows warning if the kit name already exists.
-        Shows confirmation when saved successfully.
-        """
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
-        import os
-        import logging
+    def save_kit_dialog(self):
+        from PySide6.QtWidgets import QMessageBox
+        """Shows a dialog to save the calibration without advancing to graphics window"""
 
-        # --- Read current calibration method ---
-        # Use new calibration structure
+        self.osm_calibration.is_complete_true()
+        self.thru_calibration.is_complete_true()
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        osm_dir = os.path.join(base_dir, "Calibration", "osm_results")
+        thru_dir = os.path.join(base_dir, "Calibration", "thru_results")
+
+        files = [
+            os.path.join(osm_dir, "open.s1p"),
+            os.path.join(osm_dir, "short.s1p"),
+            os.path.join(osm_dir, "match.s1p"),
+            os.path.join(thru_dir, "thru.s2p")
+        ]
+
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
-        settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
-        calibration_method = settings_calibration.value("Calibration/Method", "---")
 
-        if calibration_method == "---" or not calibration_method:
-            logging.warning("[welcome_windows.open_save_calibration] No calibration method found to save.")
-            return
+        settings = QSettings(config_path, QSettings.Format.IniFormat)
 
-        # --- Create save dialog ---
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Save Calibration Kit")
-        dialog.setFixedSize(300, 150)
+        # Method
+        selected_method = settings.value("Calibration/Method", "No Kit")
 
-        layout = QVBoxLayout(dialog)
-        label = QLabel("Enter kit name:")
-        layout.addWidget(label)
+        # Dialog to enter calibration name
+        from PySide6.QtWidgets import QInputDialog
 
-        name_input = QLineEdit()
-        name_input.setPlaceholderText("e.g. MyCustomKit")
-        layout.addWidget(name_input)
+        logging.info(f"[Calibration_Kit] Selected Method: {selected_method}")
 
-        # --- If a kit was previously saved in this session, show its name ---
-        if getattr(self, 'last_saved_kit_id', None):
-            last_id = self.last_saved_kit_id
-            last_name = settings_calibration.value(f"Kit_{last_id}/kit_name", "")
-            if last_name:
-                name_input.setText(last_name)
+        if selected_method == "OSM (Open - Short - Match)":
+            prefix = "OSM"
+        elif selected_method == "Normalization":
+            prefix = "Normalization"
+        elif selected_method== "1-Port+N":
+            prefix = "1PortN"
+        elif selected_method == "Enhanced-Response":
+            prefix = "Enhanced Response"
 
-        # --- Buttons Save / Cancel ---
-        buttons_layout = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        cancel_btn = QPushButton("Cancel")
-        buttons_layout.addWidget(save_btn)
-        buttons_layout.addWidget(cancel_btn)
-        layout.addLayout(buttons_layout)
+        name, ok = QInputDialog.getText(
+            self, 
+            'Save Calibration', 
+            f'Enter calibration name:\n\nMeasurements to save:',
+            text=f'{prefix}_Calibration_{self.get_current_timestamp()}'
+        )
+        
+        if ok and name:
+            try:
+                # Save calibration (it will save only the available measurements)
+                success = self.osm_calibration.save_calibration_file(name, selected_method, False, files)
+                if success:
+                    # Show success message
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self, 
+                        "Success", 
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    
+                    # Stay in wizard - do not advance to graphics window
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                    
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration") hay un error aca y entra primero
 
-        # --- Function executed when Save is pressed ---
-        def save_action():
-            kit_name = name_input.text().strip()
-            if not kit_name:
-                name_input.setPlaceholderText("Please enter a valid name...")
-                return
+                success = self.thru_calibration.save_calibration_file(name, selected_method, True, files, osm_instance=self.osm_calibration)
+                if success:
+                    # Show success message
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self, 
+                        "Success", 
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    
+                    # Stay in wizard - do not advance to graphics window
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                    
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
 
-            # --- Check if name already exists in any Kit ---
-            existing_groups = settings_calibration.childGroups()
-            for g in existing_groups:
-                if g.startswith("Kit_"):
-                    existing_name = settings_calibration.value(f"{g}/kit_name", "")
-                    if existing_name == kit_name:
-                        # Show warning message box if name exists
-                        QMessageBox.warning(dialog, "Duplicate Name",
-                                            f"The kit name '{kit_name}' already exists.\nPlease choose another name.",
-                                            QMessageBox.Ok)
-                        return
+                # --- Read current calibration method ---
+                # Use new calibration structure
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+                settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+                """
+                # --- If a kit was previously saved in this session, show its name ---
+                if getattr(self, 'last_saved_kit_id', None):
+                    last_id = self.last_saved_kit_id
+                    last_name = settings_calibration.value(f"Kit_{last_id}/kit_name", "")
+                    if last_name:
+                        name_input.setText(last_name)
 
-            # --- Determine ID: use last saved if exists ---
-            if getattr(self, 'last_saved_kit_id', None):
-                next_id = self.last_saved_kit_id
-            else:
-                # First save -> calculate next available ID
-                kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
-                next_id = max(kit_ids, default=0) + 1
-                self.last_saved_kit_id = next_id  # store ID for overwriting next time
+                if name is None:
+                    name = name_input.text().strip()
+                if not name:
+                    name_input.setPlaceholderText("Please enter a valid name...")
+                    return
+                """
+                # --- Check if name already exists in any Kit ---
+                existing_groups = settings_calibration.childGroups()
+                for g in existing_groups:
+                    if g.startswith("Kit_"):
+                        existing_name = settings_calibration.value(f"{g}/kit_name", "")
+                        if existing_name == name:
+                            # Show warning message box if name exists
+                            QMessageBox.warning(dialog, "Duplicate Name",
+                                                f"The kit name '{name}' already exists.\nPlease choose another name.",
+                                                QMessageBox.Ok)
+                            return
 
-            calibration_entry_name = f"Kit_{next_id}"
-            full_calibration_name = f"{kit_name}_{next_id}"
+                # --- Determine ID: use last saved if exists ---
+                if getattr(self, 'last_saved_kit_id', None):
+                    next_id = self.last_saved_kit_id
+                else:
+                    # First save -> calculate next available ID
+                    kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
+                    next_id = max(kit_ids, default=0) + 1
+                    self.last_saved_kit_id = next_id  # store ID for overwriting next time
 
-            # --- Save data ---
-            settings_calibration.beginGroup(calibration_entry_name)
-            settings_calibration.setValue("kit_name", kit_name)
-            settings_calibration.setValue("method", calibration_method)
-            settings_calibration.setValue("id", next_id)
-            settings_calibration.endGroup()
+                calibration_entry_name = f"Kit_{next_id}"
+                full_calibration_name = f"{name}_{next_id}"
 
-            # --- Update active calibration reference ---
-            settings_calibration.beginGroup("Calibration")
-            settings_calibration.setValue("Name", full_calibration_name)
-            settings_calibration.endGroup()
-            settings_calibration.sync()
+                # --- Save data ---
+                settings_calibration.beginGroup(calibration_entry_name)
+                settings_calibration.setValue("kit_name", name)
+                settings_calibration.setValue("method", selected_method)
+                settings_calibration.setValue("id", next_id)
+                settings_calibration.endGroup()
 
-            logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
+                # --- Update active calibration reference ---
+                settings_calibration.beginGroup("Calibration")
+                settings_calibration.setValue("Name", full_calibration_name)
+                settings_calibration.endGroup()
+                settings_calibration.sync()
 
-            # --- Close dialog and show success message ---
-            dialog.accept()
-            QMessageBox.information(self, "Saved Successfully",
-                                    f"Calibration kit '{kit_name}' saved successfully!",
-                                    QMessageBox.Ok)
-                                    
-        save_btn.clicked.connect(save_action)
-        cancel_btn.clicked.connect(dialog.reject)
+                logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
 
-        dialog.exec()
+            except Exception as e:
+                logging.error(f"[CalibrationKit] Error saving calibration: {e}")
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
 
     def open_sweep_options(self):
         from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow

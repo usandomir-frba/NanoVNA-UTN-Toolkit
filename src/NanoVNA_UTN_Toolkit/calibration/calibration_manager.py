@@ -201,6 +201,9 @@ class OSMCalibrationManager:
             e11 = np.zeros(n_points, dtype=complex)      # Source match error
             e10e01 = np.zeros(n_points, dtype=complex)   # Reflection tracking error
 
+            logger.info(f"Initialized e00, e11, e10e01 with {n_points} complex zeros.")
+            logger.debug(f"e00 sample: {e00[:3]}")
+
             for i in range(n_points):
                 e00[i] = s_match[i]
                 e11[i] = (s_open[i] + s_short[i] - 2 * e00[i]) / (s_open[i] - s_short[i])
@@ -572,6 +575,7 @@ class THRUCalibrationManager:
                         logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
                         return False, {}
             else:
+                print("entre jejejejejejejej")
                 if selected_method == "Normalization":
                     s11, s21, freqs = self.read_thru_file(files[3])
                     errors['transmission_tracking'] = s21
