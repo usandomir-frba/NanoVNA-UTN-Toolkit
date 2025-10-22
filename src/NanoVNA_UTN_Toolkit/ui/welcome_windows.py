@@ -244,7 +244,6 @@ class NanoVNAWelcome(QMainWindow):
             self.thru_calibration = None
             logging.warning("[CalibrationWizard] THRUCalibrationManager not available")
 
-
         self.setWindowTitle("Welcome")
         self.setGeometry(100, 100, 1000, 600)
 

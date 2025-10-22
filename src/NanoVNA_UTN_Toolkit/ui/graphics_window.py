@@ -45,6 +45,16 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+# Import calibration data storage
+try:
+    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager
+    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import THRUCalibrationManager
+except ImportError as e:
+    logging.error("Failed to import OSMCalibrationManager: %s", e)
+    logging.error("Failed to import THRUCalibrationManager: %s", e)
+    OSMCalibrationManager = None
+    THRUCalibrationManager = None
+
 class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None):
         super().__init__()
@@ -344,7 +354,8 @@ class NanoVNAGraphics(QMainWindow):
                 settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#4d4d4d")
 
                 # --- QCombo ---
-                settings.setValue("Dark_Light/QComboBox/color", "white")
+
+                color_text_QCombo = settings.value("Dark_Light/QComboBox/color", "white")
 
                 self.setStyleSheet("""
                     QWidget {
@@ -422,8 +433,26 @@ class NanoVNAGraphics(QMainWindow):
                     QMenu::item:selected {
                         background-color: #4d4d4d;
                     }
+                    QComboBox {{
+                        color: black;                 
+                        background-color: white;
+                        border: 1px solid #5f5f5f;
+                        border-radius: 5px;
+                        padding-left: 5px;            
+                    }}
+                    QComboBox QAbstractItemView {{
+                        color: black;
+                        background-color: white;             
+                        selection-background-color: lightgray; 
+                        selection-color: black;
+                    }}
+                    QComboBox:focus {{
+                        background-color: white;
+                    }}
+                    QComboBox::placeholder {{
+                        color: lightgray;
+                    }}
                 """)
-
 
                 self.is_dark_mode = False
 
@@ -594,6 +623,25 @@ class NanoVNAGraphics(QMainWindow):
                     QMenu::item:selected {
                         background-color: #dcdcdc;
                     }
+                    QComboBox {{
+                        color: black;                 
+                        background-color: white;
+                        border: 1px solid #5f5f5f;
+                        border-radius: 5px;
+                        padding-left: 5px;            
+                    }}
+                    QComboBox QAbstractItemView {{
+                        color: black;
+                        background-color: white;             
+                        selection-background-color: lightgray; 
+                        selection-color: black;
+                    }}
+                    QComboBox:focus {{
+                        background-color: white;
+                    }}
+                    QComboBox::placeholder {{
+                        color: lightgray;
+                    }}
                 """)
 
                 self.is_dark_mode = True
@@ -632,6 +680,25 @@ class NanoVNAGraphics(QMainWindow):
         else:
             logger = logging.getLogger(__name__)
             logger.warning("icon.ico not found in expected locations")
+
+        
+        if OSMCalibrationManager:
+            self.osm_calibration = OSMCalibrationManager()
+            if vna_device and hasattr(vna_device, 'name'):
+                self.osm_calibration.device_name = vna_device.name
+            logging.info("[CalibrationWizard] OSM calibration manager initialized")
+        else:
+            self.osm_calibration = None
+            logging.warning("[CalibrationWizard] OSMCalibrationManager not available")
+        
+        if THRUCalibrationManager:
+            self.thru_calibration = THRUCalibrationManager()
+            if vna_device and hasattr(vna_device, 'name'):
+                self.thru_calibration.device_name = vna_device.name
+            logging.info("[CalibrationWizard] THRU calibration manager initialized")
+        else:
+            self.thru_calibration = None
+            logging.warning("[CalibrationWizard] THRUCalibrationManager not available")
 
         self.setWindowTitle("NanoVNA Graphics")
         self.setGeometry(100, 100, 1300, 700)
@@ -2821,6 +2888,28 @@ class NanoVNAGraphics(QMainWindow):
         main_layout.addWidget(label)
 
         self.select_method = QComboBox()
+        self.select_method.setStyleSheet("""
+            QComboBox {
+                color: black;
+                background-color: white;
+                border: 1px solid #5f5f5f;
+                border-radius: 5px;
+                padding-left: 5px;
+            }
+            QComboBox QAbstractItemView {
+                color: black;
+                background-color: white;
+                selection-background-color: lightgray;
+                selection-color: black;
+            }
+            QComboBox:focus {
+                background-color: white;
+            }
+            QComboBox::placeholder {
+                color: lightgray;
+            }
+        """)
+
         self.select_method.setEditable(False)
 
         # Placeholder
@@ -2854,6 +2943,156 @@ class NanoVNAGraphics(QMainWindow):
         main_layout.addLayout(button_layout)
 
         dialog.exec()
+
+    def get_current_timestamp(self):
+        """Generate timestamp for filenames"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    def start_calibration(self, files, selected_method, dialog):
+        print(f"Starting calibration with method: {selected_method}")
+        for f in files:
+            print(f)
+        dialog.accept()
+
+        self.save_calibration_dialog(selected_method, files)
+
+    def save_calibration_dialog(self, selected_method, files):
+        from PySide6.QtWidgets import QMessageBox
+        """Shows a dialog to save the calibration without advancing to graphics window"""
+        if not self.osm_calibration:
+            return
+
+        if not self.thru_calibration:
+            return
+
+        # Check which measurements are available
+        osm_status = self.osm_calibration.is_complete_true()
+        thru_status = self.thru_calibration.is_complete_true()
+             
+        # Dialog to enter calibration name
+        from PySide6.QtWidgets import QInputDialog
+
+        if selected_method == "OSM (Open - Short - Match)":
+            prefix = "OSM"
+        elif selected_method == "Normalization":
+            prefix = "Normalization"
+        elif selected_method == "1-Port+N":
+            prefix = "1PortN"
+        elif selected_method == "Enhanced-Response":
+            prefix = "Enhanced Response"
+
+        name, ok = QInputDialog.getText(
+            self, 
+            'Save Calibration', 
+            f'Enter calibration name:',
+            text=f'{prefix}_Calibration_{self.get_current_timestamp()}'
+        )
+
+        is_external_kit = True
+        
+        if ok and name:
+            try:
+                # Save calibration (it will save only the available measurements)
+                success = self.osm_calibration.save_calibration_file(name, selected_method, is_external_kit, files)
+                if success:
+                    # Show success message
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self, 
+                        "Success", 
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    
+                    # Stay in wizard - do not advance to graphics window
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                    
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
+
+                success = self.thru_calibration.save_calibration_file(name, selected_method, is_external_kit, files, osm_instance=self.osm_calibration)
+                if success:
+                    # Show success message
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self, 
+                        "Success", 
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    
+                    # Stay in wizard - do not advance to graphics window
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                    
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
+
+                # --- Read current calibration method ---
+                # Use new calibration structure
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+                settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+
+                """     # --- If a kit was previously saved in this session, show its name ---
+                if getattr(self, 'last_saved_kit_id', None):
+                    last_id = self.last_saved_kit_id
+                    last_name = settings_calibration.value(f"Kit_{last_id}/kit_name", "")
+                    if last_name:
+                        name_input.setText(last_name)
+
+                if name is None:
+                    name = name_input.text().strip()
+                if not name:
+                    name_input.setPlaceholderText("Please enter a valid name...")
+                    return
+                """
+                # --- Check if name already exists in any Kit ---
+                existing_groups = settings_calibration.childGroups()
+                for g in existing_groups:
+                    if g.startswith("Kit_"):
+                        existing_name = settings_calibration.value(f"{g}/kit_name", "")
+                        if existing_name == name:
+                            # Show warning message box if name exists
+                            QMessageBox.warning(dialog, "Duplicate Name",
+                                                f"The kit name '{name}' already exists.\nPlease choose another name.",
+                                                QMessageBox.Ok)
+                            return
+
+                # --- Determine ID: use last saved if exists ---
+                if getattr(self, 'last_saved_kit_id', None):
+                    next_id = self.last_saved_kit_id
+                else:
+                    # First save -> calculate next available ID
+                    kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
+                    next_id = max(kit_ids, default=0) + 1
+                    self.last_saved_kit_id = next_id  # store ID for overwriting next time
+
+                calibration_entry_name = f"Kit_{next_id}"
+                full_calibration_name = f"{name}_{next_id}"
+
+                # --- Save data ---
+                settings_calibration.beginGroup(calibration_entry_name)
+                settings_calibration.setValue("kit_name", name)
+                settings_calibration.setValue("method", selected_method)
+                settings_calibration.setValue("id", next_id)
+                settings_calibration.endGroup()
+
+                # --- Update active calibration reference ---
+                settings_calibration.beginGroup("Calibration")
+                settings_calibration.setValue("Name", full_calibration_name)
+                settings_calibration.endGroup()
+                settings_calibration.sync()
+
+                settings_calibration.setValue("Calibration/Kits", True)
+                settings_calibration.setValue("Calibration/NoCalibration", False)
+
+                logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
+
+            except Exception as e:
+                logging.error(f"[CalibrationWelcome] Error saving calibration: {e}")
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
 
     def export_touchstone_data(self):
         """
