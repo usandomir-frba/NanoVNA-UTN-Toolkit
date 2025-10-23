@@ -889,26 +889,34 @@ class NanoVNAGraphics(QMainWindow):
 
         calibration_method = method or settings.value("Calibration/Method", "---")
 
+        logging.debug(f"Read from INI: Kits={kits_ok}, NoCalibration={no_calibration}")
+
         if no_calibration:
             text = "No Calibration"
-        elif kits_ok:
+        elif kits_ok and not no_calibration:
             kit_found = False
             i = 1
+
+            selected_full_name = settings.value("Calibration/Name", "Unknown")
+            selected_kit_name = "_".join(selected_full_name.split("_")[:-1])
+
             while True:
                 section = f"Kit_{i}"
                 if not settings.contains(f"{section}/kit_name"):
                     break
                 kit_name = settings.value(f"{section}/kit_name")
                 method_kit = settings.value(f"{section}/method")
-                if calibration_name and kit_name == calibration_name:
-                    text = f"Calibration Kit: {kit_name}  |  Method: {method_kit}"
+                if kit_name == selected_kit_name:
+                    text = f"Calibration Kit | Name: {kit_name} and Method: {method_kit}"
                     kit_found = True
                     break
                 i += 1
             if not kit_found:
                 text = f"Calibration Kit: {calibration_name or 'Unknown'} (method not found)"
-        else:
-            text = f"Calibration: {calibration_name or 'Unnamed'} ({calibration_method})"
+        elif not kits_ok and not no_calibration:
+
+            method = settings.value("Calibration/method")
+            text = f"Calibration Wizard | Method: {method}"
 
         self.calibration_label.setText(text)
     

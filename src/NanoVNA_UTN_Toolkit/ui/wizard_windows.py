@@ -1414,6 +1414,8 @@ class CalibrationWizard(QMainWindow):
             settings = QSettings(config_path, QSettings.Format.IniFormat)
 
             settings.setValue("Calibration/Method", self.selected_method)
+            settings.setValue("Calibration/NoCalibration", False)
+            settings.setValue("Calibration/Kits", False)
 
             if self.selected_method == "OSM (Open - Short - Match)":
                 parameter = "S11"
