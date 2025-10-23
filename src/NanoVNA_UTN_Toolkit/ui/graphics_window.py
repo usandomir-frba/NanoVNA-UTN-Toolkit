@@ -898,50 +898,42 @@ class NanoVNAGraphics(QMainWindow):
         self.latex_exporter = LatexExporter(parent_widget=self)
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
 
-    def update_calibration_label_from_method(self, method=None, calibration_name=None):
+    def update_calibration_label_from_method(self, method=None):
 
+        import configparser
+    
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
-        
-        settings = QSettings(config_path, QSettings.Format.IniFormat)
-        settings.sync()
 
-        kits_ok = settings.value("Calibration/Kits", False, type=bool)
-        no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
+        parser = configparser.ConfigParser()
+        parser.read(config_path)  
 
-        calibration_method = method or settings.value("Calibration/Method", "---")
+        kits_ok = parser.getboolean("Calibration", "Kits", fallback=False)
+        no_calibration = parser.getboolean("Calibration", "NoCalibration", fallback=False)
+        calibration_method = method or parser.get("Calibration", "Method", fallback="---")
 
-        logging.debug(f"Read from INI: Kits={kits_ok}, NoCalibration={no_calibration}")
-
-        if no_calibration:
+        if no_calibration and method == None:
             text = "No Calibration"
-        elif kits_ok and not no_calibration:
+        elif kits_ok and not no_calibration and method == None:
+            selected_full_name = parser.get("Calibration", "Name", fallback="Unknown")
+            selected_kit_name = "_".join(selected_full_name.split("_")[:-1])
             kit_found = False
             i = 1
-
-            selected_full_name = settings.value("Calibration/Name", "Unknown")
-            selected_kit_name = "_".join(selected_full_name.split("_")[:-1])
-
-            while True:
-                section = f"Kit_{i}"
-                if not settings.contains(f"{section}/kit_name"):
-                    break
-                kit_name = settings.value(f"{section}/kit_name")
-                method_kit = settings.value(f"{section}/method")
+            while f"Kit_{i}" in parser:
+                kit_name = parser.get(f"Kit_{i}", "kit_name", fallback=None)
+                method_kit = parser.get(f"Kit_{i}", "method", fallback=None)
                 if kit_name == selected_kit_name:
                     text = f"Calibration Kit | Name: {kit_name} and Method: {method_kit}"
                     kit_found = True
                     break
                 i += 1
             if not kit_found:
-                text = f"Calibration Kit: {calibration_name or 'Unknown'} (method not found)"
-        elif not kits_ok and not no_calibration:
-
-            method = settings.value("Calibration/method")
-            text = f"Calibration Wizard | Method: {method}"
+                text = f"Calibration Kit: {selected_kit_name or 'Unknown'} (method not found)"
+        else:
+            text = f"Calibration Wizard | Method: {calibration_method}"
 
         self.calibration_label.setText(text)
-    
+
     def load_latest_osm_calibration(self):
         # OSM
         try:
@@ -1846,6 +1838,7 @@ class NanoVNAGraphics(QMainWindow):
 
     def open_calibration_wizard(self):
         from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
+
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
         
         if self.vna_device:
@@ -1854,7 +1847,7 @@ class NanoVNAGraphics(QMainWindow):
             self.welcome_windows = CalibrationWizard(caller="graphics")
         self.welcome_windows.show()
         self.close()
-
+        self.deleteLater()
 
     # =================== KITS OPTIONS FUNCTION ==================
 

@@ -1311,7 +1311,7 @@ class CalibrationWizard(QMainWindow):
                     graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
                 else:
                     graphics_window = NanoVNAGraphics()
-                
+
                 # Update calibration label with current method
                 try:
                     graphics_window.update_calibration_label_from_method(self.selected_method)
@@ -1327,6 +1327,9 @@ class CalibrationWizard(QMainWindow):
                 
                 # Close wizard after opening graphics window
                 self.close()
+
+                if hasattr(self, "caller") and hasattr(self.caller, "update_calibration_label_from_method"):
+                    self.caller.update_calibration_label_from_method(self.selected_method)
                 
             else:
                 logging.error("NanoVNAGraphics not available - cannot open graphics window")
