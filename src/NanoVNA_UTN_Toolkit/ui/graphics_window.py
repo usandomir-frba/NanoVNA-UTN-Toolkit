@@ -206,6 +206,20 @@ class NanoVNAGraphics(QMainWindow):
             QMenu::item:selected {{
                 background-color: {menu_item_color};
             }}
+            QListWidget {{
+                color: {label_color};
+                background-color: transparent;
+            }}
+
+            QListView {{
+                color: {label_color};
+                background-color: transparent;
+            }}
+
+            QTreeView {{
+                color: {label_color};
+                background-color: transparent;
+            }}
         """)
 
         # Store VNA device reference
@@ -669,6 +683,7 @@ class NanoVNAGraphics(QMainWindow):
         sweep_load_calibration.triggered.connect(lambda: self.save_kit_dialog())
 
         delete_calibration = calibration_menu.addAction("Delete Calibration (Kit)")
+        delete_calibration.triggered.connect(lambda: self.delete_kit_dialog())
 
         # --- Icon ---
         icon_paths = [
@@ -1963,6 +1978,185 @@ class NanoVNAGraphics(QMainWindow):
                 logging.error(f"[CalibrationKit] Error saving calibration: {e}")
                 from PySide6.QtWidgets import QMessageBox
                 QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
+
+    def delete_kit_dialog(self):
+        from PySide6.QtWidgets import (
+            QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
+            QLabel, QPushButton, QWidget, QScrollArea, QMessageBox
+        )
+        from PySide6.QtCore import Qt, QSettings
+        import os
+        import shutil
+        import logging
+
+        # --- Create dialog ---
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Delete Calibration Kits")
+        dialog.setMinimumWidth(400)
+
+        layout = QVBoxLayout(dialog)
+
+        # --- Base directory and ini path ---
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings = QSettings(config_path, QSettings.Format.IniFormat)
+
+        # --- List widget for kits ---
+        list_widget = QListWidget()
+        layout.addWidget(QLabel("Select kits to delete:"))
+        layout.addWidget(list_widget)
+
+        # --- Populate list ---
+        groups = settings.childGroups()
+        for g in groups:
+            if g.startswith("Kit_"):
+                name = settings.value(f"{g}/kit_name", "").strip()
+                if name:
+                    item = QListWidgetItem(name)
+                    item.setData(Qt.UserRole, g)
+                    list_widget.addItem(item)
+
+        # --- Selected tags area ---
+        selected_names = set()
+        selected_area = QHBoxLayout()
+        selected_container = QWidget()
+        selected_container.setLayout(selected_area)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(selected_container)
+        layout.addWidget(scroll)
+
+        # --- Buttons ---
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton("Cancel")
+        btn_delete = QPushButton("Delete")
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_delete)
+        layout.addLayout(btn_layout)
+
+        from PySide6.QtGui import QIcon
+        from PySide6 import QtCore
+
+        # --- Add selected kit to tag area ---
+        def add_selected(item):
+            name = item.text()
+            if name in selected_names:
+                return
+            selected_names.add(name)
+
+            tag_widget = QWidget()
+            tag_layout = QHBoxLayout(tag_widget)
+            tag_layout.setContentsMargins(5, 2, 5, 2)
+            label = QLabel(name)
+            
+            from PySide6.QtGui import QIcon
+
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            icon_path = os.path.join(project_root, "NanoVNA_UTN_Toolkit", "assets", "icons", "delete.svg")
+
+            remove_btn = QPushButton()
+            remove_btn.setIcon(QIcon(icon_path))  
+            remove_btn.setIconSize(QtCore.QSize(20, 20))  
+            remove_btn.setFixedSize(30, 30)  
+            remove_btn.setFlat(True)
+
+            tag_layout.addWidget(label)
+            tag_layout.addWidget(remove_btn)
+
+            def remove_tag():
+                tag_widget.setParent(None)
+                selected_names.remove(name)
+
+            remove_btn.clicked.connect(remove_tag)
+            selected_area.addWidget(tag_widget)
+
+        # --- Delete selected kits ---
+        def delete_selected():
+            if not selected_names:
+                QMessageBox.warning(dialog, "No Selection", "Please select at least one kit to delete.")
+                return
+
+            confirm = QMessageBox.question(
+                dialog,
+                "Confirm Delete",
+                f"Are you sure you want to delete these kits?\n\n" + "\n".join(selected_names),
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if confirm != QMessageBox.Yes:
+                return
+
+            # --- 1. Delete physical folders using names from ini ---
+            kits_to_delete = []
+            for g in settings.childGroups():
+                if g.startswith("Kit_"):
+                    kit_name_ini = settings.value(f"{g}/kit_name", "").strip()
+                    if kit_name_ini in selected_names:
+                        kit_path = os.path.join(base_dir, "calibration", "kits", kit_name_ini)
+                        if os.path.exists(kit_path) and os.path.isdir(kit_path):
+                            shutil.rmtree(kit_path)
+                            logging.info(f"Deleted folder: {kit_path}")
+                        else:
+                            logging.warning(f"Folder not found: {kit_path}")
+                        kits_to_delete.append(g)
+
+            # --- 2. Remove from ini ---
+            for g in kits_to_delete:
+                settings.remove(g)
+
+            settings.sync()
+
+            # --- 3. Reorder IDs of remaining kits ---
+            remaining_kits = []
+            for g in settings.childGroups():
+                if g.startswith("Kit_"):
+                    kit_name = settings.value(f"{g}/kit_name", "").strip()
+                    method = settings.value(f"{g}/method", "")
+                    kit_id = int(settings.value(f"{g}/id", 0))
+                    remaining_kits.append((kit_id, g, kit_name, method))
+
+            remaining_kits.sort(key=lambda x: x[0])
+
+            # --- Clear old groups ---
+            for _, g, _, _ in remaining_kits:
+                settings.remove(g)
+
+            # --- Save remaining kits with consecutive IDs ---
+            for new_id, (_, _, kit_name, method) in enumerate(remaining_kits, start=1):
+                group_name = f"Kit_{new_id}"
+                settings.beginGroup(group_name)
+                settings.setValue("kit_name", kit_name)
+                settings.setValue("method", method)
+                settings.setValue("id", new_id)
+                settings.endGroup()
+
+            # --- 4. Update [Calibration] Name and id ---
+            if remaining_kits:
+                first_kit_name = remaining_kits[0][2]  # kit_name of first kit
+                settings.beginGroup("Calibration")
+                settings.setValue("Name", f"{first_kit_name}_1")
+                settings.setValue("id", 1)
+                settings.setValue("Kits", True)
+                settings.setValue("NoCalibration", False)
+                settings.endGroup()
+            else:
+                # No kits left, remove Name/id and reset flags
+                settings.beginGroup("Calibration")
+                settings.remove("Name")
+                settings.remove("id")
+                settings.setValue("Kits", False)
+                settings.setValue("NoCalibration", True)
+                settings.endGroup()
+
+            settings.sync()
+            QMessageBox.information(dialog, "Deleted", "Selected kits have been deleted and IDs updated.")
+            dialog.accept()
+
+        # --- Connect signals ---
+        list_widget.itemClicked.connect(add_selected)
+        btn_cancel.clicked.connect(dialog.reject)
+        btn_delete.clicked.connect(delete_selected)
+
+        dialog.exec()
 
     def open_sweep_options(self):
         from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
