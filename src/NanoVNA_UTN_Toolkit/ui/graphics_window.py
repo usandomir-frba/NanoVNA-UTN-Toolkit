@@ -678,6 +678,7 @@ class NanoVNAGraphics(QMainWindow):
         calibrate_option.triggered.connect(lambda: self.open_calibration_wizard())
 
         select_calibration = calibration_menu.addAction("Select Calibration (Kit)")
+        select_calibration.triggered.connect(lambda: self.select_kit_dialog())
 
         sweep_load_calibration = calibration_menu.addAction("Save Calibration (Kit)")
         sweep_load_calibration.triggered.connect(lambda: self.save_kit_dialog())
@@ -888,30 +889,26 @@ class NanoVNAGraphics(QMainWindow):
 
         calibration_method = method or settings.value("Calibration/Method", "---")
 
-        if calibration_name:
-            text = f"Calibration: {calibration_name} ({calibration_method})"
-        elif kits_ok and calibration_name and no_calibration == False:
-            matched_method = None
+        if no_calibration:
+            text = "No Calibration"
+        elif kits_ok:
+            kit_found = False
             i = 1
             while True:
                 section = f"Kit_{i}"
                 if not settings.contains(f"{section}/kit_name"):
                     break
-                name = settings.value(f"{section}/kit_name")
-                mthd = settings.value(f"{section}/method")
-                if name == kit_name:
-                    matched_method = mthd
+                kit_name = settings.value(f"{section}/kit_name")
+                method_kit = settings.value(f"{section}/method")
+                if calibration_name and kit_name == calibration_name:
+                    text = f"Calibration Kit: {kit_name}  |  Method: {method_kit}"
+                    kit_found = True
                     break
                 i += 1
-
-            if matched_method:
-                text = f"Calibration Kit: {kit_name}  |  Method: {matched_method}"
-            else:
-                text = f"Calibration Kit: {kit_name} (method not found)"
-        elif no_calibration == True:
-            text = f"No Calibration"
+            if not kit_found:
+                text = f"Calibration Kit: {calibration_name or 'Unknown'} (method not found)"
         else:
-            text = f"Calibration Method selected: {calibration_method}"
+            text = f"Calibration: {calibration_name or 'Unnamed'} ({calibration_method})"
 
         self.calibration_label.setText(text)
     
@@ -1829,7 +1826,143 @@ class NanoVNAGraphics(QMainWindow):
         self.close()
 
 
-    # =================== SWEEP OPTIONS FUNCTION ==================
+    # =================== KITS OPTIONS FUNCTION ==================
+
+    def select_kit_dialog(self): 
+        from PySide6.QtWidgets import (
+            QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
+            QLabel, QPushButton, QWidget, QScrollArea
+        )
+        from PySide6.QtCore import Qt, QSettings
+        from PySide6.QtGui import QIcon
+        from PySide6 import QtCore
+        import os
+
+        # --- Create dialog ---
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select a Calibration Kit")
+        dialog.setMinimumWidth(400)
+
+        layout = QVBoxLayout(dialog)
+
+        # --- Base directory and ini path ---
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings = QSettings(config_path, QSettings.Format.IniFormat)
+
+        # --- List widget for kits ---
+        list_widget = QListWidget()
+        layout.addWidget(QLabel("Select a kit:"))
+        layout.addWidget(list_widget)
+
+        # --- Populate list ---
+        groups = settings.childGroups()
+        kits_info = {}  # Para guardar info de cada kit
+        for g in groups:
+            if g.startswith("Kit_"):
+                name = settings.value(f"{g}/kit_name", "").strip()
+                method = settings.value(f"{g}/method", "").strip()
+                kit_id = int(settings.value(f"{g}/id", 0))
+                if name:
+                    item = QListWidgetItem(name)
+                    item.setData(Qt.UserRole, g)
+                    list_widget.addItem(item)
+                    kits_info[name] = {"id": kit_id, "method": method}
+
+        # --- Selected tag area (solo uno) ---
+        selected_name = [None]  # lista de un elemento para mutabilidad
+        selected_area = QHBoxLayout()
+        selected_container = QWidget()
+        selected_container.setLayout(selected_area)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(selected_container)
+        layout.addWidget(scroll)
+
+        # --- Add selected kit to tag area ---
+        def add_selected(item):
+            # Limpiar selección previa
+            for i in reversed(range(selected_area.count())):
+                widget = selected_area.itemAt(i).widget()
+                if widget:
+                    widget.setParent(None)
+            selected_name[0] = None
+
+            name = item.text()
+            selected_name[0] = name
+
+            tag_widget = QWidget()
+            tag_layout = QHBoxLayout(tag_widget)
+            tag_layout.setContentsMargins(5, 2, 5, 2)
+            label = QLabel(name)
+
+            # Botón de “deseleccionar” (cruz roja)
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            icon_path = os.path.join(project_root, "NanoVNA_UTN_Toolkit", "assets", "icons", "delete.svg")
+
+            remove_btn = QPushButton()
+            remove_btn.setIcon(QIcon(icon_path))
+            remove_btn.setIconSize(QtCore.QSize(20, 20))
+            remove_btn.setFixedSize(30, 30)
+            remove_btn.setFlat(True)
+            remove_btn.setStyleSheet("""
+                QPushButton { border: none; background-color: transparent; }
+                QPushButton:hover { background-color: rgba(255, 0, 0, 50); }
+            """)
+
+            tag_layout.addWidget(label)
+            tag_layout.addWidget(remove_btn)
+
+            def remove_tag():
+                tag_widget.setParent(None)
+                selected_name[0] = None
+
+            remove_btn.clicked.connect(remove_tag)
+            selected_area.addWidget(tag_widget)
+
+        # --- Select button action ---
+        def select_kit():
+            if not selected_name[0]:
+                return  # No hay kit seleccionado
+            name = selected_name[0]
+            kit_info = kits_info[name]
+
+            kit_name_with_id = f"{name}_{kit_info['id']}" 
+
+            # Guardar en [Calibration]
+            settings.beginGroup("Calibration")
+            settings.setValue("Name", kit_name_with_id)
+            settings.setValue("id", kit_info["id"])
+            settings.setValue("Method", kit_info["method"])
+            settings.setValue("Kits", True)
+            settings.setValue("NoCalibration", False)
+            settings.endGroup()
+            settings.sync()
+
+            dialog.accept()  
+
+            if self.vna_device:
+                graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
+            else:
+                graphics_window = NanoVNAGraphics()
+            graphics_window.show()
+            self.close()
+
+        # --- Buttons ---
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton("Cancel")
+        btn_select = QPushButton("Select")
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_select)
+        layout.addLayout(btn_layout)
+
+        # --- Connect signals ---
+        list_widget.itemClicked.connect(add_selected)
+        btn_cancel.clicked.connect(dialog.reject)
+        btn_select.clicked.connect(select_kit)  # <--- sin paréntesis
+
+        dialog.exec()
+
 
     def save_kit_dialog(self):
         from PySide6.QtWidgets import QMessageBox
@@ -2055,10 +2188,21 @@ class NanoVNAGraphics(QMainWindow):
             icon_path = os.path.join(project_root, "NanoVNA_UTN_Toolkit", "assets", "icons", "delete.svg")
 
             remove_btn = QPushButton()
-            remove_btn.setIcon(QIcon(icon_path))  
-            remove_btn.setIconSize(QtCore.QSize(20, 20))  
-            remove_btn.setFixedSize(30, 30)  
+            remove_btn.setIcon(QIcon(icon_path))
+            remove_btn.setIconSize(QtCore.QSize(20, 20))
+            remove_btn.setFixedSize(30, 30)
             remove_btn.setFlat(True)
+
+            # Quitar fondo y borde, hacer hover más rojo
+            remove_btn.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background-color: transparent;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 0, 0, 50);  /* efecto hover rojo suave */
+                }
+            """)
 
             tag_layout.addWidget(label)
             tag_layout.addWidget(remove_btn)
@@ -2157,6 +2301,8 @@ class NanoVNAGraphics(QMainWindow):
         btn_delete.clicked.connect(delete_selected)
 
         dialog.exec()
+
+    # =================== SWEEP OPTIONS FUNCTION ==================
 
     def open_sweep_options(self):
         from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
