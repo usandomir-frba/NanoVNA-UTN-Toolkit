@@ -681,7 +681,29 @@ class NanoVNAGraphics(QMainWindow):
         select_calibration.triggered.connect(lambda: self.select_kit_dialog())
 
         sweep_load_calibration = calibration_menu.addAction("Save Calibration (Kit)")
-        sweep_load_calibration.triggered.connect(lambda: self.save_kit_dialog())
+
+        def handle_save_calibration(self):
+            # Get path to calibration_config.ini
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+            
+            settings = QSettings(config_path, QSettings.Format.IniFormat)
+            settings.sync()
+
+            # Read values from INI
+            kits_ok = settings.value("Calibration/Kits", False, type=bool)
+            no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
+
+            # Check if calibration was performed from scratch
+            if not kits_ok and not no_calibration:
+                # Calibration was done from scratch → execute save
+                self.save_kit_dialog()
+            else:
+                # Calibration was not done from scratch → show warning
+                self.show_calibration_warning()
+
+        # Connect the action to the handler
+        sweep_load_calibration.triggered.connect(lambda: handle_save_calibration(self))
 
         delete_calibration = calibration_menu.addAction("Delete Calibration (Kit)")
         delete_calibration.triggered.connect(lambda: self.delete_kit_dialog())
@@ -1970,6 +1992,17 @@ class NanoVNAGraphics(QMainWindow):
         btn_select.clicked.connect(select_kit)  # <--- sin paréntesis
 
         dialog.exec()
+
+    # Method to show a warning message
+    def show_calibration_warning(self):
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Calibration Warning")
+        msg.setText(
+            "Save operation is disabled because calibration was not performed from scratch.\n"
+            "Please use the calibration wizard to create a new calibration before saving."
+        )
+        msg.exec()
 
 
     def save_kit_dialog(self):
