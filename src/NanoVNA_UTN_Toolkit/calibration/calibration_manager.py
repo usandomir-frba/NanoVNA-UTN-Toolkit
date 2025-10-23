@@ -201,8 +201,8 @@ class OSMCalibrationManager:
             e11 = np.zeros(n_points, dtype=complex)      # Source match error
             e10e01 = np.zeros(n_points, dtype=complex)   # Reflection tracking error
 
-            logger.info(f"Initialized e00, e11, e10e01 with {n_points} complex zeros.")
-            logger.debug(f"e00 sample: {e00[:3]}")
+            logging.info(f"Initialized e00, e11, e10e01 with {n_points} complex zeros.")
+            logging.debug(f"e00 sample: {e00[:3]}")
 
             for i in range(n_points):
                 e00[i] = s_match[i]

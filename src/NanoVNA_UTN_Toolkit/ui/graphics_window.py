@@ -2004,7 +2004,6 @@ class NanoVNAGraphics(QMainWindow):
         )
         msg.exec()
 
-
     def save_kit_dialog(self):
         from PySide6.QtWidgets import QMessageBox
         """Shows a dialog to save the calibration without advancing to graphics window"""
@@ -2056,22 +2055,23 @@ class NanoVNAGraphics(QMainWindow):
         if ok and name:
             try:
                 # Save calibration (it will save only the available measurements)
-                success = self.osm_calibration.save_calibration_file(name, selected_method, False, files)
-                if success:
-                    # Show success message
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.information(
-                        self, 
-                        "Success", 
-                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
-                    )
-                    
-                    # Stay in wizard - do not advance to graphics window
-                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
-                    
-                else:
-                    from PySide6.QtWidgets import QMessageBox
-                    #QMessageBox.warning(self, "Error", "Failed to save calibration") hay un error aca y entra primero
+                if selected_method != "Normalization": 
+                    success = self.osm_calibration.save_calibration_file(name, selected_method, False, files)
+                    if success:
+                        # Show success message
+                        from PySide6.QtWidgets import QMessageBox
+                        QMessageBox.information(
+                            self, 
+                            "Success", 
+                            f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                        )
+                        
+                        # Stay in wizard - do not advance to graphics window
+                        logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                        
+                    else:
+                        from PySide6.QtWidgets import QMessageBox
+                        #QMessageBox.warning(self, "Error", "Failed to save calibration") hay un error aca y entra primero
 
                 success = self.thru_calibration.save_calibration_file(name, selected_method, True, files, osm_instance=self.osm_calibration)
                 if success:
@@ -2270,12 +2270,20 @@ class NanoVNAGraphics(QMainWindow):
             if confirm != QMessageBox.Yes:
                 return
 
-            # --- 1. Delete physical folders using names from ini ---
+            # --- Read current calibration name ---
+            current_full_name = settings.value("Calibration/Name", "")
+            current_name_base = "_".join(current_full_name.split("_")[:-1]) if current_full_name else ""
+
+            deleted_current_kit = False
+
+            # --- Delete physical folders and mark if current kit is deleted ---
             kits_to_delete = []
             for g in settings.childGroups():
                 if g.startswith("Kit_"):
                     kit_name_ini = settings.value(f"{g}/kit_name", "").strip()
                     if kit_name_ini in selected_names:
+                        if kit_name_ini == current_name_base:
+                            deleted_current_kit = True  # MARKER: current kit will be deleted
                         kit_path = os.path.join(base_dir, "calibration", "kits", kit_name_ini)
                         if os.path.exists(kit_path) and os.path.isdir(kit_path):
                             shutil.rmtree(kit_path)
@@ -2284,13 +2292,13 @@ class NanoVNAGraphics(QMainWindow):
                             logging.warning(f"Folder not found: {kit_path}")
                         kits_to_delete.append(g)
 
-            # --- 2. Remove from ini ---
+            # --- Remove from ini ---
             for g in kits_to_delete:
                 settings.remove(g)
 
             settings.sync()
 
-            # --- 3. Reorder IDs of remaining kits ---
+            # --- Reorder remaining kits (same as before) ---
             remaining_kits = []
             for g in settings.childGroups():
                 if g.startswith("Kit_"):
@@ -2314,7 +2322,7 @@ class NanoVNAGraphics(QMainWindow):
                 settings.setValue("id", new_id)
                 settings.endGroup()
 
-            # --- 4. Update [Calibration] Name and id ---
+            # --- Update [Calibration] Name and id ---
             if remaining_kits:
                 first_kit_name = remaining_kits[0][2]  # kit_name of first kit
                 settings.beginGroup("Calibration")
@@ -2323,6 +2331,10 @@ class NanoVNAGraphics(QMainWindow):
                 settings.setValue("Kits", True)
                 settings.setValue("NoCalibration", False)
                 settings.endGroup()
+
+                was_current_deleted = deleted_current_kit
+
+
             else:
                 # No kits left, remove Name/id and reset flags
                 settings.beginGroup("Calibration")
@@ -2332,16 +2344,101 @@ class NanoVNAGraphics(QMainWindow):
                 settings.setValue("NoCalibration", True)
                 settings.endGroup()
 
+                was_current_deleted = "all"
+
             settings.sync()
             QMessageBox.information(dialog, "Deleted", "Selected kits have been deleted and IDs updated.")
             dialog.accept()
 
+            # --- Now handle navigation AFTER user confirms ---
+            if was_current_deleted == True:
+                self.handle_deleted_current_kit()
+            elif was_current_deleted == "all":
+                self.handle_all_kits_deleted()
+ 
         # --- Connect signals ---
         list_widget.itemClicked.connect(add_selected)
         btn_cancel.clicked.connect(dialog.reject)
         btn_delete.clicked.connect(delete_selected)
 
         dialog.exec()
+
+    def handle_deleted_current_kit(self):
+        from PySide6.QtCore import QSettings
+        import os
+
+        # Path to calibration_config.ini
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+
+        settings = QSettings(config_path, QSettings.Format.IniFormat)
+        settings.sync()
+
+        # --- Check if there's still a Kit_1 ---
+        if settings.contains("Kit_1/kit_name"):
+            first_kit_name = settings.value("Kit_1/kit_name", "").strip()
+            method = settings.value("Kit_1/method", "")
+            
+            # Get previous method/parameter if they exist
+            prev_method = settings.value("Calibration/Method", method)
+            prev_parameter = settings.value("Calibration/Parameter", "S21")
+
+            # --- Update Calibration section ---
+            settings.beginGroup("Calibration")
+            settings.setValue("Kits", True)
+            settings.setValue("NoCalibration", False)
+            settings.setValue("Method", prev_method)
+            settings.setValue("Parameter", prev_parameter)
+            settings.setValue("Name", f"{first_kit_name}_1")
+            settings.setValue("id", 1)
+            settings.endGroup()
+
+        else:
+            # If no kits remain, fallback to a safe state
+            settings.beginGroup("Calibration")
+            settings.setValue("Kits", False)
+            settings.setValue("NoCalibration", True)
+            settings.remove("Name")
+            settings.remove("id")
+            settings.endGroup()
+
+        settings.sync()
+
+        if self.vna_device:
+            graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
+        else:
+            graphics_window = NanoVNAGraphics()
+        graphics_window.show()
+        self.close()
+
+
+    def handle_all_kits_deleted(self):
+        from PySide6.QtCore import QSettings
+        import os
+
+        # Path to calibration_config.ini
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+
+        settings = QSettings(config_path, QSettings.Format.IniFormat)
+        settings.sync()
+
+        # --- Set calibration state to NoCalibration ---
+        settings.beginGroup("Calibration")
+        settings.setValue("Kits", False)
+        settings.setValue("NoCalibration", True)
+        settings.remove("Name")
+        settings.remove("id")
+        settings.endGroup()
+        settings.sync()
+
+        # --- Reopen graphics window in no-calibration mode ---
+        if self.vna_device:
+            graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
+        else:
+            graphics_window = NanoVNAGraphics()
+        graphics_window.show()
+        self.close()
 
     # =================== SWEEP OPTIONS FUNCTION ==================
 
