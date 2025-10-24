@@ -223,6 +223,21 @@ class LatexExporter:
     
     def _create_cover_page(self, doc, current_datetime, measurement_name, measurement_number, 
                           calibration_method, calibrated_parameter):
+
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+        
+        kits_ok = settings_calibration.value("Calibration/Kits", False, type=bool)
+        selected_kit = settings_calibration.value("Calibration/Name", "Normalization")
+        kit_id = settings_calibration.value("Calibration/id", 0)
+        kit_name_only = selected_kit.rsplit("_", 1)[0]
+        kit_name_only_tex = kit_name_only.replace("_", r"\_")
+
+        no_calibration = settings_calibration.value("Calibration/NoCalibration", False, type=bool)
+        is_import_dut = settings_calibration.value("Calibration/DUT", False, type=bool)
+
         """Create the cover page for the PDF."""
         doc.append(NoEscape(r'\begin{titlepage}'))
         doc.append(NoEscape(r'\begin{center}'))
@@ -239,7 +254,18 @@ class LatexExporter:
         doc.append(NoEscape(r'\begin{itemize}'))
         doc.append(NoEscape(rf'\item \textbf{{Measurement Name:}} {measurement_name}'))
         doc.append(NoEscape(rf'\item \textbf{{Measurement Number:}} {measurement_number}'))
-        doc.append(NoEscape(rf'\item \textbf{{Calibration Method:}} {calibration_method}'))
+
+        if kits_ok and not no_calibration and not is_import_dut:
+            doc.append(NoEscape(rf'\item \textbf{{Selected kit}} {kit_name_only_tex}'))
+            doc.append(NoEscape(rf'\item \textbf{{Calibration Kit Method:}} {calibration_method}'))
+        elif not kits_ok and not no_calibration and not is_import_dut:
+            doc.append(NoEscape(rf'\item \textbf{{Calibration Wizard Method:}} {calibration_method}'))
+        elif not kits_ok and no_calibration and not is_import_dut:
+            doc.append(NoEscape(r'\item \textbf{{No Calibration}}'))
+        elif is_import_dut:
+            doc.append(NoEscape(r'\item \textbf{{DUT}}'))
+            settings_calibration.setValue("Calibration/DUT", False)
+
         doc.append(NoEscape(rf'\item \textbf{{Calibrated Parameter:}} {calibrated_parameter}'))
         doc.append(NoEscape(rf'\item \textbf{{Date and Time:}} {current_datetime}'))
         doc.append(NoEscape(r'\end{itemize}'))

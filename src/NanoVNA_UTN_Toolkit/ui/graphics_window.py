@@ -2607,7 +2607,6 @@ class NanoVNAGraphics(QMainWindow):
         edit_widget.setFixedWidth(edit_widget.fontMetrics().horizontalAdvance(edit_widget.text()) + 4)
         edit_widget.blockSignals(False)
 
-
     def toggle_marker_visibility(self, marker_index, show=True):
         marker = self.markers[marker_index]
         cursor = marker["cursor"]
@@ -2708,7 +2707,6 @@ class NanoVNAGraphics(QMainWindow):
             self.start_freq_hz = 50000
             self.stop_freq_hz = int(1.5e9)
             self.segments = 101
-
 
     def update_sweep_info_label(self):
         """Update the sweep information label with current configuration."""
@@ -2922,6 +2920,9 @@ class NanoVNAGraphics(QMainWindow):
                 s11, s21 = kits_calibrator.kits_selected(calibration_method, kit_name, s11_med, s21_med)
 
             elif is_import_dut:
+
+                settings.setValue("Calibration/DUT", True)
+
                 data_dut = rf.Network(self.dut)
 
                 freqs = data_dut.f
