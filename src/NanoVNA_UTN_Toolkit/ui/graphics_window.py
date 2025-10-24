@@ -2875,6 +2875,11 @@ class NanoVNAGraphics(QMainWindow):
             no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
             is_import_dut = settings.value("Calibration/isImportDut", False, type=bool)
 
+            if not kits_ok and not no_calibration and not is_import_dut:
+                self.update_calibration_label_from_method(calibration_method)
+            elif not is_import_dut:
+                self.update_calibration_label_from_method()
+
             if kits_ok == False and no_calibration == True and not is_import_dut:
                 s11 = s11_med
                 s21 = s21_med
