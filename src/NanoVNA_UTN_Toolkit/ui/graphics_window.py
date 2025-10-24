@@ -56,8 +56,10 @@ except ImportError as e:
     THRUCalibrationManager = None
 
 class NanoVNAGraphics(QMainWindow):
-    def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None):
+    def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None, dut=None):
         super().__init__()
+
+        self.dut = dut
 
         ui_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(ui_dir, "ui","graphics_windows", "ini", "config.ini")
@@ -258,8 +260,11 @@ class NanoVNAGraphics(QMainWindow):
         save_as_action =  file_menu.addAction("Save As")
         save_as_action.triggered.connect(lambda: self.on_save_as())
 
-        import_touchstone_action = file_menu.addAction("Import Touchstone Data")
-        import_touchstone_action.triggered.connect(lambda: self.import_touchstone_data())
+        import_touchstone_action = file_menu.addAction("Import Touchstone Data (Calibration)")
+        import_touchstone_action.triggered.connect(lambda: self.import_touchstone_data_calibration())
+
+        import_touchstone_action = file_menu.addAction("Import Touchstone Data (DUT)")
+        import_touchstone_action.triggered.connect(lambda: self.import_touchstone_data_dut())
 
         export_pdf_action =  file_menu.addAction("Export Latex PDF")
         export_pdf_action.triggered.connect(lambda: self.export_latex_pdf())
@@ -912,9 +917,16 @@ class NanoVNAGraphics(QMainWindow):
         no_calibration = parser.getboolean("Calibration", "NoCalibration", fallback=False)
         calibration_method = method or parser.get("Calibration", "Method", fallback="---")
 
-        if no_calibration and method == None:
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+
+        is_import_dut = settings_calibration.value("Calibration/isImportDut", False, type=bool)
+
+        if no_calibration and method == None and not is_import_dut:
             text = "No Calibration"
-        elif kits_ok and not no_calibration and method == None:
+        elif kits_ok and not no_calibration and method == None and not is_import_dut:
             selected_full_name = parser.get("Calibration", "Name", fallback="Unknown")
             selected_kit_name = "_".join(selected_full_name.split("_")[:-1])
             kit_found = False
@@ -929,8 +941,10 @@ class NanoVNAGraphics(QMainWindow):
                 i += 1
             if not kit_found:
                 text = f"Calibration Kit: {selected_kit_name or 'Unknown'} (method not found)"
-        else:
+        elif not is_import_dut:
             text = f"Calibration Wizard | Method: {calibration_method}"
+        elif is_import_dut:
+            text = f"DUT"
 
         self.calibration_label.setText(text)
 
@@ -2859,12 +2873,13 @@ class NanoVNAGraphics(QMainWindow):
 
             kits_ok = settings.value("Calibration/Kits", False, type=bool)
             no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
+            is_import_dut = settings.value("Calibration/isImportDut", False, type=bool)
 
-            if kits_ok == False and no_calibration == True:
+            if kits_ok == False and no_calibration == True and not is_import_dut:
                 s11 = s11_med
                 s21 = s21_med
 
-            elif kits_ok == False and no_calibration == False:
+            elif kits_ok == False and no_calibration == False and not is_import_dut:
                 print(f"kit_name calibrador: {kit_name}")
                 if calibration_method == "OSM (Open - Short - Match)":
                     s11 = methods.osm_calibrate_s11(s11_med)
@@ -2896,10 +2911,18 @@ class NanoVNAGraphics(QMainWindow):
                 else:
                     s11 = s11_med
                     s21 = s21_med
-            elif kits_ok == True and no_calibration == False:
+            elif kits_ok == True and no_calibration == False and not is_import_dut:
                 selected_kit_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "kits")
                 kits_calibrator = KitsCalibrator(selected_kit_dir)
                 s11, s21 = kits_calibrator.kits_selected(calibration_method, kit_name, s11_med, s21_med)
+
+            elif is_import_dut:
+                data_dut = rf.Network(self.dut)
+
+                freqs = data_dut.f
+
+                s11 = data_dut.s[:, 0, 0]  
+                s21 = data_dut.s[:, 1, 0]  
 
             # Validate data consistency
             if len(freqs) != len(s11) or len(freqs) != len(s21):
@@ -3226,6 +3249,13 @@ class NanoVNAGraphics(QMainWindow):
         try:
             from matplotlib.lines import Line2D
 
+            # Use new calibration structure
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+            settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+
+            settings_calibration.setValue("Calibration/isImportDut", False)
+
             fig.patch.set_facecolor(f"{brackground_color_graphics}")
             ax.set_facecolor(f"{brackground_color_graphics}")
 
@@ -3348,7 +3378,43 @@ class NanoVNAGraphics(QMainWindow):
             measurement_name=device_name
         )
 
-    def import_touchstone_data(self):
+    def import_touchstone_data_dut(self):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        import os
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select DUT Touchstone File",
+            "",
+            "Touchstone Files (*.s2p);;All Files (*)"
+        )
+
+        if not file_path:
+            QMessageBox.warning(self, "No File Selected", "Please select a Touchstone .s2p file.")
+            return
+
+        files = file_path
+
+        QMessageBox.information(self, "File Loaded", "Touchstone file loaded successfully!")
+        print("Selected DUT file:", file_path)
+
+        # Use new calibration structure
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, "calibration", "config", "calibration_config.ini")
+        settings_calibration = QSettings(config_path, QSettings.Format.IniFormat)
+
+        settings_calibration.setValue("Calibration/isImportDut", True)
+
+        if self.vna_device:
+            graphics_window = NanoVNAGraphics(vna_device=self.vna_device, dut=files)
+        else:
+            graphics_window = NanoVNAGraphics()
+
+        graphics_window.show()
+
+        self.close()
+
+    def import_touchstone_data_calibration(self):
         from PySide6.QtWidgets import QFileDialog, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox
         import os
 
