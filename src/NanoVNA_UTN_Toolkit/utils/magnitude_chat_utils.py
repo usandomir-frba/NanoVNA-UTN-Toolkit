@@ -57,6 +57,8 @@ class MagnitudeChartBuilder:
         self.ax.set_xlabel("Frequency (Hz)")
         self.ax.set_ylabel("|S21| (times)")
 
+        self.ax.set_title("Magnitude")
+
         self.fig.tight_layout()
 
         def on_resize(event):
@@ -136,37 +138,37 @@ class MagnitudeChartManager:
             container_layout.addWidget(canvas)
         return fig, ax, canvas
 
+    def apply_axis_style(self, ax):
+        """Apply consistent styling to the given axis."""
+        ax.set_facecolor(self.config.background_color)
+        ax.tick_params(axis='x', colors=self.config.axis_color)
+        ax.tick_params(axis='y', colors=self.config.axis_color)
+        ax.xaxis.label.set_color(self.config.text_color)
+        ax.yaxis.label.set_color(self.config.text_color)
+        ax.title.set_color(self.config.text_color)
+        ax.grid(True, linestyle="--", alpha=0.5)
+
     def update_wizard_measurement(self, ax, freqs, s21_data, standard_name, canvas=None, color_map=None, in_dB=False):
-        """Update wizard magnitude chart with new measurement."""
         if color_map is None:
             color_map = {'thru': 'blue', 'open': 'orange', 'short': 'red', 'load': 'green'}
 
         try:
-            ax.clear()
+            ax.clear()  # borra todo
 
-            # Reapply background and grid styling (se pierde con clear)
-            ax.set_facecolor(self.config.background_color)
-            ax.tick_params(axis='x', colors=self.config.axis_color)
-            ax.tick_params(axis='y', colors=self.config.axis_color)
-            ax.xaxis.label.set_color(self.config.text_color)
-            ax.yaxis.label.set_color(self.config.text_color)
-            ax.title.set_color(self.config.text_color)
-            ax.grid(True, linestyle="--", alpha=0.5)
+            self.apply_axis_style(ax)  # reaplica estilos
 
-            ax.set_title(f"{standard_name} – Magnitude vs Frequency")
+            # Etiquetas y título dinámico
             ax.set_xlabel("Frequency (Hz)")
-            ax.set_ylabel("|S21| (times)" if not in_dB else "|S21| (dB)")
+            ax.set_ylabel("|S21| (dB)" if in_dB else "|S21| (times)")
+            ax.set_title(f"{standard_name.upper()} – Magnitude vs Frequency")  # título dinámico
 
             color = color_map.get(standard_name.lower(), self.config.trace_color)
-
             magnitude = np.abs(s21_data)
-            
-            magnitude = 20 * np.log10(magnitude)
+            magnitude = 20 * np.log10(magnitude + 1e-12)
 
             ax.plot(freqs, magnitude, '-', color=color, linewidth=self.config.linewidth)
-
             legend_line = Line2D([0], [0], color=color)
-            ax.legend([legend_line], [f"{standard_name.upper()}"], loc='upper right', frameon=True)
+            ax.legend([legend_line], [standard_name.upper()], loc='upper right', frameon=True)
 
             if canvas:
                 canvas.draw()
@@ -175,6 +177,7 @@ class MagnitudeChartManager:
 
         except Exception as e:
             logging.error(f"[MagnitudeChartManager] Error updating magnitude measurement: {e}")
+
 
     # ============================================================
     # Graphics panel charts

@@ -217,7 +217,7 @@ class CalibrationWizard(QMainWindow):
         """)
 
         self.setWindowTitle("Calibration Wizard")
-        self.setGeometry(150, 150, 700, 500)
+        self.setGeometry(150, 150, 1000, 600)
 
         icon_path = "icon.ico"
         self.setWindowIcon(QIcon(icon_path))

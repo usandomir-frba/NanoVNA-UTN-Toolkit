@@ -130,42 +130,31 @@ class TouchstoneExporter:
         self.logger.info(f"Writing S2P file: {file_path}")
         
         with open(file_path, 'w', encoding='utf-8') as f:
-            # Write header comments
-            f.write(f"! Touchstone file exported from NanoVNA UTN Toolkit\\n")
-            f.write(f"! Device: {device_name}\\n")
-            f.write(f"! Export date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\\n")
-            f.write(f"! Frequency range: {freqs[0]/1e6:.3f} - {freqs[-1]/1e6:.3f} MHz\\n")
-            f.write(f"! Number of points: {len(freqs)}\\n")
-            f.write(f"!\\n")
-            
-            # Write option line (frequency in Hz, S-parameters, Real/Imaginary format, 50 ohm reference)
-            f.write("# HZ S RI R 50\\n")
-            
-            # Write data points
+            # Header
+            f.write(f"! Touchstone file exported from NanoVNA UTN Toolkit\n")
+            f.write(f"! Device: {device_name}\n")
+            f.write(f"! Export date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"! Frequency range: {freqs[0]/1e6:.3f} - {freqs[-1]/1e6:.3f} MHz\n")
+            f.write(f"! Number of points: {len(freqs)}\n")
+            f.write(f"!\n")
+            f.write("# Hz S RI R 50\n")
+            f.write("! f[Hz]  S11_real S11_imag S21_real S21_imag S12_real S12_imag S22_real S22_imag\n")
+
             for i in range(len(freqs)):
-                freq_hz = int(freqs[i])
-                
-                # S11 data (reflection coefficient port 1)
-                s11 = s11_data[i]
-                s11_real = float(s11.real)
-                s11_imag = float(s11.imag)
-                
-                # S21 data (transmission coefficient port 2 to port 1)
-                s21 = s21_data[i]
-                s21_real = float(s21.real)
-                s21_imag = float(s21.imag)
-                
-                # For a 2-port S2P file, we need S11, S21, S12, S22
-                # Since VNA typically only measures S11 and S21, we'll set S12=S21 and S22=0
-                # This is a reasonable assumption for most VNA measurements
-                s12_real = s21_real  # Assume reciprocal network (S12 = S21)
-                s12_imag = s21_imag
-                s22_real = 0.0       # Assume matched port 2 (no reflection)
-                s22_imag = 0.0
-                
-                # Write data line: freq S11_real S11_imag S21_real S21_imag S12_real S12_imag S22_real S22_imag
-                f.write(f"{freq_hz} {s11_real:.6e} {s11_imag:.6e} {s21_real:.6e} {s21_imag:.6e} "
-                       f"{s12_real:.6e} {s12_imag:.6e} {s22_real:.6e} {s22_imag:.6e}\\n")
+                freq = freqs[i]
+                s11, s21 = s11_data[i], s21_data[i]
+
+                s12, s22 = s21, 0+0j
+
+                # Column-aligned formatting
+                line = "{:<12.6e} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f}\n".format(
+                    freq,
+                    s11.real, s11.imag,
+                    s21.real, s21.imag,
+                    s12.real, s12.imag,
+                    s22.real, s22.imag
+                )
+                f.write(line)
         
         self.logger.info(f"Successfully wrote {len(freqs)} data points")
     
