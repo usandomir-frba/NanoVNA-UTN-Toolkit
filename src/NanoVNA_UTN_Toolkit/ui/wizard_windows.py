@@ -1559,7 +1559,7 @@ class CalibrationWizard(QMainWindow):
                             freqs=freqs,
                             s_data=np.abs(s11),  # Use magnitude instead of complex S11
                             standard_name=step_name,
-                            canvas=self.current_canvas
+                            canvas=self.current_canvas_magnitude
                         )
                 else:
                     # Clear and show empty magnitude plot if no measurement exists

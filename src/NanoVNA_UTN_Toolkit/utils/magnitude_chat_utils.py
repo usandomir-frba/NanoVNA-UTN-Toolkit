@@ -42,22 +42,29 @@ class MagnitudeChartBuilder:
         self.canvas = None
 
     def setup_figure(self, figsize=(6, 4), layout_params=None):
-        """Setup matplotlib figure and axis for magnitude chart."""
         if layout_params is None:
             layout_params = {'left': 0.15, 'right': 0.95, 'top': 0.9, 'bottom': 0.15}
-        
+
         self.fig, self.ax = plt.subplots(figsize=figsize)
         self.ax.tick_params(axis='x', colors=self.config.axis_color)
         self.ax.tick_params(axis='y', colors=self.config.axis_color)
         self.ax.xaxis.label.set_color(self.config.text_color)
         self.ax.yaxis.label.set_color(self.config.text_color)
         self.ax.title.set_color(self.config.text_color)
-        self.fig.subplots_adjust(**layout_params)
         self.fig.patch.set_facecolor(self.config.background_color)
         self.ax.set_facecolor(self.config.background_color)
         self.ax.grid(True, linestyle="--", alpha=0.5)
         self.ax.set_xlabel("Frequency (Hz)")
         self.ax.set_ylabel("|S21| (times)")
+
+        self.fig.tight_layout()
+
+        def on_resize(event):
+            self.fig.tight_layout()
+            self.canvas.draw_idle()
+
+        self.fig.canvas.mpl_connect("resize_event", on_resize)
+
         return self.fig, self.ax
 
     def create_canvas(self):
