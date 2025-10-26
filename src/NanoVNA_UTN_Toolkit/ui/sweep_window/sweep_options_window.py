@@ -19,6 +19,9 @@ class SweepOptionsWindow(QMainWindow):
     def __init__(self, parent: "NanoVNAGraphics", vna_device=None):
         super().__init__(parent)
 
+        self.last_start_value = 50   
+        self.last_stop_value  = 1.5 
+
         self.main_window = parent
 
         ui_dir = os.path.dirname(os.path.dirname(__file__))  

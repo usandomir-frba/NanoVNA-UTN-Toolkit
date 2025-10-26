@@ -17,8 +17,12 @@ from PySide6.QtCore import Qt
 class ExportDialog(QDialog):
     """Dialog for exporting graph data and images."""
     
-    def __init__(self, parent=None, figure=None):
+    def __init__(self, parent=None, figure=None, left_graph=None, right_graph=None, freqs = None):
         super().__init__(parent)
+
+        self.left_graph = left_graph
+        self.right_grap = right_graph
+        self.freqs = freqs
 
         ui_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
@@ -400,43 +404,81 @@ class ExportDialog(QDialog):
                 "graph_data.csv", 
                 "CSV Files (*.csv)"
             )
-            
-            if file_path:
-                # Extract data from the graph
-                csv_data = []
-                headers = []
+
+            if not file_path:
+                return  # Usuario canceló
+
+            for i, ax in enumerate(self.figure.axes):
+                print(f"\n=== Axis {i} ===")
+                print(f"Title: {ax.get_title()}")
+                print(f"Number of lines: {len(ax.lines)}")
                 
-                for ax in self.figure.axes:
-                    # Skip slider axes
-                    if hasattr(ax, 'get_position'):
-                        pos = ax.get_position()
-                        if pos.height < 0.1 or pos.width < 0.1:
-                            continue
-                    
+                for j, line in enumerate(ax.lines):
+                    print(f"  Line {j}: visible={line.get_visible()}")
+                    print(f"    X data sample: {line.get_xdata()[:5]}")
+                    print(f"    Y data sample: {line.get_ydata()[:5]}")
+                    print(f"    Has attribute 'freqs'? {'freqs' in dir(line)}")
+            csv_data = []
+            headers = []
+
+            for ax in self.figure.axes:
+                # Ignorar ejes de sliders o muy pequeños
+                if hasattr(ax, 'get_position'):
+                    pos = ax.get_position()
+                    if pos.height < 0.1 or pos.width < 0.1:
+                        continue
+
+                if self.left_graph == "Smith Diagram" or self.right_grap == "Smith Diagram":
+                    if self.freqs is None:
+                        QMessageBox.warning(self, "Save Error", "Frequency data is missing for Smith Diagram!")
+                        return
+
+                    headers = ['Frequency (Hz)', 'Re', 'Im']
+                    csv_data = []
+
+                    # Recorremos todas las líneas visibles y tomamos X=Re, Y=Im
+                    for ax in self.figure.axes:
+                        for line in ax.lines:
+                            if line.get_visible():
+                                x_data_re = line.get_xdata()   # parte real
+                                y_data_im = line.get_ydata()   # parte imaginaria
+
+                                # Zip con self.freqs
+                                for f, re, im in zip(self.freqs, x_data_re, y_data_im):
+                                    csv_data.append([f, re, im])
+
+
+                else:
                     for i, line in enumerate(ax.lines):
-                        if line.get_visible() and len(line.get_xdata()) > 1:  # Skip single-point markers
+                        if line.get_visible() and len(line.get_xdata()) > 1:
                             x_data = line.get_xdata()
                             y_data = line.get_ydata()
-                            
-                            # Add headers if this is the first line with data
+                            # Convert MHz a Hz
+                            x_data_hz = [x * 1e6 for x in x_data]
+
                             if not headers:
-                                headers = ['X', 'Y']
-                                csv_data = [[x, y] for x, y in zip(x_data, y_data)]
+                                headers = ['Freq (Hz)', 'Y']
+                                csv_data = [[x, y] for x, y in zip(x_data_hz, y_data)]
                             else:
-                                # Add additional columns for multiple traces
-                                headers.extend([f'X_{i+1}', f'Y_{i+1}'])
-                                for j, (x, y) in enumerate(zip(x_data, y_data)):
+                                headers.extend([f'Freq_{i+1} (Hz)', f'Y_{i+1}'])
+                                for j, (x, y) in enumerate(zip(x_data_hz, y_data)):
                                     if j < len(csv_data):
                                         csv_data[j].extend([x, y])
-                
-                # Write CSV file
-                import csv
-                with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
-                    writer.writerows(csv_data)
-                
-                QMessageBox.information(self, "Save", f"Graph data saved as: {file_path}")
-                
+
+            # Depuración: imprimir el contenido
+            print("CSV Headers:", headers)
+            print("CSV Data Sample:", csv_data[:5])  # primeros 5 registros
+
+            # Guardar CSV
+            import csv
+            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(headers)
+                writer.writerows(csv_data)
+
+            QMessageBox.information(self, "Save", f"Graph data saved as: {file_path}")
+
         except Exception as e:
             QMessageBox.critical(self, "Save Error", f"Failed to save CSV: {str(e)}")
+            print("Exception:", e)
+

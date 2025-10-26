@@ -2592,7 +2592,7 @@ class NanoVNAGraphics(QMainWindow):
                 self.export_dialog = None
 
             # Create and show new export dialog
-            self.export_dialog = ExportDialog(self, figure_to_export)
+            self.export_dialog = ExportDialog(self, figure_to_export, left_graph=self.left_graph_type, right_graph=self.right_graph_type, freqs = self.freqs)
             self.export_dialog.setWindowTitle(f"Export Graph - {panel_name}")
             self.export_dialog.exec()
             
