@@ -256,7 +256,7 @@ class LatexExporter:
         doc.append(NoEscape(rf'\item \textbf{{Measurement Number:}} {measurement_number}'))
 
         if kits_ok and not no_calibration and not is_import_dut:
-            doc.append(NoEscape(rf'\item \textbf{{Selected kit}} {kit_name_only_tex}'))
+            doc.append(NoEscape(rf'\item \textbf{{Selected kit:}} {kit_name_only_tex}'))
             doc.append(NoEscape(rf'\item \textbf{{Calibration Kit Method:}} {calibration_method}'))
         elif not kits_ok and not no_calibration and not is_import_dut:
             doc.append(NoEscape(rf'\item \textbf{{Calibration Wizard Method:}} {calibration_method}'))

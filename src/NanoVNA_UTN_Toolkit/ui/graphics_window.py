@@ -1005,19 +1005,27 @@ class NanoVNAGraphics(QMainWindow):
     def _clear_panel_labels(self, panel_side='left'):
         """Clear all labels for a specific panel (left or right)."""
         if panel_side == 'left' and hasattr(self, 'labels_left') and self.labels_left:
-            self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
+            if panel_side == 'left' and hasattr(self, 'labels_left') and self.labels_left:
+                # allow "--" temporarily
+                self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
+                self.labels_right["freq"].deselect()
+                self.labels_right["freq"].clearFocus()
             self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.left_s_param}: -- + j--")
             self.labels_left.get("mag") and self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
             self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
-            self.labels_left.get("z") and self.labels_left["z"].setText("Z: -- + j--")
+            self.labels_left.get("z") and self.labels_left["z"].setText("Zin (Z0): -- + j--")
             self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
             self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
         elif panel_side == 'right' and hasattr(self, 'labels_right') and self.labels_right:
-            self.labels_right.get("freq") and self.labels_right["freq"].setText("--")
+            if panel_side == 'left' and hasattr(self, 'labels_left') and self.labels_left:
+                # allow "--" temporarily
+                self.labels_left.get("freq") and self.labels_left["freq"].setText("--")
+                self.labels_right["freq"].deselect()
+                self.labels_right["freq"].clearFocus()
             self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.right_s_param}: -- + j--")
             self.labels_right.get("mag") and self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
             self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
-            self.labels_right.get("z") and self.labels_right["z"].setText("Z: -- + j--")
+            self.labels_right.get("z") and self.labels_right["z"].setText("Zin (Z0): -- + j--")
             self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
             self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
 
@@ -1704,25 +1712,33 @@ class NanoVNAGraphics(QMainWindow):
         """Clear only marker information fields without affecting the graphs."""
         logging.info("[graphics_window._clear_marker_fields_only] Clearing marker information fields only")
         
-        # Clear left panel marker information
+        # --- Clear left panel marker information ---
         if hasattr(self, 'labels_left') and self.labels_left:
-            self.labels_left.get("freq", None) and self.labels_left["freq"].setText("--")
-            self.labels_left.get("val", None) and self.labels_left["val"].setText("S11: -- + j--")
-            self.labels_left.get("mag", None) and self.labels_left["mag"].setText("|S11|: --")
-            self.labels_left.get("phase", None) and self.labels_left["phase"].setText("Phase: --")
-            self.labels_left.get("z", None) and self.labels_left["z"].setText("Z: -- + j--")
-            self.labels_left.get("il", None) and self.labels_left["il"].setText("IL: --")
-            self.labels_left.get("vswr", None) and self.labels_left["vswr"].setText("VSWR: --")
+            freq_left = self.labels_left.get("freq")
+            if freq_left:
+                freq_left.setText("--")    # set "--"
+                freq_left.deselect()       # remove selection
+                freq_left.clearFocus()     # remove focus so it's not blue
+            self.labels_left.get("val") and self.labels_left["val"].setText("S11: -- + j--")
+            self.labels_left.get("mag") and self.labels_left["mag"].setText("|S11|: --")
+            self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
+            self.labels_left.get("z") and self.labels_left["z"].setText("Zin (Z0): -- + j--")
+            self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
+            self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
 
-        # Clear right panel marker information  
+        # --- Clear right panel marker information ---
         if hasattr(self, 'labels_right') and self.labels_right:
-            self.labels_right.get("freq", None) and self.labels_right["freq"].setText("--")
-            self.labels_right.get("val", None) and self.labels_right["val"].setText("S21: -- + j--")
-            self.labels_right.get("mag", None) and self.labels_right["mag"].setText("|S21|: --")
-            self.labels_right.get("phase", None) and self.labels_right["phase"].setText("Phase: --")
-            self.labels_right.get("z", None) and self.labels_right["z"].setText("Z: -- + j--")
-            self.labels_right.get("il", None) and self.labels_right["il"].setText("IL: --")
-            self.labels_right.get("vswr", None) and self.labels_right["vswr"].setText("VSWR: --")
+            freq_right = self.labels_right.get("freq")
+            if freq_right:
+                freq_right.setText("--")   # set "--"
+                freq_right.deselect()      # remove selection
+                freq_right.clearFocus()    # remove focus so it's not blue
+            self.labels_right.get("val") and self.labels_right["val"].setText("S21: -- + j--")
+            self.labels_right.get("mag") and self.labels_right["mag"].setText("|S21|: --")
+            self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
+            self.labels_right.get("z") and self.labels_right["z"].setText("Zin (Z0): -- + j--")
+            self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
+            self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
 
         # Do NOT clear the graphs - leave them with the actual data
         logging.info("[graphics_window._clear_marker_fields_only] Marker fields cleared, graphs preserved")

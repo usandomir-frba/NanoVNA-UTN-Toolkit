@@ -198,43 +198,47 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
     else:
         raise ValueError(f"Unknown graph_type: {graph_type}")
 
-    # --- Panel info ---
+    # --- Info panel (left side reorganized) ---
     info_panel = QWidget()
-    info_layout = QGridLayout(info_panel)
-    info_layout.setHorizontalSpacing(20)
-    info_layout.setVerticalSpacing(5)
+    info_layout = QVBoxLayout(info_panel)
+    info_layout.setSpacing(10)
+    info_layout.setContentsMargins(0, 0, 0, 0)
 
-    # QGroupBox S11
-    box_s = QGroupBox(s_param)
-    layout_s = QVBoxLayout()
-    box_s.setLayout(layout_s)
+    # --- Top QGroupBox with title ---
+    box_top = QGroupBox("S-Parameter Details")
+    layout_top = QHBoxLayout(box_top)
+    layout_top.setSpacing(20)
+    layout_top.setContentsMargins(12, 8, 12, 8)  # márgenes equilibrados
 
-    # --- Frecuencia editable ---
+    # --- Sub-layout centrado para los 4 bloques ---
+    center_layout = QHBoxLayout()
+    center_layout.setSpacing(15)  # espacio entre columnas
+    center_layout.setAlignment(Qt.AlignCenter)  # todo centrado en el box
+
+    # --- Column 1: Frequency ---
+    col_left = QVBoxLayout()
+    col_left.setSpacing(5)
+    col_left.setAlignment(Qt.AlignVCenter)
+
     hbox_freq = QHBoxLayout()
     hbox_freq.setAlignment(Qt.AlignLeft)
-    hbox_freq.setSpacing(0)
+    hbox_freq.setContentsMargins(0, 0, 0, 0)
 
-    # Label "Frequency:"
     lbl_text = QLabel("Frequency:")
     lbl_text.setStyleSheet("font-size:14px;")
     lbl_text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-    lbl_text.setContentsMargins(0, 0, 2, 0)
     hbox_freq.addWidget(lbl_text)
-    
-    # Initialize with smart frequency formatting
+
     initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
     edit_value = QLineEdit(initial_freq_value)
 
     def limit_frequency_input(text, max_digits=6, max_decimals=3, allow_dashes=False):
-        if allow_dashes and text == "--":
+        if text == "--":   # allow placeholder
             return text
-
         filtered = "".join(c for c in text if c.isdigit() or c == ".")
-        
         if filtered.count(".") > 1:
             parts = filtered.split(".", 1)
             filtered = parts[0] + "." + "".join(parts[1:]).replace(".", "")
-        
         if "." in filtered:
             integer_part, decimal_part = filtered.split(".", 1)
             integer_part = integer_part[:max_digits]
@@ -242,84 +246,117 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
             filtered = integer_part + "." + decimal_part
         else:
             filtered = filtered[:max_digits]
-
         return filtered
 
     def on_text_changed():
         new_text = limit_frequency_input(edit_value.text(), 3, 3)
         if new_text != edit_value.text():
             edit_value.setText(new_text)
-        # Calculate appropriate width with more padding for longer values
         text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        # Add extra padding for better display, especially for longer values like "600.000"
-        min_width = max(text_width + 10, 40)  # Minimum width of 80px
+        min_width = max(text_width + 10, 40)
         edit_value.setFixedWidth(min_width)
 
     edit_value.textChanged.connect(on_text_changed)
-
     edit_value.setStyleSheet("font-size:14px; border:none; background:transparent;")
     edit_value.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    # Initial width calculation with better padding
     text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
     min_width = max(text_width + 10, 40)
     edit_value.setFixedWidth(min_width)
     hbox_freq.addWidget(edit_value)
 
-    # Label de unidad initialized with correct unit
     lbl_unit = QLabel(initial_freq_unit)
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    lbl_unit.setContentsMargins(0, 0, 0, 0)
     hbox_freq.addWidget(lbl_unit)
 
-    layout_s.addLayout(hbox_freq)
+    col_left.addLayout(hbox_freq)
 
-    # --- Labels ---
+    # --- Column 2: S11 real + imag ---
     label_val = QLabel(f"{s_param}: -- + j--")
+    label_val.setStyleSheet("font-size:14px; padding:1px;")
+    label_val.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    col_s11 = QVBoxLayout()
+    col_s11.setSpacing(5)
+    col_s11.setAlignment(Qt.AlignVCenter)
+    col_s11.addWidget(label_val)
+
+    # --- Column 3: |S11| ---
     label_mag = QLabel(f"|{s_param}|: --")
+    label_mag.setStyleSheet("font-size:14px; padding:1px;")
+    label_mag.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    col_mag = QVBoxLayout()
+    col_mag.setSpacing(5)
+    col_mag.setAlignment(Qt.AlignVCenter)
+    col_mag.addWidget(label_mag)
+
+    # --- Column 4: Phase ---
     label_phase = QLabel("Phase: --")
-    for lbl in [label_val, label_mag, label_phase]:
-        lbl.setStyleSheet("font-size:14px; padding:1px;")
-        lbl.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-        layout_s.addWidget(lbl)
+    label_phase.setStyleSheet("font-size:14px; padding:1px;")
+    label_phase.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    col_phase = QVBoxLayout()
+    col_phase.setSpacing(5)
+    col_phase.setAlignment(Qt.AlignVCenter)
+    col_phase.addWidget(label_phase)
 
-    # --- Otras cajas ---
-    box_z = QGroupBox("Normalized Impedance (Z0=50Ω)")
-    layout_z = QVBoxLayout()
-    box_z.setLayout(layout_z)
-    label_z = QLabel("Z: -- + j--")
-    layout_z.addWidget(label_z)
+    # --- Agregar columnas al layout centrado con separadores ---
+    center_layout.addLayout(col_left)
+    
+    label_sep = QLabel("-")
+    center_layout.addWidget(label_sep)
+
+    center_layout.addLayout(col_s11)
+
+    label_sep = QLabel("-")
+    center_layout.addWidget(label_sep)
+
+    center_layout.addLayout(col_mag)
+
+    label_sep = QLabel("-")
+    center_layout.addWidget(label_sep)
+
+    center_layout.addLayout(col_phase)
+
+    # --- Agregar layout centrado al top box ---
+    layout_top.addLayout(center_layout)
+
+    # --- Bottom QGroupBox ---
+    box_bottom = QGroupBox("DUT Parameters")
+    layout_bottom = QHBoxLayout(box_bottom)
+    layout_bottom.setSpacing(40)  # aumenta separación entre labels
+    layout_bottom.setContentsMargins(10, 8, 10, 8)
+    layout_bottom.setAlignment(Qt.AlignCenter)  # centra todo el conjunto
+
+    # --- Labels dentro del box_bottom ---
+    label_z = QLabel("Zin (Z0): -- + j--")
+    label_z.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_z.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    layout_bottom.addWidget(label_z)
 
-    box_il = QGroupBox("Insertion Loss")
-    layout_il = QVBoxLayout()
-    box_il.setLayout(layout_il)
+    label_sep = QLabel("-")
+    layout_bottom.addWidget(label_sep)
+
     label_il = QLabel("IL: -- dB")
-    layout_il.addWidget(label_il)
+    label_il.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_il.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    layout_bottom.addWidget(label_il)
 
-    box_vswr = QGroupBox("VSWR")
-    layout_vswr = QVBoxLayout()
-    box_vswr.setLayout(layout_vswr)
+    label_sep = QLabel("-")
+    layout_bottom.addWidget(label_sep)
+
     label_vswr = QLabel("VSWR: --")
-    layout_vswr.addWidget(label_vswr)
+    label_vswr.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_vswr.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    layout_bottom.addWidget(label_vswr)
 
-    for box in [box_s, box_z, box_il, box_vswr]:
-        box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        for i in range(box.layout().count()):
-            w = box.layout().itemAt(i).widget()
-            if w is not None:
-                w.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
+    # --- Agregar box_bottom al layout principal ---
+    info_layout.addWidget(box_top)
+    info_layout.addWidget(box_bottom)  
 
-    info_layout.addWidget(box_s, 0, 0, 3, 1)
-    info_layout.addWidget(box_z, 0, 1)
-    info_layout.addWidget(box_il, 1, 1)
-    info_layout.addWidget(box_vswr, 2, 1)
-
+    # Add to external layout
     left_layout.addWidget(info_panel)
 
+    # --- Labels dictionary ---
     labels_dict = {
         "val": label_val,
         "mag": label_mag,
@@ -570,38 +607,47 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
         
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
 
-    # --- Panel info ---
+    # --- Info panel (Right side reorganized) ---
     info_panel = QWidget()
-    info_layout = QGridLayout(info_panel)
-    info_layout.setHorizontalSpacing(20)
-    info_layout.setVerticalSpacing(5)
+    info_layout = QVBoxLayout(info_panel)
+    info_layout.setSpacing(10)
+    info_layout.setContentsMargins(0, 0, 0, 0)
 
-    box_s = QGroupBox(s_param)
-    layout_s = QVBoxLayout()
-    box_s.setLayout(layout_s)
+    # --- Top QGroupBox with title ---
+    box_top = QGroupBox("S-Parameter Details")
+    layout_top = QHBoxLayout(box_top)
+    layout_top.setSpacing(20)
+    layout_top.setContentsMargins(12, 8, 12, 8)  # márgenes equilibrados
 
-    # --- Frecuencia editable (Right Panel) ---
+    # --- Sub-layout centrado para los 4 bloques ---
+    center_layout = QHBoxLayout()
+    center_layout.setSpacing(15)  # espacio entre columnas
+    center_layout.setAlignment(Qt.AlignCenter)  # todo centrado en el box
+
+    # --- Column 1: Frequency ---
+    col_left = QVBoxLayout()
+    col_left.setSpacing(5)
+    col_left.setAlignment(Qt.AlignVCenter)
+
     hbox_freq = QHBoxLayout()
     hbox_freq.setAlignment(Qt.AlignLeft)
-    hbox_freq.setSpacing(0) 
-    # Label "Frequency:"
+    hbox_freq.setContentsMargins(0, 0, 0, 0)
+
     lbl_text = QLabel("Frequency:")
     lbl_text.setStyleSheet("font-size:14px;")
     lbl_text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-    lbl_text.setContentsMargins(0, 0, 2, 0)  # margen derecho de 5 px
     hbox_freq.addWidget(lbl_text)
 
-    # Initialize with smart frequency formatting
     initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
     edit_value = QLineEdit(initial_freq_value)
 
-    def limit_frequency_input(text, max_digits=6, max_decimals=3):
+    def limit_frequency_input(text, max_digits=6, max_decimals=3, allow_dashes=False):
+        if text == "--":  # allow dashes
+            return text
         filtered = "".join(c for c in text if c.isdigit() or c == ".")
-        
         if filtered.count(".") > 1:
             parts = filtered.split(".", 1)
             filtered = parts[0] + "." + "".join(parts[1:]).replace(".", "")
-        
         if "." in filtered:
             integer_part, decimal_part = filtered.split(".", 1)
             integer_part = integer_part[:max_digits]
@@ -609,92 +655,127 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
             filtered = integer_part + "." + decimal_part
         else:
             filtered = filtered[:max_digits]
-
         return filtered
 
     def on_text_changed():
-        new_text = limit_frequency_input(edit_value.text(), 3, 3)
+        new_text = limit_frequency_input(edit_value.text(), 3, 3, allow_dashes=True)
         if new_text != edit_value.text():
             edit_value.setText(new_text)
-        # Calculate appropriate width with more padding for longer values
+        if new_text != edit_value.text():
+            edit_value.setText(new_text)
         text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        # Add extra padding for better display, especially for longer values like "600.000"
-        min_width = max(text_width + 10, 50)  # Minimum width of 80px
+        min_width = max(text_width + 10, 40)
         edit_value.setFixedWidth(min_width)
 
     edit_value.textChanged.connect(on_text_changed)
-
     edit_value.setStyleSheet("font-size:14px; border:none; background:transparent;")
     edit_value.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    # Initial width calculation with better padding
     text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-    min_width = max(text_width + 10, 50)
+    min_width = max(text_width + 10, 40)
     edit_value.setFixedWidth(min_width)
     hbox_freq.addWidget(edit_value)
 
-    # Label de unidad initialized with correct unit
     lbl_unit = QLabel(initial_freq_unit)
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    lbl_unit.setContentsMargins(0, 0, 0, 0)  
     hbox_freq.addWidget(lbl_unit)
 
-    # Agregar al layout de la caja
-    layout_s.addLayout(hbox_freq)
+    col_left.addLayout(hbox_freq)
 
+    # --- Column 2: S11 real + imag ---
     label_val = QLabel(f"{s_param}: -- + j--")
+    label_val.setStyleSheet("font-size:14px; padding:1px;")
+    label_val.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    col_s11 = QVBoxLayout()
+    col_s11.setSpacing(5)
+    col_s11.setAlignment(Qt.AlignVCenter)
+    col_s11.addWidget(label_val)
+
+    # --- Column 3: |S11| ---
     label_mag = QLabel(f"|{s_param}|: --")
+    label_mag.setStyleSheet("font-size:14px; padding:1px;")
+    label_mag.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    col_mag = QVBoxLayout()
+    col_mag.setSpacing(5)
+    col_mag.setAlignment(Qt.AlignVCenter)
+    col_mag.addWidget(label_mag)
+
+    # --- Column 4: Phase ---
     label_phase = QLabel("Phase: --")
-    for lbl in [label_val, label_mag, label_phase]:
-        lbl.setStyleSheet("font-size:14px; padding:1px;")
-        lbl.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-        layout_s.addWidget(lbl)
+    label_phase.setStyleSheet("font-size:14px; padding:1px;")
+    label_phase.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    col_phase = QVBoxLayout()
+    col_phase.setSpacing(5)
+    col_phase.setAlignment(Qt.AlignVCenter)
+    col_phase.addWidget(label_phase)
 
-    box_z = QGroupBox("Normalized Impedance (Z0=50Ω)")
-    layout_z = QVBoxLayout()
-    box_z.setLayout(layout_z)
-    label_z = QLabel("Z: -- + j--")
-    layout_z.addWidget(label_z)
+    # --- Agregar columnas al layout centrado con separadores ---
+    center_layout.addLayout(col_left)
+
+    label_sep = QLabel("-")
+    center_layout.addWidget(label_sep)
+
+    center_layout.addLayout(col_s11)
+
+    label_sep = QLabel("-")
+    center_layout.addWidget(label_sep)
+
+    center_layout.addLayout(col_mag)
+    
+    label_sep = QLabel("-")
+    center_layout.addWidget(label_sep)
+    
+    center_layout.addLayout(col_phase)
+
+    # --- Add Layout ---
+    layout_top.addLayout(center_layout)
+
+    # --- Bottom QGroupBox ---
+    box_bottom = QGroupBox("DUT Parameters")
+    layout_bottom = QHBoxLayout(box_bottom)
+    layout_bottom.setSpacing(40) 
+    layout_bottom.setContentsMargins(10, 8, 10, 8)
+    layout_bottom.setAlignment(Qt.AlignCenter)  
+
+    # --- Labels dentro del box_bottom ---
+    label_z = QLabel("Zin (Z0): -- + j--")
+    label_z.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_z.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    layout_bottom.addWidget(label_z)
 
-    box_il = QGroupBox("Insertion Loss")
-    layout_il = QVBoxLayout()
-    box_il.setLayout(layout_il)
+    label_sep = QLabel("-")
+    layout_bottom.addWidget(label_sep)
+
     label_il = QLabel("IL: -- dB")
-    layout_il.addWidget(label_il)
+    label_il.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_il.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    layout_bottom.addWidget(label_il)
 
-    box_vswr = QGroupBox("VSWR")
-    layout_vswr = QVBoxLayout()
-    box_vswr.setLayout(layout_vswr)
+    label_sep = QLabel("-")
+    layout_bottom.addWidget(label_sep)
+
     label_vswr = QLabel("VSWR: --")
-    layout_vswr.addWidget(label_vswr)
+    label_vswr.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_vswr.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    layout_bottom.addWidget(label_vswr)
 
-    info_layout.addWidget(box_s, 0, 0, 3, 1)
-    info_layout.addWidget(box_z, 0, 1)
-    info_layout.addWidget(box_il, 1, 1)
-    info_layout.addWidget(box_vswr, 2, 1)
+    info_layout.addWidget(box_top)
+    info_layout.addWidget(box_bottom) 
 
+    # Add to external layout
     right_layout.addWidget(info_panel)
 
-    for box in [box_s, box_z, box_il, box_vswr]:
-        box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        for i in range(box.layout().count()):
-            w = box.layout().itemAt(i).widget()
-            if w is not None:
-                w.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
-
+    # --- Labels dictionary ---
     labels_dict = {
-        "freq": edit_value,
-        "unit": lbl_unit,
         "val": label_val,
         "mag": label_mag,
         "phase": label_phase,
         "z": label_z,
         "il": label_il,
-        "vswr": label_vswr
+        "vswr": label_vswr,
+        "freq": edit_value,
+        "unit": lbl_unit
     }
 
     def update_cursor(index, from_slider=False):
