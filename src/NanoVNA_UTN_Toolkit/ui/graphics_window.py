@@ -255,10 +255,8 @@ class NanoVNAGraphics(QMainWindow):
         calibration_menu = menu_bar.addMenu("Calibration")
         help_menu = menu_bar.addMenu("Help")
 
-        file_menu.addAction("Open")
-        file_menu.addAction("Save")
-        save_as_action =  file_menu.addAction("Save As")
-        save_as_action.triggered.connect(lambda: self.on_save_as())
+        import_touchstone_action = file_menu.addAction("Connection")
+        import_touchstone_action.triggered.connect(lambda: self.open_connection_window())
 
         import_touchstone_action = file_menu.addAction("Import Touchstone Data (Calibration)")
         import_touchstone_action.triggered.connect(lambda: self.import_touchstone_data_calibration())
@@ -1864,12 +1862,24 @@ class NanoVNAGraphics(QMainWindow):
         self.fig_left.canvas.draw()
         self.fig_right.canvas.draw()
 
+    # =================== CONNECTION FUNCTION ==================
+
+    def open_connection_window(self):
+        from NanoVNA_UTN_Toolkit.ui.connection_window import NanoVNAStatusApp
+
+        logging.info("[connection_windows.open_connection_window] Opening connection")
+        
+        self.connection_window = NanoVNAStatusApp()
+        self.connection_window.show()
+        self.close()
+        self.deleteLater()
+
     # =================== CALIBRATION WIZARD FUNCTION ==================
 
     def open_calibration_wizard(self):
         from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
 
-        logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
+        logging.info("[wizard_windows.open_calibration_wizard] Opening calibration wizard")
         
         if self.vna_device:
             self.welcome_windows = CalibrationWizard(self.vna_device, caller="graphics")

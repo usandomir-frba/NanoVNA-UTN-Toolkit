@@ -192,6 +192,18 @@ class SmithChartBuilder:
         
         cursor, = self.ax.plot([], [], 'o', markersize=size, color=color, visible=visible)
         return cursor
+
+    def add_cursor_marker_2(self, visible=None, color=None, size=None):
+        """Add cursor marker for interactive use."""
+        if self.ax is None:
+            return None
+            
+        visible = visible if visible is not None else self.config.marker_visible
+        color = color or self.config.marker_color
+        size = size or self.config.markersize
+        
+        cursor, = self.ax.plot([], [], 'o', markersize=size, color=color, visible=visible)
+        return cursor
     
     def clear_and_redraw(self):
         """Clear axis and prepare for new plot."""
@@ -253,6 +265,8 @@ class SmithChartManager:
         
         # Add cursor marker
         cursor = self.builder.add_cursor_marker(color=marker_color)
+
+        cursor_2 = self.builder.add_cursor_marker_2(color=marker_color)
         
         # Create canvas
         canvas = self.builder.create_canvas()

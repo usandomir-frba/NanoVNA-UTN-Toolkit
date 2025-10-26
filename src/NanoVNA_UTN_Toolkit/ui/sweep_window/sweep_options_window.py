@@ -389,7 +389,51 @@ class SweepOptionsWindow(QMainWindow):
         # Fallback to defaults if no device or device doesn't have limits
         logging.info(f"[sweep_options_window.get_sweep_points_limits] Using default limits: {default_min} - {default_max}")
         return default_min, default_max
-        
+
+    from PySide6.QtWidgets import QToolTip
+
+    def on_frequency_changed_range(self):
+        start_val_hz = self.start_freq_edit.value() * self.unit_multiplier(self.start_freq_unit.currentText())
+        stop_val_hz = self.stop_freq_edit.value() * self.unit_multiplier(self.stop_freq_unit.currentText())
+
+        # Start Frequency check
+        if not (50_000 <= start_val_hz <= 1_500_000_000):
+            self.start_freq_edit.blockSignals(True)
+            self.start_freq_edit.setValue(self.last_start_value)
+            self.start_freq_edit.blockSignals(False)
+            QToolTip.showText(
+                self.start_freq_edit.mapToGlobal(self.start_freq_edit.rect().topRight()),
+                "Start frequency must be between 50 kHz and 1.5 GHz"
+            )
+        else:
+            self.last_start_value = self.start_freq_edit.value()
+
+        # Stop Frequency check
+        if not (50_000 <= stop_val_hz <= 1_500_000_000):
+            self.stop_freq_edit.blockSignals(True)
+            self.stop_freq_edit.setValue(self.last_stop_value)
+            self.stop_freq_edit.blockSignals(False)
+            QToolTip.showText(
+                self.stop_freq_edit.mapToGlobal(self.stop_freq_edit.rect().topRight()),
+                "Stop frequency must be between 50 kHz and 1.5 GHz"
+            )
+        else:
+            self.last_stop_value = self.stop_freq_edit.value()
+
+    def update_spinbox_range(self, spinbox, unit):
+        """Actualiza el rango del spinbox según la unidad actual."""
+        if unit == "Hz":
+            spinbox.setRange(50_000, 1_500_000_000)
+        elif unit == "kHz":
+            spinbox.setRange(50, 1_500_000)
+        elif unit == "MHz":
+            spinbox.setRange(0.05, 1500)
+        elif unit == "GHz":
+            spinbox.setRange(0.00005, 1.5)
+
+    def unit_multiplier(self, unit):
+        return {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[unit]
+
     def init_ui(self):
         """Initialize the user interface."""
         self.setWindowTitle("Sweep Options")
@@ -421,15 +465,21 @@ class SweepOptionsWindow(QMainWindow):
         # Start Frequency with unit selector
         start_freq_layout = QHBoxLayout()
         self.start_freq_edit = QDoubleSpinBox()
-        self.start_freq_edit.setRange(0.001, 999999.999)
+        self.start_freq_edit.setRange(50, 1500000000) 
         self.start_freq_edit.setDecimals(3)
         self.start_freq_edit.valueChanged.connect(self.on_frequency_changed)
-        
+    
         self.start_freq_unit = QComboBox()
         self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.start_freq_unit.setCurrentText("kHz")
         self.start_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
-        
+
+        self.start_freq_unit.currentTextChanged.connect(
+            lambda unit: self.update_spinbox_range(self.start_freq_edit, unit)
+        )
+
+        self.update_spinbox_range(self.start_freq_edit, self.start_freq_unit.currentText())
+
         start_freq_layout.addWidget(self.start_freq_edit)
         start_freq_layout.addWidget(self.start_freq_unit)
         freq_layout.addRow("Start Frequency:", start_freq_layout)
@@ -437,14 +487,21 @@ class SweepOptionsWindow(QMainWindow):
         # Stop Frequency with unit selector and max frequency validation
         stop_freq_layout = QHBoxLayout()
         self.stop_freq_edit = QDoubleSpinBox()
-        self.stop_freq_edit.setRange(0.001, 999999.999)
+        self.stop_freq_edit.setRange(50, 1500000000) 
         self.stop_freq_edit.setDecimals(3)
         self.stop_freq_edit.valueChanged.connect(self.on_frequency_changed)
-        
+
         self.stop_freq_unit = QComboBox()
         self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.stop_freq_unit.setCurrentText("GHz")
         self.stop_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
+        self.stop_freq_unit.currentTextChanged.connect(self.on_frequency_changed_range)
+
+        self.stop_freq_unit.currentTextChanged.connect(
+            lambda unit: self.update_spinbox_range(self.stop_freq_edit, unit)
+        )
+
+        self.update_spinbox_range(self.stop_freq_edit, self.stop_freq_unit.currentText())
         
         stop_freq_layout.addWidget(self.stop_freq_edit)
         stop_freq_layout.addWidget(self.stop_freq_unit)
