@@ -13,7 +13,7 @@ from PySide6.QtCore import QSettings as QtSettings
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                                QLabel, QPushButton, QComboBox, QSpacerItem, 
                                QSizePolicy, QProgressBar, QMessageBox, QInputDialog,
-                               QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox)
+                               QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox, QToolTip)
 
 # Import NanoVNAGraphics for the final step
 try:
@@ -43,6 +43,9 @@ from matplotlib.lines import Line2D
 class CalibrationWizard(QMainWindow):
     def __init__(self, vna_device=None, parent=None, caller="welcome"):
         super().__init__()
+
+        self.last_start_value = 50   
+        self.last_stop_value  = 1.5   
 
         logging.info(f"[CalibrationWizard] Initialized with caller: {caller}")
 
@@ -336,6 +339,54 @@ class CalibrationWizard(QMainWindow):
         """Clear everything inside content_layout (handles nested layouts)."""
         self.clear_layout(self.content_layout)
 
+    from PySide6.QtWidgets import QToolTip
+
+    def on_frequency_changed_range(self):
+        start_val_hz = self.start_freq_input.value() * self.unit_multiplier(self.start_freq_unit.currentText())
+        stop_val_hz  = self.stop_freq_input.value()  * self.unit_multiplier(self.stop_freq_unit.currentText())
+
+        # Start Frequency check
+        if not (50_000 <= start_val_hz <= 1_500_000_000):
+            self.start_freq_input.blockSignals(True)
+            self.start_freq_input.setValue(self.last_start_value)
+            self.start_freq_input.blockSignals(False)
+            QToolTip.showText(
+                self.start_freq_input.mapToGlobal(self.start_freq_input.rect().topRight()),
+                "Start frequency must be between 50 kHz and 1.5 GHz"
+            )
+        else:
+            # Aquí se guarda el último valor válido
+            self.last_start_value = self.start_freq_input.value()
+
+        # Stop Frequency check
+        if not (50_000 <= stop_val_hz <= 1_500_000_000):
+            self.stop_freq_input.blockSignals(True)
+            self.stop_freq_input.setValue(self.last_stop_value)
+            self.stop_freq_input.blockSignals(False)
+            QToolTip.showText(
+                self.stop_freq_input.mapToGlobal(self.stop_freq_input.rect().topRight()),
+                "Stop frequency must be between 50 kHz y 1.5 GHz"
+            )
+        else:
+            # Aquí se guarda el último valor válido
+            self.last_stop_value = self.stop_freq_input.value()
+
+
+    def update_spinbox_range(self, spinbox, unit):
+        """Actualiza el rango del spinbox según la unidad actual."""
+        if unit == "Hz":
+            spinbox.setRange(50_000, 1_500_000_000)
+        elif unit == "kHz":
+            spinbox.setRange(50, 1_500_000)
+        elif unit == "MHz":
+            spinbox.setRange(0.05, 1500)
+        elif unit == "GHz":
+            spinbox.setRange(0.00005, 1.5)
+
+    def unit_multiplier(self, unit):
+        return {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[unit]
+
+
     # --- screens --------------------------------------------------------------
     def show_first_screen(self):
         """Initial screen: Calibration Methods dropdown (aligned near top)."""
@@ -391,10 +442,8 @@ class CalibrationWizard(QMainWindow):
         # Start frequency
         start_freq_layout = QHBoxLayout()
         self.start_freq_input = QDoubleSpinBox()
-        self.start_freq_input.setDecimals(6)
-        self.start_freq_input.setMinimum(0.001)
-        self.start_freq_input.setMaximum(100000)
-        self.start_freq_input.setValue(50)
+        self.start_freq_input.setDecimals(4)
+        self.start_freq_input.setValue(50)  # 50 kHz inicial
         self.start_freq_input.setStyleSheet("background-color: white; color: black;")
         start_freq_layout.addWidget(self.start_freq_input)
         
@@ -408,9 +457,7 @@ class CalibrationWizard(QMainWindow):
         # Stop frequency
         stop_freq_layout = QHBoxLayout()
         self.stop_freq_input = QDoubleSpinBox()
-        self.stop_freq_input.setDecimals(6)
-        self.stop_freq_input.setMinimum(0.001)
-        self.stop_freq_input.setMaximum(100000)
+        self.stop_freq_input.setDecimals(4)
         self.stop_freq_input.setValue(1.5)
         self.stop_freq_input.setStyleSheet("background-color: white; color: black;")
         stop_freq_layout.addWidget(self.stop_freq_input)
@@ -435,9 +482,21 @@ class CalibrationWizard(QMainWindow):
         # Connect widgets to update sweep configuration
         self.start_freq_input.valueChanged.connect(self.update_sweep_config)
         self.start_freq_unit.currentTextChanged.connect(self.update_sweep_config)
-        self.stop_freq_input.valueChanged.connect(self.update_sweep_config)
         self.stop_freq_unit.currentTextChanged.connect(self.update_sweep_config)
         self.steps_input.valueChanged.connect(self.update_sweep_config)
+
+        # Conectar rango dinámico según unidad
+        self.start_freq_unit.currentTextChanged.connect(
+            lambda unit: self.update_spinbox_range(self.start_freq_input, unit)
+        )
+        self.stop_freq_unit.currentTextChanged.connect(
+            lambda unit: self.update_spinbox_range(self.stop_freq_input, unit)
+        )
+
+        # Validación para evitar que el usuario ingrese valores fuera de rango manualmente
+        self.start_freq_input.editingFinished.connect(self.on_frequency_changed_range)
+        self.stop_freq_input.editingFinished.connect(self.on_frequency_changed_range)
+
         
         # Update initial values
         self.update_sweep_config()
