@@ -249,6 +249,8 @@ def create_edit_tab1(self, tabs, nano_window):
 
     logging.info(f"[edit_graphics_utils] freqs type: {type(freqs)}, shape: {getattr(freqs, 'shape', 'N/A')}, first 5 values: {freqs[:5] if len(freqs) >= 5 else freqs}")
 
+    cursor_graph, = ax.plot([0], [0], 'o', markersize=marker_size1, color=marker_color1, visible=True)
+
     def update_graph(graph_type1):
         ax.clear()
         ax.legend().remove()
@@ -259,7 +261,7 @@ def create_edit_tab1(self, tabs, nano_window):
         if graph_type1 == "Smith Diagram":  
             fig.subplots_adjust(left=0.15, right=0.9, top=0.82, bottom=0.18)
 
-            ntw = rf.Network(frequency=self.freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
+            ntw = rf.Network(frequency=freqs, s=S_data[:, np.newaxis, np.newaxis], z0=50)
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
             ax.legend([Line2D([0],[0], color=get_trace_color())],[s_param1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
@@ -269,9 +271,10 @@ def create_edit_tab1(self, tabs, nano_window):
             for patch in ax.patches:
                 patch.set_edgecolor(f"{get_axis_color()}")   
                 patch.set_facecolor("none")    
-            
+
             ax.hlines(0, -1, 1, color=f"{get_axis_color()}", linewidth=1.1, zorder=10)
 
+            # Aplicar color y ancho al primer line del smith
             for idx, line in enumerate(ax.lines):
                 xdata = line.get_xdata()
                 if len(xdata) == len(freqs):
@@ -279,7 +282,9 @@ def create_edit_tab1(self, tabs, nano_window):
                     line.set_linewidth(get_trace_width())
                     break
 
-            cursor_graph, = ax.plot(np.real(S_data[index]), np.imag(S_data[index]), 'o', markersize=get_marker_size(), color=get_marker_color(), visible=True)
+            # Cursor como secuencia
+            cursor_graph, = ax.plot([np.real(S_data[index])], [np.imag(S_data[index])], 'o',
+                                    markersize=get_marker_size(), color=get_marker_color(), visible=True)
 
         elif graph_type1 == "Magnitude":  
             if np.any(S_data):
@@ -291,13 +296,14 @@ def create_edit_tab1(self, tabs, nano_window):
             ax.set_title(f"{s_param1} Magnitude", color=f"{get_text_color()}")
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
-            
+
             for side in ['left', 'right', 'top', 'bottom']:
-                ax.spines[side].set_visible(True)           
-                ax.spines[side].set_color(get_axis_color())  
-                ax.spines[side].set_linewidth(0.7)    
-                    
-            ax.grid(True, which='both', axis='both', color=f"{get_axis_color()}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+                ax.spines[side].set_visible(True)
+                ax.spines[side].set_color(get_axis_color())
+                ax.spines[side].set_linewidth(0.7)
+
+            ax.grid(True, which='both', axis='both', color=f"{get_axis_color()}",
+                    linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
 
             for idx, line in enumerate(ax.lines):
                 xdata = line.get_xdata()
@@ -305,12 +311,13 @@ def create_edit_tab1(self, tabs, nano_window):
                     line.set_color(get_trace_color())
                     line.set_linewidth(get_trace_width())
                     break
-            
-            cursor_graph, = ax.plot(self.freqs[index]/1e-6, 20 * np.log10(np.abs(S_data[index])), 'o', markersize=get_marker_size(), color=get_marker_color(), visible=True)
-            
+
+            cursor_graph, = ax.plot([freqs[index]/1e-6], [20 * np.log10(np.abs(S_data[index]))], 'o',
+                                    markersize=get_marker_size(), color=get_marker_color(), visible=True)
+
         elif graph_type1 == "Phase":  
             if np.any(S_data):
-                ax.plot(self.freqs/1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color(), label=s_param1)
+                ax.plot(freqs / 1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color(), label=s_param1)
 
             ax.set_xlabel("Frequency [MHz]", color=f"{get_text_color()}")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param1, color=f"{get_text_color()}")
@@ -320,11 +327,12 @@ def create_edit_tab1(self, tabs, nano_window):
             ax.yaxis.set_label_coords(-0.18, 0.5)
 
             for side in ['left', 'right', 'top', 'bottom']:
-                ax.spines[side].set_visible(True)           
-                ax.spines[side].set_color(get_axis_color())  
-                ax.spines[side].set_linewidth(0.7)    
+                ax.spines[side].set_visible(True)
+                ax.spines[side].set_color(get_axis_color())
+                ax.spines[side].set_linewidth(0.7)
 
-            ax.grid(True, which='both', axis='both', color=f"{get_axis_color()}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+            ax.grid(True, which='both', axis='both', color=f"{get_axis_color()}",
+                    linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
 
             for idx, line in enumerate(ax.lines):
                 xdata = line.get_xdata()
@@ -333,7 +341,8 @@ def create_edit_tab1(self, tabs, nano_window):
                     line.set_linewidth(get_trace_width())
                     break
 
-            cursor_graph, = ax.plot(freqs[index]/1e-6, np.angle(S_data) * 180 / np.pi, 'o', markersize=get_marker_size(), color=get_marker_color(), visible=True)
+            cursor_graph, = ax.plot([freqs[index]/1e-6], [np.angle(S_data[index])*180/np.pi], 'o',
+                                    markersize=get_marker_size(), color=get_marker_color(), visible=True)
 
         canvas.draw()
 
@@ -650,11 +659,9 @@ def create_edit_tab2(self, tabs, nano_window):
 
             for text in ax.texts:
                 text.set_color(f"{get_axis_color2()}")
-
             for patch in ax.patches:
                 patch.set_edgecolor(f"{get_axis_color2()}")   
                 patch.set_facecolor("none")    
-            
             ax.hlines(0, -1, 1, color=f"{get_axis_color2()}", linewidth=1.1, zorder=10)
 
             for idx, line in enumerate(ax.lines):
@@ -664,7 +671,9 @@ def create_edit_tab2(self, tabs, nano_window):
                     line.set_linewidth(get_trace_width2())
                     break
 
-            cursor_graph2, = ax.plot(np.real(S_data[index]), np.imag(S_data[index]), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+            # Cursor como secuencia
+            cursor_graph2, = ax.plot([np.real(S_data[index])], [np.imag(S_data[index])], 'o',
+                                    markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
 
         elif graph_type2 == "Magnitude":  
             if np.any(S_data):
@@ -676,12 +685,11 @@ def create_edit_tab2(self, tabs, nano_window):
             ax.set_title(f"{s_param2} Magnitude", color=f"{get_text_color2()}")
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")
-            
+
             for side in ['left', 'right', 'top', 'bottom']:
                 ax.spines[side].set_visible(True)           
                 ax.spines[side].set_color(get_axis_color2())  
                 ax.spines[side].set_linewidth(0.7)    
-                    
             ax.grid(True, which='both', axis='both', color=f"{get_axis_color2()}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
 
             for idx, line in enumerate(ax.lines):
@@ -690,14 +698,16 @@ def create_edit_tab2(self, tabs, nano_window):
                     line.set_color(get_trace_color2())
                     line.set_linewidth(get_trace_width2())
                     break
-            
-            cursor_graph2, = ax.plot(freqs[index]/1e6, 20 * np.log10(np.abs(S_data[index])), 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+
+            # Cursor como secuencia
+            cursor_graph2, = ax.plot([freqs[index]/1e-6], [20 * np.log10(np.abs(S_data[index]))], 'o',
+                                    markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
 
         elif graph_type2 == "Phase":  
             if np.any(S_data):
                 ax.plot(freqs/1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color2(), label=s_param2)
 
-            ax.set_xlabel("Frequency [MHz]", color=f"{get_text_color2()}")
+            ax.set_xlabel("Frequency [GHz]", color=f"{get_text_color2()}")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param2, color=f"{get_text_color2()}")
             ax.set_title(f"{s_param2} Phase", color=f"{get_text_color2()}")
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
@@ -708,7 +718,6 @@ def create_edit_tab2(self, tabs, nano_window):
                 ax.spines[side].set_visible(True)           
                 ax.spines[side].set_color(get_axis_color2())  
                 ax.spines[side].set_linewidth(0.7)    
-
             ax.grid(True, which='both', axis='both', color=f"{get_axis_color2()}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
 
             for idx, line in enumerate(ax.lines):
@@ -718,7 +727,9 @@ def create_edit_tab2(self, tabs, nano_window):
                     line.set_linewidth(get_trace_width2())
                     break
 
-            cursor_graph2, = ax.plot(freqs[index]/1e6, np.angle(S_data[index]) * 180 / np.pi, 'o', markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
+            # Cursor como secuencia
+            cursor_graph2, = ax.plot([freqs[index]/1e-6], [np.angle(S_data[index]) * 180 / np.pi], 'o',
+                                    markersize=get_marker_size2(), color=get_marker_color2(), visible=True)
 
         canvas.draw()
 
