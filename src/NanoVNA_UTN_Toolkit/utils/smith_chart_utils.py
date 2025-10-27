@@ -180,6 +180,18 @@ class SmithChartBuilder:
             except:
                 # Some lines might not support these operations
                 continue
+
+        for patch in self.ax.patches:
+            patch.set_edgecolor(self.config.axis_color)
+            patch.set_facecolor("none")
+
+        # Actualizar color de la línea central
+        self.ax.hlines(
+            0, -1, 1,
+            color=self.config.axis_color,
+            linewidth=self.config.center_line_width,
+            zorder=self.config.center_line_zorder
+        )
     
     def add_cursor_marker(self, visible=None, color=None, size=None):
         """Add cursor marker for interactive use."""
