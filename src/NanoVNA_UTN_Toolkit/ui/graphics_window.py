@@ -7,6 +7,12 @@ import logging
 import numpy as np
 import skrf as rf
 
+import matplotlib.pyplot as plt
+
+plt.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern
+plt.rcParams['text.usetex'] = False  
+plt.rcParams['axes.labelsize'] = 12  
+
 from pathlib import Path
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
@@ -1031,9 +1037,13 @@ class NanoVNAGraphics(QMainWindow):
         """Clear axis and show waiting message for a specific panel."""
         if panel_side == 'right':
             if hasattr(self, 'ax_right') and self.ax_right:
-                self.ax_right.text(message_pos[0], message_pos[1], 'Waiting for sweep data...',
-                                transform=self.ax_right.transAxes,
-                                ha='center', va='center', fontsize=12, color='white')
+                self.ax_right.text(
+                    message_pos[0], message_pos[1],
+                    r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
+                    transform=self.ax_right.transAxes,
+                    ha='center', va='center',
+                    fontsize=15, color='white'
+                )
 
                 for line in self.ax_right.lines:
                     line.remove()
@@ -1044,9 +1054,13 @@ class NanoVNAGraphics(QMainWindow):
                 self.canvas_right.draw()
         elif panel_side == 'left':
             if hasattr(self, 'ax_left') and self.ax_left:
-                self.ax_left.text(message_pos[0], message_pos[1], 'Waiting for sweep data...',
-                                transform=self.ax_left.transAxes,
-                                ha='center', va='center', fontsize=12, color='white')
+                self.ax_left.text(
+                    message_pos[0], message_pos[1],
+                    r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
+                    transform=self.ax_left.transAxes,
+                    ha='center', va='center',
+                    fontsize=15, color='white'
+                )
 
                 for line in self.ax_left.lines:
                     line.remove()
@@ -1076,9 +1090,13 @@ class NanoVNAGraphics(QMainWindow):
             # Clear axes but keep empty plot with message
             if hasattr(self, 'ax_left') and self.ax_left:
                 #self.ax_left.clear()
-                self.ax_left.text(0.5, -0.1, 'Waiting for sweep data...',
-                                transform=self.ax_left.transAxes,
-                                ha='center', va='center', fontsize=12, color='white')
+                self.ax_left.text(
+                    0.5, -0.1,
+                    r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
+                    transform=self.ax_left.transAxes,
+                    ha='center', va='center',
+                    fontsize=15, color='white'
+                )
 
                 for line in self.ax_left.lines:
                     line.remove()
@@ -1115,9 +1133,13 @@ class NanoVNAGraphics(QMainWindow):
 
             # Clear axes but keep empty plot with message
             if hasattr(self, 'ax_left') and self.ax_left:
-                self.ax_left.text(0.5, 0.5, 'Waiting for sweep data...',
-                                transform=self.ax_left.transAxes,
-                                ha='center', va='center', fontsize=12, color='white')
+                self.ax_left.text(
+                    0.5, 0.5,
+                    r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
+                    transform=self.ax_left.transAxes,
+                    ha='center', va='center',
+                    fontsize=15, color='white'
+                )
 
                 for line in self.ax_left.lines:
                     line.remove()
@@ -3490,12 +3512,13 @@ class NanoVNAGraphics(QMainWindow):
 
                 ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
 
-                ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
-                ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
+                ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
                 if unit == "dB":
-                    ax.set_title(f"{s_param} Magnitude [dB]", color=f"{text_color}")
+                    ax.set_ylabel(r"$%s\ \mathrm{[dB]}$" % s_param, color=text_color)
+                    ax.set_title(r"$%s\ \mathrm{Magnitude\ [dB]}$" % s_param, color=text_color)
                 else:
-                    ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+                    ax.set_ylabel(r"$|%s|$" % s_param, color=f"{text_color}")
+                    ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param, color=text_color)
                 # Set X-axis limits with margins to match actual frequency range of the sweep
                 freq_start = freqs[0] / 1e6
                 freq_end = freqs[-1] / 1e6

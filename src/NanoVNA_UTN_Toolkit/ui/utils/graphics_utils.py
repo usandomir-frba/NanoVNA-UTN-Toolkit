@@ -5,11 +5,17 @@ import logging
 import matplotlib
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit, QApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
+
 from matplotlib.patches import Circle
 from matplotlib.widgets import Slider
 from PySide6.QtCore import Qt
 from matplotlib.lines import Line2D
+
+import matplotlib.pyplot as plt
+
+plt.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern
+plt.rcParams['text.usetex'] = False   
+plt.rcParams['axes.labelsize'] = 12  
 
 from PySide6.QtCore import QObject, QEvent, QSettings
 
@@ -128,9 +134,10 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
 
         ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
 
-        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
-        ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
-        ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
+        ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
+        ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param, color=text_color)
+
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
         freq_end = freqs[-1]*1e-6
@@ -169,9 +176,10 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
 
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
-        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
-        ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
-        ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
+        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=text_color)
+        ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param, color=text_color)
+
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
         freq_end = freqs[-1]*1e-6
@@ -569,9 +577,10 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
 
         ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
-        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
-        ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
-        ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
+        ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
+        ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param, color=text_color)
+
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
         freq_end = freqs[-1]*1e-6
@@ -609,9 +618,10 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
 
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
-        ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
-        ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
-        ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
+        ax.set_ylabel(r"$\phi_{%s}\ \mathrm{[°]}$" % s_param, color=f"{text_color}")
+        ax.set_title(r"$\mathrm{%s\ Phase}$" % s_param, color=f"{text_color}")
+
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
         freq_end = freqs[-1]*1e-6
