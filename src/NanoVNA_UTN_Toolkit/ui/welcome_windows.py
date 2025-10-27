@@ -758,7 +758,17 @@ class NanoVNAWelcome(QMainWindow):
         self.kit_label.setGeometry(0, 0, inner_width, inner_height)
         self.kit_label.setStyleSheet("background-color: transparent;")
 
-        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked(name)
+        self.kit_frame.mousePressEvent = lambda event, name=current_text: self.toolbutton_main_clicked_checked(name)
+
+    def toolbutton_main_clicked_checked(self, kit_name):
+        if kit_name == "------------------":
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "No Kit Selected", "Please select a valid calibration kit before proceeding.")
+            logging.warning("Attempted to advance with no kit selected")
+            return
+
+        self.toolbutton_main_clicked(kit_name)
+
 
     def cycle_kit_side(self, direction, calibration_name):
         old_frame = self.kit_frame
