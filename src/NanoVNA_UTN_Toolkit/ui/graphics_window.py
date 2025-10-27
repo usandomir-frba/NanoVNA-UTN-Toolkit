@@ -1479,6 +1479,17 @@ class NanoVNAGraphics(QMainWindow):
 
     def _force_marker_visibility(self, marker_color_left, marker_color_right):
         """Force markers to be visible by recreating them directly on axes"""
+
+        actual_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(actual_dir, "ui", "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
+
+        unit_mode_left = settings.value("Graphic1/db_times", "dB") 
+        unit_mode_right  = settings.value("Graphic2/db_times", "dB")
+
+        logging.info(f"[graphics_window] Left panel unit mode: {unit_mode_left}")
+        logging.info(f"[graphics_window] Right panel unit mode: {unit_mode_right}")
         
         if hasattr(self, 'cursor_left') and hasattr(self, 'ax_left') and self.cursor_left and self.ax_left:
             try:
@@ -1551,10 +1562,16 @@ class NanoVNAGraphics(QMainWindow):
                                             imag_part = float(np.imag(val_complex))
                                             self.cursor_left.set_data([real_part], [imag_part])
                                         elif graph_type_left == "Magnitude":
-                                            # Magnitude plot coordinates (freq in MHz, magnitude in dB)
                                             freq_mhz = float(self.freqs[index] / 1e6)
-                                            magnitude_db = float(20 * np.log10(np.abs(val_complex)))
-                                            self.cursor_left.set_data([freq_mhz], [magnitude_db])
+                                            if unit_mode_left == "dB":
+                                                mag_val = float(20 * np.log10(np.abs(val_complex)))
+                                            elif unit_mode_left == "Power ratio":
+                                                mag_val = float(np.abs(val_complex)**2)
+                                            elif unit_mode_left == "Voltage ratio":
+                                                mag_val = float(np.abs(val_complex))
+                                            else:
+                                                mag_val = float(np.abs(val_complex))
+                                            self.cursor_left.set_data([freq_mhz], [mag_val])
                                         elif graph_type_left == "Phase":
                                             # Phase plot coordinates (freq in MHz, phase in degrees)
                                             freq_mhz = float(self.freqs[index] / 1e6)
@@ -1667,8 +1684,15 @@ class NanoVNAGraphics(QMainWindow):
                                         elif graph_type_right == "Magnitude":
                                             # Magnitude plot coordinates (freq in MHz, magnitude in dB)
                                             freq_mhz = float(self.freqs[index] / 1e6)
-                                            magnitude_db = float(20 * np.log10(np.abs(val_complex)))
-                                            self.cursor_right.set_data([freq_mhz], [magnitude_db])
+                                            if unit_mode_right == "dB":
+                                                mag_val = float(20 * np.log10(np.abs(val_complex)))
+                                            elif unit_mode_right == "Power ratio":
+                                                mag_val = float(np.abs(val_complex)**2)
+                                            elif unit_mode_right == "Voltage ratio":
+                                                mag_val = float(np.abs(val_complex))
+                                            else:
+                                                mag_val = float(np.abs(val_complex))
+                                            self.cursor_right.set_data([freq_mhz], [mag_val])
                                         elif graph_type_right == "Phase":
                                             # Phase plot coordinates (freq in MHz, phase in degrees)
                                             freq_mhz = float(self.freqs[index] / 1e6)
@@ -2653,6 +2677,9 @@ class NanoVNAGraphics(QMainWindow):
 
             self.update_plots_with_new_data(skip_reset=False)
 
+            self.update_cursor()
+            self.update_right_cursor()
+
         except Exception as e:
             logging.error(f"Error toggling db/times: {e}")
 
@@ -3344,7 +3371,8 @@ class NanoVNAGraphics(QMainWindow):
                 axis_color=axis_color1,
                 linewidth=trace_size1,
                 markersize=marker_size1,
-                unit= unit_left
+                unit= unit_left,
+                cursor_graph=self.cursor_left
             )
 
             unit_right = self.get_graph_unit(2)
@@ -3365,7 +3393,8 @@ class NanoVNAGraphics(QMainWindow):
                 axis_color=axis_color2,
                 linewidth=trace_size2,
                 markersize=marker_size2,
-                unit=unit_right
+                unit=unit_right,
+                cursor_graph=self.cursor_right
             )
             
             # Update data references in cursor functions
@@ -3397,7 +3426,7 @@ class NanoVNAGraphics(QMainWindow):
             logging.error(f"[graphics_window.update_plots_with_new_data] Error updating plots: {e}")
     
     def _recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
-                             tracecolor, markercolor, brackground_color_graphics, text_color, axis_color, linewidth, markersize,  unit="dB"):
+                            tracecolor, markercolor, brackground_color_graphics, text_color, axis_color, linewidth, markersize,  unit="dB", cursor_graph=None):
         """Recreate a single plot with new data."""
         try:
             from matplotlib.lines import Line2D
@@ -3449,11 +3478,24 @@ class NanoVNAGraphics(QMainWindow):
                 elif unit == "Voltage ratio":
                     magnitude_db = np.abs(s_data)
 
+                cursor_graph.set_xdata([freqs[0] * 1e-6])
+                cursor_graph.set_ydata([magnitude_db[0]])
+
+                fig.canvas.draw_idle()
+
+                cursor_x = cursor_graph.get_xdata()[0]
+                cursor_y = cursor_graph.get_ydata()[0]
+
+                logging.info(f"[Cursor] Frequency: {cursor_x:.6f} MHz, Magnitude: {cursor_y:.3f} {unit}")
+
                 ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
 
                 ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
                 ax.set_ylabel(f"|{s_param}|", color=f"{text_color}")
-                ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
+                if unit == "dB":
+                    ax.set_title(f"{s_param} Magnitude [dB]", color=f"{text_color}")
+                else:
+                    ax.set_title(f"{s_param} Magnitude", color=f"{text_color}")
                 # Set X-axis limits with margins to match actual frequency range of the sweep
                 freq_start = freqs[0] / 1e6
                 freq_end = freqs[-1] / 1e6

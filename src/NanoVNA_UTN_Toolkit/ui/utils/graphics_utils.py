@@ -1,6 +1,7 @@
 import numpy as np
 import skrf as rf
 import os
+import logging
 import matplotlib
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit, QApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -369,44 +370,72 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
     }
 
     def update_cursor(index, from_slider=False):
+        import os
+        from PySide6.QtCore import QSettings
+
         val_complex = S_data[index]
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
+        # === Leer modo de unidad desde Graphic1 en el INI ===
+        actual_dir = os.path.dirname(os.path.dirname(__file__))
+        ruta_ini = os.path.join(actual_dir, "graphics_windows", "ini", "config.ini")
+
+        settings = QSettings(ruta_ini, QSettings.IniFormat)
+
+        unit_mode = settings.value("Graphic1/db_times", "dB")
+
+        logging.info(f"[Cursor Update] unit_mode = {unit_mode}")
+
+        # === Actualizar cursor según graph_type y unidad ===
         if graph_type == "Smith Diagram":
             cursor_graph.set_data([np.real(val_complex)], [np.imag(val_complex)])
-        elif graph_type == "Magnitude":
-            cursor_graph.set_data([freqs[index]*1e-6], [magnitude])
-        elif graph_type == "Phase":
-            cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
 
+        elif graph_type == "Magnitude":
+            if unit_mode == "dB":
+                mag_value = 20 * np.log10(magnitude)
+            elif unit_mode == "Power ratio":
+                mag_value = magnitude ** 2
+            elif unit_mode == "Voltage ratio":
+                mag_value = magnitude
+            else:
+                mag_value = magnitude
+
+            cursor_graph.set_xdata([freqs[index] * 1e-6])
+            cursor_graph.set_ydata([mag_value])
+
+        elif graph_type == "Phase":
+            cursor_graph.set_data([freqs[index] * 1e-6], [phase_deg])
+
+        # === Actualizar labels ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
         edit_value.setText(freq_value)
-        # Update field width when frequency changes from slider
+
         text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        min_width = max(text_width + 10, 50)
-        edit_value.setFixedWidth(min_width)
+        edit_value.setFixedWidth(max(text_width + 10, 50))
+
         labels_dict["unit"].setText(freq_unit)
-        labels_dict["val"].setText(f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
+        labels_dict["val"].setText(
+            f"{s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
+        )
         labels_dict["mag"].setText(f"|{s_param}|: {magnitude:.3f}")
         labels_dict["phase"].setText(f"Phase: {phase_deg:.2f}°")
-        z = (1 + val_complex)/(1 - val_complex)
+
+        z = (1 + val_complex) / (1 - val_complex)
         labels_dict["z"].setText(f"Z: {np.real(z):.2f} + j{np.imag(z):.2f}")
-        il_db = -20*np.log10(magnitude)
+
+        il_db = -20 * np.log10(magnitude)
         labels_dict["il"].setText(f"IL: {il_db:.2f} dB")
-        vswr_val = (1 + magnitude)/(1 - magnitude) if magnitude < 1 else np.inf
+
+        vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
         labels_dict["vswr"].setText(f"VSWR: {vswr_val:.2f}" if np.isfinite(vswr_val) else "VSWR: ∞")
+
         fig.canvas.draw_idle()
 
         if not from_slider:
             slider.set_val(index)
 
         edit_value.clearFocus()
-
-        actual_dir = os.path.dirname(os.path.dirname(__file__))  
-        ruta_ini = os.path.join(actual_dir, "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_ini, QSettings.IniFormat)
 
         settings.setValue("Cursor1/index", index)
 
