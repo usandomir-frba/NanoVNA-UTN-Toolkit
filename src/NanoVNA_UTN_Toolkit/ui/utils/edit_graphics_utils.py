@@ -12,13 +12,18 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
+plt.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern
+plt.rcParams['text.usetex'] = False  
+plt.rcParams['axes.labelsize'] = 12  
+
+from matplotlib.ticker import ScalarFormatter
+
 # --- Scikit-RF ---
 import skrf as rf
 import numpy as np
 import os
 import logging
 
-# Estilo para SpinBox redondeados y elegantes
 spin_style = """
     QSpinBox {
         color: black;
@@ -254,7 +259,7 @@ def create_edit_tab1(self, tabs, nano_window):
     def update_graph(graph_type1):
         ax.clear()
         ax.legend().remove()
-
+        
         fig.patch.set_facecolor(f"{get_background_color()}")
         ax.set_facecolor(f"{get_background_color()}")
 
@@ -291,9 +296,11 @@ def create_edit_tab1(self, tabs, nano_window):
                 magnitude_db = 20 * np.log10(np.abs(S_data))
                 ax.plot(freqs / 1e-6, magnitude_db, color=get_trace_color(), label=s_param1)
 
-            ax.set_xlabel("Frequency [GHz]", color=f"{get_text_color()}")
-            ax.set_ylabel(f"|{s_param1}|", color=f"{get_text_color()}")
-            ax.set_title(f"{s_param1} Magnitude", color=f"{get_text_color()}")
+            # Magnitude
+            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color()}")
+            ax.set_ylabel(r"$|%s|$" % s_param1, color=f"{get_text_color()}")
+            ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param1, color=f"{get_text_color()}")
+
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
 
@@ -319,12 +326,14 @@ def create_edit_tab1(self, tabs, nano_window):
             if np.any(S_data):
                 ax.plot(freqs / 1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color(), label=s_param1)
 
-            ax.set_xlabel("Frequency [MHz]", color=f"{get_text_color()}")
-            ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param1, color=f"{get_text_color()}")
-            ax.set_title(f"{s_param1} Phase", color=f"{get_text_color()}")
+            # Phase
+            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color()}")
+            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param1, color=f"{get_text_color()}")
+            ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param1, color=f"{get_text_color()}")
+
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
-            ax.yaxis.set_label_coords(-0.18, 0.5)
+            ax.yaxis.set_label_coords(-0.24, 0.5)
 
             for side in ['left', 'right', 'top', 'bottom']:
                 ax.spines[side].set_visible(True)
@@ -680,9 +689,11 @@ def create_edit_tab2(self, tabs, nano_window):
                 magnitude_db = 20 * np.log10(np.abs(S_data))
                 ax.plot(freqs/1e-6, magnitude_db, color=get_trace_color2(), label=s_param2)
 
-            ax.set_xlabel("Frequency [GHz]", color=f"{get_text_color2()}")
-            ax.set_ylabel(f"|{s_param2}|", color=f"{get_text_color2()}")
-            ax.set_title(f"{s_param2} Magnitude", color=f"{get_text_color2()}")
+            # Magnitude
+            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color2()}")
+            ax.set_ylabel(r"$|%s|$" % s_param2, color=f"{get_text_color2()}")
+            ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param2, color=f"{get_text_color2()}")
+
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")
 
@@ -707,12 +718,14 @@ def create_edit_tab2(self, tabs, nano_window):
             if np.any(S_data):
                 ax.plot(freqs/1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color2(), label=s_param2)
 
-            ax.set_xlabel("Frequency [GHz]", color=f"{get_text_color2()}")
-            ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param2, color=f"{get_text_color2()}")
-            ax.set_title(f"{s_param2} Phase", color=f"{get_text_color2()}")
+            # Phase
+            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color2()}")
+            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param2, color=f"{get_text_color2()}")
+            ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param2, color=f"{get_text_color2()}")
+
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")
-            ax.yaxis.set_label_coords(-0.18, 0.5)
+            ax.yaxis.set_label_coords(-0.24, 0.5)
 
             for side in ['left', 'right', 'top', 'bottom']:
                 ax.spines[side].set_visible(True)           
