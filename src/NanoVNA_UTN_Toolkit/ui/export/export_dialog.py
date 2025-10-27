@@ -446,8 +446,6 @@ class ExportDialog(QDialog):
                                 # Zip con self.freqs
                                 for f, re, im in zip(self.freqs, x_data_re, y_data_im):
                                     csv_data.append([f, re, im])
-
-
                 else:
                     for i, line in enumerate(ax.lines):
                         if line.get_visible() and len(line.get_xdata()) > 1:

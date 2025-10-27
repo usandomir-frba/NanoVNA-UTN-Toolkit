@@ -2531,6 +2531,29 @@ class NanoVNAGraphics(QMainWindow):
 
     # =================== RIGHT CLICK ==================
 
+    def _update_unit_display(self, event):
+        """Update the display of the unit for the graph clicked (left or right)."""
+        try:
+            # Detect which canvas was clicked
+            widget_under_cursor = QApplication.widgetAt(event.globalPos())
+            figure_to_update = self.fig_left  # default
+            if widget_under_cursor:
+                current_widget = widget_under_cursor
+                while current_widget:
+                    if hasattr(self, 'canvas_right') and current_widget == self.canvas_right:
+                        figure_to_update = self.fig_right
+                        break
+                    elif hasattr(self, 'canvas_left') and current_widget == self.canvas_left:
+                        figure_to_update = self.fig_left
+                        break
+                    current_widget = current_widget.parent()
+            # Redraw the appropriate figure
+            figure_to_update.canvas.draw_idle()
+            logging.info(f"Unit changed to {self.unit_mode} on {'Right' if figure_to_update == self.fig_right else 'Left'} Panel")
+        except Exception as e:
+            logging.error(f"Error updating unit: {e}")
+
+
     def contextMenuEvent(self, event):
         menu = QMenu(self)
 
@@ -2544,6 +2567,20 @@ class NanoVNAGraphics(QMainWindow):
         marker2_action.setCheckable(True)
         marker2_action.setChecked(self.show_marker2)
 
+        # --- Submenú de unidad dB / times ---
+        menu.addSeparator()
+        if not hasattr(self, "unit_mode"):
+            self.unit_mode = "dB"
+
+        unit_menu = QMenu(f"Unit ({self.unit_mode})", self)
+        if self.unit_mode == "dB":
+            power_action = unit_menu.addAction("Power ratio (times)")
+            voltage_action = unit_menu.addAction("Voltage ratio (times)")
+        else:
+            db_action = unit_menu.addAction("dB")
+        menu.addMenu(unit_menu)
+
+        # --- Export ---
         menu.addSeparator()
         export_action = menu.addAction("Export...")
 
@@ -2559,6 +2596,19 @@ class NanoVNAGraphics(QMainWindow):
             self.toggle_marker_visibility(1, self.show_marker2)
         elif selected_action == export_action:
             self.open_export_dialog(event)
+
+        elif self.unit_mode == "dB":
+            if selected_action == power_action:
+                self.unit_mode = "Power ratio"
+                self._update_unit_display(event)
+            elif selected_action == voltage_action:
+                self.unit_mode = "Voltage ratio"
+                self._update_unit_display(event)
+
+        elif self.unit_mode in ("Power ratio", "Voltage ratio"):
+            if selected_action == db_action:
+                self.unit_mode = "dB"
+                self._update_unit_display(event)
 
     def open_export_dialog(self, event):
         """Open the export dialog for the clicked graph."""
