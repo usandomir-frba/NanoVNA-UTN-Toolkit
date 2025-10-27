@@ -2531,49 +2531,45 @@ class NanoVNAGraphics(QMainWindow):
 
     # =================== RIGHT CLICK ==================
 
-    def _update_unit_display(self, event):
-        """Update the display of the unit for the graph clicked (left or right)."""
-        try:
-            # Detect which canvas was clicked
-            widget_under_cursor = QApplication.widgetAt(event.globalPos())
-            figure_to_update = self.fig_left  # default
-            if widget_under_cursor:
-                current_widget = widget_under_cursor
-                while current_widget:
-                    if hasattr(self, 'canvas_right') and current_widget == self.canvas_right:
-                        figure_to_update = self.fig_right
-                        break
-                    elif hasattr(self, 'canvas_left') and current_widget == self.canvas_left:
-                        figure_to_update = self.fig_left
-                        break
-                    current_widget = current_widget.parent()
-            # Redraw the appropriate figure
-            figure_to_update.canvas.draw_idle()
-            logging.info(f"Unit changed to {self.unit_mode} on {'Right' if figure_to_update == self.fig_right else 'Left'} Panel")
-        except Exception as e:
-            logging.error(f"Error updating unit: {e}")
-
-
     def contextMenuEvent(self, event):
         menu = QMenu(self)
 
         view_menu = menu.addAction("View")
-
         marker1_action = menu.addAction("Marker 1")
         marker1_action.setCheckable(True)
         marker1_action.setChecked(self.show_marker1)
-
         marker2_action = menu.addAction("Marker 2")
         marker2_action.setCheckable(True)
         marker2_action.setChecked(self.show_marker2)
 
-        # --- Submenú de unidad dB / times ---
-        menu.addSeparator()
-        if not hasattr(self, "unit_mode"):
-            self.unit_mode = "dB"
+        # --- Determine which graph was clicked ---
+        widget_under_cursor = QApplication.widgetAt(event.globalPos())
+        graph_number = 1  # default left
+        current_widget = widget_under_cursor
+        while current_widget:
+            if hasattr(self, "canvas_right") and current_widget == self.canvas_right:
+                graph_number = 2
+                break
+            elif hasattr(self, "canvas_left") and current_widget == self.canvas_left:
+                graph_number = 1
+                break
+            current_widget = current_widget.parent()
 
-        unit_menu = QMenu(f"Unit ({self.unit_mode})", self)
-        if self.unit_mode == "dB":
+        # --- Read the current unit from INI ---
+        import os
+        from PySide6.QtCore import QSettings
+        ui_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
+        settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
+        ini_section = "Graphic1" if graph_number == 1 else "Graphic2"
+        settings.beginGroup(ini_section)
+        current_unit = settings.value("db_times", "dB")
+        settings.endGroup()
+
+        # --- Unit submenu ---
+        menu.addSeparator()
+        unit_menu = QMenu(f"Unit ({current_unit})", self)
+        if current_unit == "dB":
             power_action = unit_menu.addAction("Power ratio (times)")
             voltage_action = unit_menu.addAction("Voltage ratio (times)")
         else:
@@ -2586,6 +2582,7 @@ class NanoVNAGraphics(QMainWindow):
 
         selected_action = menu.exec(event.globalPos())
 
+        # --- Handle actions ---
         if selected_action == view_menu:
             self.open_view()
         elif selected_action == marker1_action:
@@ -2597,18 +2594,67 @@ class NanoVNAGraphics(QMainWindow):
         elif selected_action == export_action:
             self.open_export_dialog(event)
 
-        elif self.unit_mode == "dB":
+        # --- Handle unit change ---
+        elif current_unit == "dB":
             if selected_action == power_action:
-                self.unit_mode = "Power ratio"
-                self._update_unit_display(event)
+                self.toggle_db_times(event, "Power ratio")
             elif selected_action == voltage_action:
-                self.unit_mode = "Voltage ratio"
-                self._update_unit_display(event)
-
-        elif self.unit_mode in ("Power ratio", "Voltage ratio"):
+                self.toggle_db_times(event, "Voltage ratio")
+        elif current_unit in ("Power ratio", "Voltage ratio"):
             if selected_action == db_action:
-                self.unit_mode = "dB"
-                self._update_unit_display(event)
+                self.toggle_db_times(event, "dB")
+
+
+    def toggle_db_times(self, event, new_mode):
+        """
+        Toggle between dB and times for the clicked graph.
+        Saves independently for Left (Graphic1) and Right (Graphic2) graph in the INI.
+        """
+        import os
+        from PySide6.QtCore import QSettings
+
+        try:
+            # Detect the graph clicked
+            widget_under_cursor = QApplication.widgetAt(event.globalPos())
+            if widget_under_cursor is None:
+                return
+
+            graph_number = 1  # default left
+            current_widget = widget_under_cursor
+            while current_widget:
+                if hasattr(self, "canvas_right") and current_widget == self.canvas_right:
+                    graph_number = 2
+                    break
+                elif hasattr(self, "canvas_left") and current_widget == self.canvas_left:
+                    graph_number = 1
+                    break
+                current_widget = current_widget.parent()
+
+            # Decide INI section based on graph
+            ini_section = "Graphic1" if graph_number == 1 else "Graphic2"
+
+            # Ruta del INI
+            ui_dir = os.path.dirname(os.path.dirname(__file__))  
+            ruta_ini = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
+            settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
+
+            settings.beginGroup(ini_section)
+
+            # Guardar la unidad seleccionada
+            settings.setValue("db_times", new_mode)
+
+            # Guardar número de gráfico
+            settings.setValue("graph_number", graph_number)
+
+            settings.endGroup()
+            settings.sync()
+
+            logging.info(f"Unit {new_mode} saved for {ini_section}")
+
+        except Exception as e:
+            logging.error(f"Error toggling db/times: {e}")
+
+
 
     def open_export_dialog(self, event):
         """Open the export dialog for the clicked graph."""
