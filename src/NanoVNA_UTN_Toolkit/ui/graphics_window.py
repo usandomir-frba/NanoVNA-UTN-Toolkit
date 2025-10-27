@@ -2651,10 +2651,10 @@ class NanoVNAGraphics(QMainWindow):
 
             logging.info(f"Unit {new_mode} saved for {ini_section}")
 
+            self.update_plots_with_new_data(skip_reset=False)
+
         except Exception as e:
             logging.error(f"Error toggling db/times: {e}")
-
-
 
     def open_export_dialog(self, event):
         """Open the export dialog for the clicked graph."""
@@ -3262,6 +3262,24 @@ class NanoVNAGraphics(QMainWindow):
                 }
             """)
 
+    
+    def get_graph_unit(self, graph_number):
+        """Read the unit from INI for left (1) or right (2) graph."""
+        try:
+            ui_dir = os.path.dirname(os.path.dirname(__file__))
+            ini_path = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
+            settings = QSettings(ini_path, QSettings.Format.IniFormat)
+            
+            group_name = f"Graphic{graph_number}"
+            settings.beginGroup(group_name)
+            unit = settings.value("db_times", "dB")  # default dB
+            settings.endGroup()
+            
+            return unit
+        except Exception as e:
+            logging.error(f"Error reading unit from INI: {e}")
+            return "dB"
+
     def update_plots_with_new_data(self, skip_reset=False):
         """Update both plots with new sweep data."""
         try:
@@ -3309,6 +3327,9 @@ class NanoVNAGraphics(QMainWindow):
 
             # Recreate left panel plot
             logging.info(f"[graphics_window.update_plots_with_new_data] Recreating left plot: {graph_type_tab1} - {s_param_tab1}")
+
+            unit_left = self.get_graph_unit(1)
+
             self._recreate_single_plot(
                 ax=self.ax_left,
                 fig=self.fig_left,
@@ -3322,8 +3343,11 @@ class NanoVNAGraphics(QMainWindow):
                 text_color=text_color1,
                 axis_color=axis_color1,
                 linewidth=trace_size1,
-                markersize=marker_size1
+                markersize=marker_size1,
+                unit= unit_left
             )
+
+            unit_right = self.get_graph_unit(2)
             
             # Recreate right panel plot
             logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2}")
@@ -3340,7 +3364,8 @@ class NanoVNAGraphics(QMainWindow):
                 text_color=text_color2,
                 axis_color=axis_color2,
                 linewidth=trace_size2,
-                markersize=marker_size2
+                markersize=marker_size2,
+                unit=unit_right
             )
             
             # Update data references in cursor functions
@@ -3372,7 +3397,7 @@ class NanoVNAGraphics(QMainWindow):
             logging.error(f"[graphics_window.update_plots_with_new_data] Error updating plots: {e}")
     
     def _recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
-                             tracecolor, markercolor, brackground_color_graphics, text_color, axis_color, linewidth, markersize):
+                             tracecolor, markercolor, brackground_color_graphics, text_color, axis_color, linewidth, markersize,  unit="dB"):
         """Recreate a single plot with new data."""
         try:
             from matplotlib.lines import Line2D
@@ -3416,7 +3441,14 @@ class NanoVNAGraphics(QMainWindow):
                         
             elif graph_type == "Magnitude":
                 # Plot magnitude
-                magnitude_db = 20 * np.log10(np.abs(s_data))
+
+                if unit == "dB":
+                    magnitude_db = 20 * np.log10(np.abs(s_data))
+                elif unit == "Power ratio":
+                    magnitude_db = np.abs(s_data)**2
+                elif unit == "Voltage ratio":
+                    magnitude_db = np.abs(s_data)
+
                 ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
 
                 ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
