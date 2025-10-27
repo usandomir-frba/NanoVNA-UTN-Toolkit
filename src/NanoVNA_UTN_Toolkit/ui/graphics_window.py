@@ -3545,9 +3545,11 @@ class NanoVNAGraphics(QMainWindow):
                 phase_deg = np.angle(s_data) * 180 / np.pi
 
                 ax.plot(freqs / 1e6, phase_deg, color=tracecolor, linewidth=linewidth)
-                ax.set_xlabel("Frequency [MHz]", color=f"{text_color}")
-                ax.set_ylabel(r'$\phi_{%s}$ [°]' % s_param, color=f"{text_color}")
-                ax.set_title(f"{s_param} Phase", color=f"{text_color}")
+
+                ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
+                ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
+                ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param, color=f"{text_color}")
+                
                 # Set X-axis limits with margins to match actual frequency range of the sweep
                 freq_start = freqs[0] / 1e6
                 freq_end = freqs[-1] / 1e6

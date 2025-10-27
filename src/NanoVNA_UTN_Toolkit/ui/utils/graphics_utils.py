@@ -177,7 +177,7 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
-        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=text_color)
+        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
         ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param, color=text_color)
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
@@ -619,7 +619,7 @@ def create_right_panel(settings, S_data=None, freqs=None, graph_type="Smith Diag
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
-        ax.set_ylabel(r"$\phi_{%s}\ \mathrm{[°]}$" % s_param, color=f"{text_color}")
+        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
         ax.set_title(r"$\mathrm{%s\ Phase}$" % s_param, color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
