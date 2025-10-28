@@ -290,14 +290,14 @@ class NanoVNAGraphics(QMainWindow):
 
         self.markers_locked = settings.value("Markers/locked", False, type=bool)
 
-        lock_markers = edit_menu.addAction("Lock Markers ✓" if self.markers_locked else "Lock Markers")
+        #self.lock_markers = edit_menu.addAction("Lock Markers ✓" if self.markers_locked else "Lock Markers")
 
         def toggle_markers_lock():
             self.markers_locked = not self.markers_locked
             lock_markers.setText("Lock Markers ✓" if self.markers_locked else "Lock Markers")
             settings.setValue("Markers/locked", self.markers_locked)
 
-        lock_markers.triggered.connect(toggle_markers_lock)
+        #self.lock_markers.triggered.connect(toggle_markers_lock) 
 
 #-------- Dark-light Mode ----------------------------------------------------------------------------#
 
@@ -2637,6 +2637,11 @@ class NanoVNAGraphics(QMainWindow):
         marker2_action.setCheckable(True)
         marker2_action.setChecked(self.show_marker2)
 
+        # --- Lock markers action ---
+        lock_markers_action = menu.addAction("Lock Markers ✓" if self.markers_locked else "Lock Markers")
+        lock_markers_action.setCheckable(True)
+        lock_markers_action.setChecked(self.markers_locked)
+
         # --- Determine which graph was clicked ---
         widget_under_cursor = QApplication.widgetAt(event.globalPos())
         graph_number = 1  # default left
@@ -2686,6 +2691,19 @@ class NanoVNAGraphics(QMainWindow):
         elif selected_action == marker2_action:
             self.show_marker2 = not self.show_marker2
             self.toggle_marker_visibility(1, self.show_marker2)
+
+        elif selected_action == lock_markers_action:
+            self.markers_locked = not self.markers_locked
+
+            lock_markers_action.setChecked(self.markers_locked)
+
+            settings.setValue("Markers/locked", self.markers_locked)
+            
+            if self.markers_locked:
+                val = self.slider_left.val
+                self.slider_right.set_val(val)
+                self.update_right_cursor(val)
+                
         elif selected_action == export_action:
             self.open_export_dialog(event)
 
