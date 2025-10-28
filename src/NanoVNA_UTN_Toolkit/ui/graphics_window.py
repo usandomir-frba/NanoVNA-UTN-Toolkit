@@ -281,6 +281,20 @@ class NanoVNAGraphics(QMainWindow):
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
 
+#-------- Lock Markers ----------------------------------------------------------------------------#
+
+        self.markers_locked = False  
+
+        lock_markers = edit_menu.addAction("Lock Markers ✓" if self.markers_locked else "Lock Markers")
+
+        def toggle_markers_lock():
+            self.markers_locked = not self.markers_locked
+            lock_markers.setText("Lock Markers ✓" if self.markers_locked else "Lock Markers")
+
+        lock_markers.triggered.connect(toggle_markers_lock)
+
+#-------- Dark Mode ----------------------------------------------------------------------------#
+
         text_light_dark = settings.value("Dark_Light/text_light_dark", "text_light_dark")
 
         light_dark_mode = edit_menu.addAction(text_light_dark)
