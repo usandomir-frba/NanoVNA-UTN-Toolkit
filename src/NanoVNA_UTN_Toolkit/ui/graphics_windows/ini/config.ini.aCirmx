@@ -29,10 +29,10 @@ db_times=dB
 graph_number=2
 
 [Cursor1]
-index=58
+index=3
 
 [Cursor2]
-index=77
+index=3
 
 [Markers]
 locked=false

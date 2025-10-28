@@ -13,10 +13,12 @@ from matplotlib.lines import Line2D
 
 import matplotlib.pyplot as plt
 
-plt.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern
-plt.rcParams['text.usetex'] = False   
-plt.rcParams['axes.labelsize'] = 12  
-
+plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
+plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
+plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
+ 
 from PySide6.QtCore import QObject, QEvent, QSettings
 
 from PySide6.QtGui import QDoubleValidator
@@ -392,8 +394,6 @@ def create_left_panel(S_data, freqs, settings, graph_type="Smith Diagram", s_par
         settings = QSettings(ruta_ini, QSettings.IniFormat)
 
         unit_mode = settings.value("Graphic1/db_times", "dB")
-
-        logging.info(f"[Cursor Update] unit_mode = {unit_mode}")
 
         # === Actualizar cursor según graph_type y unidad ===
         if graph_type == "Smith Diagram":

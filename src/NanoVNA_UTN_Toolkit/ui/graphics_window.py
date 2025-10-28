@@ -283,7 +283,7 @@ class NanoVNAGraphics(QMainWindow):
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
-        # Ruta del archivo ini
+        # config.ini
         actual_dir = os.path.dirname(os.path.dirname(__file__))  
         ruta_ini = os.path.join(actual_dir, "ui", "graphics_windows", "ini", "config.ini")
         settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
@@ -299,7 +299,7 @@ class NanoVNAGraphics(QMainWindow):
 
         lock_markers.triggered.connect(toggle_markers_lock)
 
-#-------- Dark Mode ----------------------------------------------------------------------------#
+#-------- Dark-light Mode ----------------------------------------------------------------------------#
 
         text_light_dark = settings.value("Dark_Light/text_light_dark", "text_light_dark")
 
@@ -1521,6 +1521,18 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"[graphics_window._reset_sliders_after_reconnect] Error resetting sliders after reconnection: {e}")
 
+    def left_slider_moved(self, val):
+        if self.markers_locked:
+            if self.slider_right.val != val:
+                self.slider_right.set_val(val)
+                self.update_right_cursor(val)
+
+    def right_slider_moved(self, val):
+        if self.markers_locked:
+            if self.slider_left.val != val:
+                self.slider_left.set_val(val)
+                self.update_cursor(val)
+
     def _force_marker_visibility(self, marker_color_left, marker_color_right):
         """Force markers to be visible by recreating them directly on axes"""
 
@@ -1637,6 +1649,13 @@ class NanoVNAGraphics(QMainWindow):
                             return result
                         
                         self.update_cursor = cursor_left_wrapper
+
+                        if hasattr(self, 'slider_left') and self.slider_left:
+                            try:
+                                self.slider_left.observers.clear()
+                            except:
+                                pass
+                            self.slider_left.on_changed(self.left_slider_moved)
                         
                         # Reconnect the slider to use our wrapper
                         if hasattr(self, 'slider_left') and self.slider_left:
@@ -1758,6 +1777,14 @@ class NanoVNAGraphics(QMainWindow):
                             return result
                         
                         self.update_right_cursor = cursor_right_wrapper
+
+                        if hasattr(self, 'slider_right') and self.slider_right:
+                            try:
+                                self.slider_right.observers.clear()
+                            except:
+                                pass
+                            self.slider_right.on_changed(self.right_slider_moved)
+                            self.right_slider_moved()
                         
                         # Reconnect the slider to use our wrapper
                         if hasattr(self, 'slider_right') and self.slider_right:
