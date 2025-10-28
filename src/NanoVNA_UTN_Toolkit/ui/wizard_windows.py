@@ -22,6 +22,14 @@ except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None  # Safe fallback
 
+import matplotlib.pyplot as plt
+
+plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
+plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
+plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
+
 # Import calibration data storage
 try:
     from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager

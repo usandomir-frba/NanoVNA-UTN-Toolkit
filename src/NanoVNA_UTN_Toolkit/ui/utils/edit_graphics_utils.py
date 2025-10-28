@@ -12,9 +12,11 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
-plt.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern
-plt.rcParams['text.usetex'] = False  
-plt.rcParams['axes.labelsize'] = 12  
+plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
+plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
+plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
 
 from matplotlib.ticker import ScalarFormatter
 

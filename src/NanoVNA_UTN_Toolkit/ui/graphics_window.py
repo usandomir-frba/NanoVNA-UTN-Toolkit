@@ -9,9 +9,11 @@ import skrf as rf
 
 import matplotlib.pyplot as plt
 
-plt.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern
-plt.rcParams['text.usetex'] = False  
-plt.rcParams['axes.labelsize'] = 12  
+plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
+plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
+plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
 
 from pathlib import Path
 from PySide6.QtWidgets import QFileDialog, QMessageBox

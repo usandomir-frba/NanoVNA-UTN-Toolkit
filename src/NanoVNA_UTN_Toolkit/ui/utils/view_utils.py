@@ -3,6 +3,14 @@ import numpy as np
 import os
 import logging
 
+import matplotlib.pyplot as plt
+
+plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
+plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
+plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
+
 # Suppress verbose matplotlib logging
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
@@ -185,8 +193,10 @@ def create_tab1(self):
             
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab1)
-            ax.set_xlabel("Frequency [MHz]")
-            ax.set_ylabel(f"|{self.current_s_tab1}|")
+
+            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
+            ax.set_ylabel(r"$|%s|$" % self.current_s_tab1)
+
             ax.set_aspect('equal', 'box')    
             ax.grid(True)
 
@@ -206,8 +216,10 @@ def create_tab1(self):
 
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab1)
-            ax.set_xlabel("Frequency [MHz]")
+
+            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab1)
+
             ax.set_aspect('equal', 'box')    
             ax.grid(True)
 
@@ -394,8 +406,10 @@ def create_tab2(self):
             self.current_graph_tab2 = "Magnitude"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab2)
-            ax.set_xlabel("Frequency [MHz]")
-            ax.set_ylabel(f"|{self.current_s_tab2}|")
+
+            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
+            ax.set_ylabel(r"$|%s|$" % self.current_s_tab2)
+
             ax.set_aspect('equal', 'box')  
             ax.grid(True)
 
@@ -414,8 +428,10 @@ def create_tab2(self):
             self.current_graph_tab2 = "Phase"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab2)
-            ax.set_xlabel("Frequency [MHz]")
+
+            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab2)
+            
             ax.set_aspect('equal', 'box')   
             ax.grid(True)
 

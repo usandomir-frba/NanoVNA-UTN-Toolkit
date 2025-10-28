@@ -14,6 +14,14 @@ from PySide6.QtWidgets import QSizePolicy
 import matplotlib.pyplot as plt
 from typing import Optional, Dict, Tuple, List, Any
 
+import matplotlib.pyplot as plt
+
+plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
+plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
+plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
+
 
 class MagnitudeChartConfig:
     """Configuration class for magnitude chart styling and behavior."""
@@ -54,10 +62,10 @@ class MagnitudeChartBuilder:
         self.fig.patch.set_facecolor(self.config.background_color)
         self.ax.set_facecolor(self.config.background_color)
         self.ax.grid(True, linestyle="--", alpha=0.5)
-        self.ax.set_xlabel("Frequency (Hz)")
-        self.ax.set_ylabel("|S21| (times)")
 
-        self.ax.set_title("Magnitude")
+        self.ax.set_xlabel(r"$\mathrm{Frequency\ (Hz)}$")
+        self.ax.set_ylabel(r"$|S_{21}|\ (\mathrm{dB})$")
+        self.ax.set_title(r"$\mathrm{Magnitude}$")
 
         self.fig.tight_layout()
 
