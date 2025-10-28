@@ -2680,7 +2680,36 @@ class NanoVNAGraphics(QMainWindow):
 
         menu.addSeparator()
 
-        grid_action = menu.addAction("Grid ON" if not getattr(self, "grid_enabled", False) else "Grid OFF")
+        # --- Grid action ---
+        widget_under_cursor = QApplication.widgetAt(event.globalPos())
+        target_ax = None
+        target_fig = None
+        target_attr = None
+
+        current_widget = widget_under_cursor
+        while current_widget:
+            if hasattr(self, "canvas_right") and current_widget == self.canvas_right:
+                target_ax = self.ax_right
+                target_fig = self.fig_right
+                target_attr = "grid_enabled_right"
+                break
+            elif hasattr(self, "canvas_left") and current_widget == self.canvas_left:
+                target_ax = self.ax_left
+                target_fig = self.fig_left
+                target_attr = "grid_enabled_left"
+                break
+            current_widget = current_widget.parent()
+
+        current_state = getattr(self, target_attr, True) if target_attr else True
+        setattr(self, target_attr, current_state)
+
+        if target_ax and target_fig:
+            target_ax.grid(current_state)
+            target_fig.canvas.draw_idle()
+
+        grid_action = menu.addAction("Grid ✓" if current_state else "Grid")
+        grid_action.setCheckable(True)
+        grid_action.setChecked(current_state)
 
         # --- Export ---
         menu.addSeparator()
@@ -2709,19 +2738,17 @@ class NanoVNAGraphics(QMainWindow):
                 val = self.slider_left.val
                 self.slider_right.set_val(val)
                 self.update_right_cursor(val)
+          
+        elif selected_action == grid_action and target_ax and target_fig and target_attr:
 
-            
-        elif selected_action == grid_action:
-            self.grid_enabled = not getattr(self, "grid_enabled", False)
+            new_state = not getattr(self, target_attr, True)
+            setattr(self, target_attr, new_state)
 
-            # Aplicar el cambio a ambos gráficos por ahora
-            if hasattr(self, "ax_left"):
-                self.ax_left.grid(self.grid_enabled)
-                self.fig_left.canvas.draw_idle()
-            if hasattr(self, "ax_right"):
-                self.ax_right.grid(self.grid_enabled)
-                self.fig_right.canvas.draw_idle()
-                
+            target_ax.grid(new_state)
+            target_fig.canvas.draw_idle()
+
+            grid_action.setText("Grid ✓" if new_state else "Grid")
+
         elif selected_action == export_action:
             self.open_export_dialog(event)
 
