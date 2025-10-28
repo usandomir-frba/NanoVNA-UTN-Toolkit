@@ -283,13 +283,19 @@ class NanoVNAGraphics(QMainWindow):
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
-        self.markers_locked = False  
+        # Ruta del archivo ini
+        actual_dir = os.path.dirname(os.path.dirname(__file__))  
+        ruta_ini = os.path.join(actual_dir, "ui", "graphics_windows", "ini", "config.ini")
+        settings = QSettings(ruta_ini, QSettings.Format.IniFormat)
+
+        self.markers_locked = settings.value("Markers/locked", False, type=bool)
 
         lock_markers = edit_menu.addAction("Lock Markers ✓" if self.markers_locked else "Lock Markers")
 
         def toggle_markers_lock():
             self.markers_locked = not self.markers_locked
             lock_markers.setText("Lock Markers ✓" if self.markers_locked else "Lock Markers")
+            settings.setValue("Markers/locked", self.markers_locked)
 
         lock_markers.triggered.connect(toggle_markers_lock)
 
