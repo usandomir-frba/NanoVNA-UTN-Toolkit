@@ -2676,6 +2676,12 @@ class NanoVNAGraphics(QMainWindow):
             db_action = unit_menu.addAction("dB")
         menu.addMenu(unit_menu)
 
+        # ---- grid ----
+
+        menu.addSeparator()
+
+        grid_action = menu.addAction("Grid ON" if not getattr(self, "grid_enabled", False) else "Grid OFF")
+
         # --- Export ---
         menu.addSeparator()
         export_action = menu.addAction("Export...")
@@ -2703,6 +2709,18 @@ class NanoVNAGraphics(QMainWindow):
                 val = self.slider_left.val
                 self.slider_right.set_val(val)
                 self.update_right_cursor(val)
+
+            
+        elif selected_action == grid_action:
+            self.grid_enabled = not getattr(self, "grid_enabled", False)
+
+            # Aplicar el cambio a ambos gráficos por ahora
+            if hasattr(self, "ax_left"):
+                self.ax_left.grid(self.grid_enabled)
+                self.fig_left.canvas.draw_idle()
+            if hasattr(self, "ax_right"):
+                self.ax_right.grid(self.grid_enabled)
+                self.fig_right.canvas.draw_idle()
                 
         elif selected_action == export_action:
             self.open_export_dialog(event)
